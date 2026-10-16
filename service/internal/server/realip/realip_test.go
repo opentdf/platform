@@ -187,7 +187,7 @@ func TestResolver(t *testing.T) {
 					headers.Add(name, value)
 				}
 			}
-			assert.Equal(t, tt.want, resolver.resolve(connect.Peer{Addr: tt.peer}, headers).String())
+			assert.Equal(t, tt.want, resolver.resolve(tt.peer, headers).String())
 		})
 	}
 }

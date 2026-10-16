@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -57,9 +57,9 @@ func (ers *ERSV2) GetService() *multistrategy.Service {
 // ResolveEntities implements the v2 EntityResolutionServiceHandler interface
 func (ers *ERSV2) ResolveEntities(
 	ctx context.Context,
-	req *connect.Request[ersV2.ResolveEntitiesRequest],
-) (*connect.Response[ersV2.ResolveEntitiesResponse], error) {
-	payload := req.Msg.GetEntities()
+	req *ersV2.ResolveEntitiesRequest,
+) (*ersV2.ResolveEntitiesResponse, error) {
+	payload := req.GetEntities()
 	resolvedEntities := make([]*ersV2.EntityRepresentation, 0, len(payload))
 
 	for idx, entityV2 := range payload {
@@ -79,7 +79,7 @@ func (ers *ERSV2) ResolveEntities(
 				var claimsStruct structpb.Struct
 				err := claims.UnmarshalTo(&claimsStruct)
 				if err != nil {
-					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err).Error())
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
@@ -149,36 +149,36 @@ func (ers *ERSV2) ResolveEntities(
 		})
 	}
 
-	return connect.NewResponse(&ersV2.ResolveEntitiesResponse{
+	return &ersV2.ResolveEntitiesResponse{
 		EntityRepresentations: resolvedEntities,
-	}), nil
+	}, nil
 }
 
 // CreateEntityChainsFromTokens implements the v2 EntityResolutionServiceHandler interface
 func (ers *ERSV2) CreateEntityChainsFromTokens(
 	ctx context.Context,
-	req *connect.Request[ersV2.CreateEntityChainsFromTokensRequest],
-) (*connect.Response[ersV2.CreateEntityChainsFromTokensResponse], error) {
-	entityChains := make([]*entity.EntityChain, 0, len(req.Msg.GetTokens()))
+	req *ersV2.CreateEntityChainsFromTokensRequest,
+) (*ersV2.CreateEntityChainsFromTokensResponse, error) {
+	entityChains := make([]*entity.EntityChain, 0, len(req.GetTokens()))
 
 	// FAIL-SAFE: If ANY token fails to create a complete entity chain, fail the entire request
 	// This ensures authorization decisions are made with complete identity context
-	for _, token := range req.Msg.GetTokens() {
+	for _, token := range req.GetTokens() {
 		entityChain, err := ers.createEntityChainFromSingleTokenV2(ctx, token)
 		if err != nil {
 			ers.logger.ErrorContext(ctx, "failed to create entity chain from token - FAILING REQUEST for security",
 				slog.String("token_id", token.GetEphemeralId()),
 				slog.String("error", err.Error()))
 			return nil, connect.NewError(connect.CodeInternal,
-				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetEphemeralId(), err))
+				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetEphemeralId(), err).Error())
 		}
 
 		// Validate that we have at least one entity in the chain
 		if len(entityChain.GetEntities()) == 0 {
 			ers.logger.ErrorContext(ctx, "entity chain is empty - FAILING REQUEST for security",
 				slog.String("token_id", token.GetEphemeralId()))
-			return nil, connect.NewError(connect.CodeInternal,
-				fmt.Errorf("entity chain for token %s is empty - incomplete identity context", token.GetEphemeralId()))
+			return nil, connect.Errorf(connect.CodeInternal,
+				"entity chain for token %s is empty - incomplete identity context", token.GetEphemeralId())
 		}
 
 		entityChains = append(entityChains, entityChain)
@@ -188,9 +188,9 @@ func (ers *ERSV2) CreateEntityChainsFromTokens(
 		slog.Int("chain_count", len(entityChains)),
 		slog.Int("total_entities", ers.countEntitiesInChainsV2(entityChains)))
 
-	return connect.NewResponse(&ersV2.CreateEntityChainsFromTokensResponse{
+	return &ersV2.CreateEntityChainsFromTokensResponse{
 		EntityChains: entityChains,
-	}), nil
+	}, nil
 }
 
 // createEntityChainFromSingleTokenV2 processes a single JWT token using multi-strategy resolution for v2

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -118,18 +117,18 @@ func TestIntegration_ResolveEntities_ReturnsPopulatedRepresentation(t *testing.T
 		"sub":   "alice",
 		"email": "alice@example.com",
 	}
-	req := connect.NewRequest(&entityresolutionV2.ResolveEntitiesRequest{
+	req := &entityresolutionV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
 			entityFromClaims(t, "entity-alice", map[string]interface{}(claims)),
 		},
-	})
+	}
 
 	resp, err := ers.ResolveEntities(ctxWithClaims(t, claims), req)
 	if err != nil {
 		t.Fatalf("ResolveEntities returned error: %v", err)
 	}
 
-	reps := resp.Msg.GetEntityRepresentations()
+	reps := resp.GetEntityRepresentations()
 	if len(reps) != 1 {
 		t.Fatalf("EntityRepresentations length = %d, want 1 (empty = handler dropped the entity via structpb.NewStruct failure)", len(reps))
 	}
@@ -172,15 +171,15 @@ func TestIntegration_TokenChainPreservesResolvedClaims(t *testing.T) {
 
 	jwt := createMockJWTForUser("alice", "alice@example.com")
 
-	chainReq := connect.NewRequest(&entityresolutionV2.CreateEntityChainsFromTokensRequest{
+	chainReq := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{{EphemeralId: "token-alice", Jwt: jwt}},
-	})
+	}
 	chainResp, err := ers.CreateEntityChainsFromTokens(t.Context(), chainReq)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens returned error: %v", err)
 	}
 
-	chains := chainResp.Msg.GetEntityChains()
+	chains := chainResp.GetEntityChains()
 	if len(chains) != 1 {
 		t.Fatalf("EntityChains length = %d, want 1", len(chains))
 	}
@@ -228,13 +227,13 @@ func TestIntegration_FailureIsolation_MixedBatch(t *testing.T) {
 
 	// Batch: two entities that resolve, one whose claims don't match any
 	// strategy (no `sub`, no `azp`) and will produce an error.
-	req := connect.NewRequest(&entityresolutionV2.ResolveEntitiesRequest{
+	req := &entityresolutionV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
 			entityFromClaims(t, "good-1", map[string]interface{}{"sub": "alice"}),
 			entityFromClaims(t, "bad-1", map[string]interface{}{"unrelated_claim": "x"}),
 			entityFromClaims(t, "good-2", map[string]interface{}{"azp": "svc-account"}),
 		},
-	})
+	}
 
 	// The handler processes each entity independently, so the ctx must
 	// hold the right claims per entity — but claims-in-ctx is a single
@@ -253,7 +252,7 @@ func TestIntegration_FailureIsolation_MixedBatch(t *testing.T) {
 		t.Fatalf("ResolveEntities returned error: %v", err)
 	}
 
-	reps := resp.Msg.GetEntityRepresentations()
+	reps := resp.GetEntityRepresentations()
 	if len(reps) != 3 {
 		t.Fatalf("EntityRepresentations length = %d, want 3 (all entities must appear — resolved OR error-struct)", len(reps))
 	}

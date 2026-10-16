@@ -3,7 +3,7 @@ package authorization
 import (
 	"fmt"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 )
 
@@ -91,5 +91,5 @@ func (as *Service) validateFulfillableObligationRequestLimits(fqns []string, pat
 }
 
 func limitExceededError(path string, got int, limit int) error {
-	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s exceeds maximum count: got %d, max %d", path, got, limit))
+	return connect.Errorf(connect.CodeInvalidArgument, "%s exceeds maximum count: got %d, max %d", path, got, limit)
 }

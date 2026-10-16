@@ -3,15 +3,14 @@ package wellknownconfiguration
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
+	"github.com/opentdf/platform/service/internal/connectv2/wellknownconfiguration/wellknownconfigurationconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -43,13 +42,13 @@ func UpdateConfigurationBaseKey(config any) {
 	wellKnownConfiguration[baseKeyWellKnown] = config
 }
 
-func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
-	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
-		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
-			Namespace:      "wellknown",
-			ServiceDesc:    &wellknown.WellKnownService_ServiceDesc,
-			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
+func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnectv2.WellKnownServiceHandler] {
+	return &serviceregistry.Service[wellknownconfigurationconnectv2.WellKnownServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnectv2.WellKnownServiceHandler]{
+			Namespace:              "wellknown",
+			ServiceDesc:            &wellknown.WellKnownService_ServiceDesc,
+			ConnectRPCRegisterFunc: wellknownconfigurationconnectv2.RegisterWellKnownServiceHandler,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnectv2.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
 				return wk, func(_ context.Context, mux *http.ServeMux) error {
 					mux.HandleFunc("GET /.well-known/opentdf-configuration", func(w http.ResponseWriter, _ *http.Request) {
@@ -73,18 +72,18 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(ctx context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
+func (s WellKnownService) GetWellKnownConfiguration(ctx context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
 	rwMutex.RLock()
 	s.logger.TraceContext(ctx, "wellknown configuration contents", slog.Any("config", wellKnownConfiguration))
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create struct for wellknown configuration"))
+		return nil, connect.NewError(connect.CodeInternal, "failed to create struct for wellknown configuration")
 	}
 
 	rsp := &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }

@@ -14,7 +14,7 @@ import (
 	"os"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -214,74 +214,62 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 
 	// Test PublicKey with RSA
 	t.Run("PublicKey with RSA", func(t *testing.T) {
-		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-			Msg: &kaspb.PublicKeyRequest{
-				Algorithm: security.AlgorithmRSA2048,
-			},
+		result, err := kas.PublicKey(t.Context(), &kaspb.PublicKeyRequest{
+			Algorithm: security.AlgorithmRSA2048,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-		assert.Equal(t, "rsa-key", result.Msg.GetKid())
+		assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+		assert.Equal(t, "rsa-key", result.GetKid())
 	})
 
 	// Test PublicKey with RSA in JWK format
 	t.Run("PublicKey with RSA in JWK format", func(t *testing.T) {
-		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-			Msg: &kaspb.PublicKeyRequest{
-				Algorithm: security.AlgorithmRSA2048,
-				Fmt:       "jwk",
-			},
+		result, err := kas.PublicKey(t.Context(), &kaspb.PublicKeyRequest{
+			Algorithm: security.AlgorithmRSA2048,
+			Fmt:       "jwk",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Contains(t, result.Msg.GetPublicKey(), "\"kty\":\"RSA\"")
-		assert.Equal(t, "rsa-key", result.Msg.GetKid())
+		assert.Contains(t, result.GetPublicKey(), "\"kty\":\"RSA\"")
+		assert.Equal(t, "rsa-key", result.GetKid())
 	})
 
 	// Test PublicKey with EC
 	t.Run("PublicKey with EC", func(t *testing.T) {
-		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-			Msg: &kaspb.PublicKeyRequest{
-				Algorithm: security.AlgorithmECP256R1,
-			},
+		result, err := kas.PublicKey(t.Context(), &kaspb.PublicKeyRequest{
+			Algorithm: security.AlgorithmECP256R1,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-		assert.Equal(t, "ec-key", result.Msg.GetKid())
+		assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+		assert.Equal(t, "ec-key", result.GetKid())
 	})
 
 	// Test LegacyPublicKey with EC
 	t.Run("LegacyPublicKey with EC", func(t *testing.T) {
-		result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
-			Msg: &kaspb.LegacyPublicKeyRequest{
-				Algorithm: security.AlgorithmECP256R1,
-			},
+		result, err := kas.LegacyPublicKey(t.Context(), &kaspb.LegacyPublicKeyRequest{
+			Algorithm: security.AlgorithmECP256R1,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Contains(t, result.Msg.GetValue(), "BEGIN CERTIFICATE")
+		assert.Contains(t, result.GetValue(), "BEGIN CERTIFICATE")
 	})
 
 	// Test LegacyPublicKey with RSA
 	t.Run("LegacyPublicKey with RSA", func(t *testing.T) {
-		result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
-			Msg: &kaspb.LegacyPublicKeyRequest{
-				Algorithm: security.AlgorithmRSA2048,
-			},
+		result, err := kas.LegacyPublicKey(t.Context(), &kaspb.LegacyPublicKeyRequest{
+			Algorithm: security.AlgorithmRSA2048,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Contains(t, result.Msg.GetValue(), "BEGIN PUBLIC KEY")
+		assert.Contains(t, result.GetValue(), "BEGIN PUBLIC KEY")
 	})
 
 	// Test with invalid algorithm
 	t.Run("PublicKey with invalid algorithm", func(t *testing.T) {
-		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-			Msg: &kaspb.PublicKeyRequest{
-				Algorithm: "invalid-algorithm",
-			},
+		result, err := kas.PublicKey(t.Context(), &kaspb.PublicKeyRequest{
+			Algorithm: "invalid-algorithm",
 		})
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -372,7 +360,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 		Tracer:       noop.NewTracerProvider().Tracer(""),
 	}
 
-	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
+	result, err := kas.PublicKey(t.Context(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
 	require.Error(t, err, "not found")
 	assert.Nil(t, result)
 }

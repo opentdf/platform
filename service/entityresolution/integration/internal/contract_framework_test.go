@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -51,17 +51,17 @@ func NewMockERSImplementation() *MockERSImplementation {
 }
 
 // ResolveEntities implements the ERS interface for testing
-func (m *MockERSImplementation) ResolveEntities(_ context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (m *MockERSImplementation) ResolveEntities(_ context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
-	for _, ent := range req.Msg.GetEntities() {
+	for _, ent := range req.GetEntities() {
 		key := m.getEntityKey(ent)
 
 		if data, exists := m.mockData[key]; exists {
 			// Convert map to structpb.Struct
 			structData, err := structpb.NewStruct(data)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 			}
 
 			resolvedEntities = append(resolvedEntities, &entityresolutionV2.EntityRepresentation{
@@ -85,7 +85,7 @@ func (m *MockERSImplementation) ResolveEntities(_ context.Context, req *connect.
 
 			structData, err := structpb.NewStruct(inferredData)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 			}
 
 			resolvedEntities = append(resolvedEntities, &entityresolutionV2.EntityRepresentation{
@@ -95,16 +95,16 @@ func (m *MockERSImplementation) ResolveEntities(_ context.Context, req *connect.
 		}
 	}
 
-	return connect.NewResponse(&entityresolutionV2.ResolveEntitiesResponse{
+	return &entityresolutionV2.ResolveEntitiesResponse{
 		EntityRepresentations: resolvedEntities,
-	}), nil
+	}, nil
 }
 
 // CreateEntityChainsFromTokens implements the ERS interface for testing
-func (m *MockERSImplementation) CreateEntityChainsFromTokens(_ context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (m *MockERSImplementation) CreateEntityChainsFromTokens(_ context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	var entityChains []*entity.EntityChain
 
-	for _, token := range req.Msg.GetTokens() {
+	for _, token := range req.GetTokens() {
 		// Create a simple mock entity chain for testing
 		entities := []*entity.Entity{
 			{
@@ -125,9 +125,9 @@ func (m *MockERSImplementation) CreateEntityChainsFromTokens(_ context.Context, 
 		})
 	}
 
-	return connect.NewResponse(&entityresolutionV2.CreateEntityChainsFromTokensResponse{
+	return &entityresolutionV2.CreateEntityChainsFromTokensResponse{
 		EntityChains: entityChains,
-	}), nil
+	}, nil
 }
 
 // getEntityKey generates a key for looking up mock data

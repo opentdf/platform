@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/stretchr/testify/assert"
@@ -29,8 +29,8 @@ const (
 
 // ERSImplementation defines the interface that all ERS implementations must satisfy for contract testing
 type ERSImplementation interface {
-	ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error)
-	CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error)
+	ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error)
+	CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error)
 }
 
 // ERSTestAdapter defines the interface that each scope (ldap, sql, etc.) must implement
@@ -387,7 +387,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 func (suite *ContractTestSuite) testResolveEntities(t *testing.T, implementation ERSImplementation, testCase ContractTestCase) {
 	ctx := t.Context()
 	req := CreateResolveEntitiesRequest(testCase.Input.Entities...)
-	resp, err := implementation.ResolveEntities(ctx, connect.NewRequest(req))
+	resp, err := implementation.ResolveEntities(ctx, req)
 
 	if testCase.Expected.ShouldError {
 		require.Error(t, err, "Expected error but got none")
@@ -400,7 +400,7 @@ func (suite *ContractTestSuite) testResolveEntities(t *testing.T, implementation
 	require.NoError(t, err, "Unexpected error: %v", err)
 	require.NotNil(t, resp, "Response should not be nil")
 
-	representations := resp.Msg.GetEntityRepresentations()
+	representations := resp.GetEntityRepresentations()
 	assert.Len(t, representations, testCase.Expected.EntityCount, "Unexpected number of entities returned")
 
 	// Validate each entity according to the rules
@@ -486,7 +486,7 @@ func (suite *ContractTestSuite) testCreateEntityChains(t *testing.T, implementat
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: testCase.Input.Tokens,
 	}
-	resp, err := implementation.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := implementation.CreateEntityChainsFromTokens(ctx, req)
 
 	if testCase.Expected.ShouldError {
 		require.Error(t, err, "Expected error but got none")
@@ -499,7 +499,7 @@ func (suite *ContractTestSuite) testCreateEntityChains(t *testing.T, implementat
 	require.NoError(t, err, "Unexpected error: %v", err)
 	require.NotNil(t, resp, "Response should not be nil")
 
-	chains := resp.Msg.GetEntityChains()
+	chains := resp.GetEntityChains()
 
 	// Validate each chain according to the rules
 	for _, validationRule := range testCase.Expected.ChainValidation {

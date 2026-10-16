@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -122,19 +121,19 @@ func TestERSV2_ResolveEntities_PopulatesRepresentations(t *testing.T) {
 	claimsAny, err := anypb.New(claimsStruct)
 	require.NoError(t, err)
 
-	req := connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+	req := &ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
 			{
 				EphemeralId: "entity-1",
 				EntityType:  &entity.Entity_Claims{Claims: claimsAny},
 			},
 		},
-	})
+	}
 
 	resp, err := ers.ResolveEntities(t.Context(), req)
 	require.NoError(t, err)
 
-	reps := resp.Msg.GetEntityRepresentations()
+	reps := resp.GetEntityRepresentations()
 	require.Len(t, reps, 1, "empty response means the handler silently dropped the entity via structpb.NewStruct failure")
 	require.Equal(t, "entity-1", reps[0].GetOriginalId())
 
@@ -202,7 +201,7 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 	claimsAny, err := anypb.New(claimsStruct)
 	require.NoError(t, err)
 
-	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+	resp, err := erService.ResolveEntities(t.Context(), &ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
 			{
 				EphemeralId: "diana-claims",
@@ -210,11 +209,11 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 				Category:    entity.Entity_CATEGORY_SUBJECT,
 			},
 		},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
+	require.Len(t, resp.GetEntityRepresentations(), 1)
 
-	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	props := resp.GetEntityRepresentations()[0].GetAdditionalProps()
 	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
@@ -247,17 +246,17 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 	}, logger.CreateTestLogger())
 	require.NoError(t, err)
 
-	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+	resp, err := erService.ResolveEntities(t.Context(), &ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{{
 			EphemeralId: "alice-user-name",
 			EntityType:  &entity.Entity_UserName{UserName: "alice"},
 			Category:    entity.Entity_CATEGORY_SUBJECT,
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
+	require.Len(t, resp.GetEntityRepresentations(), 1)
 
-	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	props := resp.GetEntityRepresentations()[0].GetAdditionalProps()
 	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
@@ -411,13 +410,13 @@ func chainForTestToken(t *testing.T, config types.MultiStrategyConfig) *entity.E
 	erService, err := NewERSV2(t.Context(), config, logger.CreateTestLogger())
 	require.NoError(t, err)
 
-	resp, err := erService.CreateEntityChainsFromTokens(t.Context(), connect.NewRequest(&ersV2.CreateEntityChainsFromTokensRequest{
+	resp, err := erService.CreateEntityChainsFromTokens(t.Context(), &ersV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{{EphemeralId: "token-1", Jwt: testTokenJWT}},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityChains(), 1)
+	require.Len(t, resp.GetEntityChains(), 1)
 
-	return resp.Msg.GetEntityChains()[0]
+	return resp.GetEntityChains()[0]
 }
 
 func claimsOf(t *testing.T, resolved *entity.Entity) map[string]interface{} {

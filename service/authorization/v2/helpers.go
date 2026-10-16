@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -53,14 +53,14 @@ func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...an
 	logs = append(logs, slog.Any("error", err))
 	if errors.Is(err, access.ErrFQNNotFound) {
 		l.ErrorContext(ctx, "FQN not found", logs...)
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	}
 	if errors.Is(err, access.ErrDefinitionNotFound) {
 		l.ErrorContext(ctx, "definition not found", logs...)
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	}
 	l.ErrorContext(ctx, "unexpected error", logs...)
 
 	// Ensure error response is safe and does not leak internal information
-	return connect.NewError(connect.CodeInternal, ErrResponseSafeInternalError)
+	return connect.NewError(connect.CodeInternal, ErrResponseSafeInternalError.Error()).WithCause(ErrResponseSafeInternalError)
 }

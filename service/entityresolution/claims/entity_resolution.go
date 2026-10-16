@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -31,17 +31,17 @@ func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (ClaimsEnt
 	return claimsSVC, nil
 }
 
-func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	resp, err := EntityResolution(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
+	resp, err := EntityResolution(ctx, req, s.logger)
+	return &resp, err
 }
 
-func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	ctx, span := s.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
-	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+	resp, err := CreateEntityChainFromJwt(ctx, req, s.logger)
+	return &resp, err
 }
 
 func CreateEntityChainFromJwt(
@@ -76,14 +76,14 @@ func EntityResolution(_ context.Context,
 			if claims != nil {
 				err := claims.UnmarshalTo(entityStruct)
 				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err).Error())
 				}
 			}
 		default:
 			retrievedStruct, err := entityToStructPb(ident)
 			if err != nil {
 				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
+				return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err).Error())
 			}
 			entityStruct = retrievedStruct
 		}

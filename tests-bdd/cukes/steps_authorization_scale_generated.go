@@ -154,6 +154,7 @@ func createScaleDynamicValueMapping(ctx context.Context, attributeRef string) (c
 	}
 	mapping, err := scenario.SDK.DynamicValueMapping.CreateDynamicValueMapping(ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionFqn: dynamic.GetFqn(),
+		NamespaceId:            dynamic.GetNamespace().GetId(),
 		ValueResolver: &policy.DynamicValueResolver{
 			SubjectExternalSelectorValue: ".attributes.projects[]",
 			Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,

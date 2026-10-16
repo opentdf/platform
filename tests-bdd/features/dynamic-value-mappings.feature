@@ -58,7 +58,7 @@ Feature: Encrypt and decrypt with dynamic value mappings
       | selector_value        | operator | values |
       | .attributes.clearance[] | in       | alpha  |
     And a subject set referenced as "ss_alpha" containing the condition groups "cg_alpha"
-    And I send a request to create a subject condition set referenced as "scs_alpha" containing subject sets "ss_alpha"
+    And I send a request to create a subject condition set referenced as "scs_alpha" in namespace "ns1" containing subject sets "ss_alpha"
     And I send a request to create a dynamic value mapping with:
       | namespace_fqn      | attribute_definition_fqn      | selector                 | operator | standard actions | condition_set_name | reference_id |
       | https://example.com | https://example.com/attr/team | .attributes.department[] | IN       | read             | scs_alpha          | dvm_gated    |

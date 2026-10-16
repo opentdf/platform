@@ -135,7 +135,7 @@ teardown_file() {
 
 @test "Get dynamic value mapping" {
     # exercise the singular 'dynamic-value-mapping' alias here
-    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mapping create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mapping create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
         assert_success
         created=$(echo "$output" | jq -r '.id')
         assert_not_equal "$created" "null"

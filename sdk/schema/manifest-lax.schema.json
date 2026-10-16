@@ -21,8 +21,9 @@
           "description": "The payload protocol. Default is zip."
         },
         "isEncrypted": {
-          "description": "Designates whether or not the payload is encrypted, or cleartext.",
-          "type": "boolean"
+          "description": "Designates that the payload is encrypted. Optional, defaults to true; cleartext payloads (false) are not supported.",
+          "type": "boolean",
+          "const": true
         },
         "mimeType": {
           "description": "Specifies the type of file that is encrypted. Default is `application/octet-stream`.",
@@ -33,7 +34,7 @@
           "type": ["string", "null"]
         }
       },
-      "required": ["type", "url", "protocol", "isEncrypted"]
+      "required": ["type", "url", "protocol"]
     },
     "encryptionInformation": {
       "type": "object",

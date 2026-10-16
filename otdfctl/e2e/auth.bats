@@ -23,6 +23,35 @@ teardown_file() {
   rm -rf bad_creds.json
 }
 
+@test "auth commands inherit root flag validation" {
+    for command in client-credentials login logout print-access-token; do
+        run ./otdfctl auth "$command" --log-level not-a-level
+
+        assert_failure
+        assert_output --partial 'invalid log level: not-a-level'
+        refute_output --partial 'Keyring storage is not available on Linux'
+    done
+}
+
+@test "Linux auth uses an encrypted filesystem profile" {
+    [[ "$(uname -s)" == "Linux" ]] || skip "Linux filesystem authentication regression"
+    [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] || skip "requires an unlocked Secret Service keyring"
+    profile_home="${BATS_TEST_TMPDIR}/auth-profile"
+    mkdir -p "$profile_home"
+
+    run env HOME="$profile_home" ./otdfctl profile create linux-auth http://127.0.0.1:1 --set-default
+    assert_success
+
+    run env HOME="$profile_home" ./otdfctl auth client-credentials test-client test-secret
+    assert_failure
+    assert_output --partial 'An error occurred during login'
+    refute_output --partial 'Keyring storage is not available on Linux'
+
+    run env HOME="$profile_home" ./otdfctl auth logout
+    assert_success
+    assert_output --partial 'Profile: [linux-auth], logged out'
+}
+
 @test "helpful error if wrong platform endpoint host" {
     BAD_HOST='--host http://localhost:9000'
     run_otdfctl $BAD_HOST $WITH_CREDS policy attributes list

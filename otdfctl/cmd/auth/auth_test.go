@@ -1,18 +1,37 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
-func TestKeyringUnavailable(t *testing.T) {
+func Test_AuthCommands_InheritRootPreRun_Succeeds(t *testing.T) {
 	InitCommands()
-	login, _, err := Cmd.Find([]string{"login"})
-	require.NoError(t, err)
+	require.Nil(t, Cmd.PersistentPreRun)
+	require.Nil(t, Cmd.PersistentPreRunE)
 
-	assert.False(t, keyringUnavailable(Cmd, "linux"), "the group only prints help")
-	assert.True(t, keyringUnavailable(login, "linux"), "a subcommand does touch the keyring")
-	assert.False(t, keyringUnavailable(login, "darwin"), "other platforms have a keyring")
+	preRunErr := errors.New("root pre-run reached")
+	root := &cobra.Command{
+		Use:           "otdfctl",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		PersistentPreRunE: func(*cobra.Command, []string) error {
+			return preRunErr
+		},
+	}
+	root.AddCommand(Cmd)
+	t.Cleanup(func() { root.RemoveCommand(Cmd) })
+
+	for _, command := range Cmd.Commands() {
+		if !command.Runnable() {
+			continue
+		}
+		t.Run(command.Name(), func(t *testing.T) {
+			root.SetArgs([]string{"auth", command.Name()})
+			require.ErrorIs(t, root.Execute(), preRunErr)
+		})
+	}
 }

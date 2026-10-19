@@ -372,6 +372,11 @@ type chunkedWriterConfig struct {
 	// agree.
 	excludeVersion bool
 
+	// hexlessPolicyBinding writes policy bindings as Base64(HMAC) rather
+	// than the legacy Base64(hex(HMAC)). Ignored when keyAccess is set or
+	// useHex is. Set by WithChunkedHexlessPolicyBinding.
+	hexlessPolicyBinding bool
+
 	// initialAttributes are the attribute values used at Finalize
 	// when the Finalize call does not supply its own.
 	initialAttributes []*policy.Value
@@ -397,11 +402,6 @@ type chunkedWriterConfig struct {
 	// manifest. Zero means "report the first segment's actual size",
 	// which is right when every segment is the same length.
 	segmentSize int64
-
-	// hexlessPolicyBinding writes policy bindings as Base64(HMAC) rather
-	// than the legacy Base64(hex(HMAC)). Ignored when keyAccess is set or
-	// useHex is. Set by WithChunkedHexlessPolicyBinding.
-	hexlessPolicyBinding bool
 
 	// splitter maps attribute values to DEK splits at Finalize time.
 	// Defaults to DefaultKeySplitter (single-KAS only). Ignored when

@@ -3,6 +3,8 @@ package sdk
 import (
 	"errors"
 	"fmt"
+
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
 
 var (
@@ -28,6 +30,11 @@ var (
 	// rather than continue. Start a new TDF, which draws a new DEK, or use a
 	// larger segment size.
 	ErrAESGCMExhausted = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
+
+	// ErrPrefixedManifestName reports a TDF whose manifest entry is named
+	// 0.manifest.json rather than the spec's manifest.json, read with
+	// WithRequireUnprefixedManifestName.
+	ErrPrefixedManifestName = zipstream.ErrPrefixedManifestName
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")

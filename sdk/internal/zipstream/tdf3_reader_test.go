@@ -173,3 +173,51 @@ func TestManifest_DeclaredSizeBeyondArchiveRejectedWithoutCap(t *testing.T) {
 		require.ErrorContains(t, err, "file data at")
 	}
 }
+
+// WithRequireUnprefixedManifestName turns the prefixed name fallback off
+// entirely, for callers that want to reject archives whose manifest is filed
+// under the legacy 0.manifest.json entry rather than read them.
+// See https://github.com/opentdf/platform/issues/3513.
+func TestManifest_RequireUnprefixedName_RejectsPrefixedName(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "0.manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	manifest, err := reader.Manifest()
+	require.ErrorIs(t, err, ErrPrefixedManifestName)
+	require.Empty(t, manifest)
+}
+
+func TestManifest_RequireUnprefixedName_ReadsUnprefixedName(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	manifest, err := reader.Manifest()
+	require.NoError(t, err)
+	require.JSONEq(t, testManifest, manifest)
+}
+
+// An archive with no manifest at all reports a missing entry, not a prefixed
+// name: the two are different problems and a caller may want to tell them
+// apart.
+func TestManifest_RequireUnprefixedName_MissingEntirely(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	_, err = reader.Manifest()
+	require.ErrorIs(t, err, errZipFileNotFound)
+	require.NotErrorIs(t, err, ErrPrefixedManifestName)
+}

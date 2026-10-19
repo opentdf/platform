@@ -371,12 +371,13 @@ type TDFReaderConfig struct {
 	verifiers                    AssertionVerificationKeys
 	disableAssertionVerification bool
 
-	schemaValidationIntensity SchemaValidationIntensity
-	kasSessionKey             ocrypto.KeyPair
-	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
-	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
-	fulfillableObligationFQNs []string
-	maxManifestSize           int64 // 0 means no limit; see WithMaxManifestSize
+	schemaValidationIntensity     SchemaValidationIntensity
+	kasSessionKey                 ocrypto.KeyPair
+	kasAllowlist                  AllowList // KAS URLs that are allowed to be used for reading TDFs
+	ignoreAllowList               bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
+	fulfillableObligationFQNs     []string
+	maxManifestSize               int64 // 0 means no limit; see WithMaxManifestSize
+	requireUnprefixedManifestName bool  // When true, LoadTDF rejects TDFs with 0.manifest.json
 }
 
 type AllowList map[string]bool
@@ -496,6 +497,19 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.schemaValidationIntensity = intensity
+		return nil
+	}
+}
+
+// WithRequireUnprefixedManifestName rejects a TDF whose manifest entry is named
+// 0.manifest.json instead of the spec's manifest.json, rather than reading it.
+// Off by default, so archives written by earlier releases keep working.
+//
+// This is separate from WithSchemaValidation, which inspects the manifest
+// document. The entry name is archive layout and never reaches the schema.
+func WithRequireUnprefixedManifestName() TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.requireUnprefixedManifestName = true
 		return nil
 	}
 }

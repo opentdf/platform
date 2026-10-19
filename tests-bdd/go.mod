@@ -12,7 +12,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.6.0
 	github.com/opentdf/platform/lib/identifier v0.4.0
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
-	github.com/opentdf/platform/protocol/go v0.41.0
+	github.com/opentdf/platform/protocol/go v0.42.0
 	github.com/opentdf/platform/sdk v0.33.0
 	github.com/opentdf/platform/service v0.28.0
 	github.com/spf13/pflag v1.0.10

@@ -336,7 +336,7 @@ The multi-strategy ERS config uses two providers:
 
 **Prerequisites:**
 - Docker (via Colima or Docker Desktop)
-- Go 1.25+
+- Go 1.26+
 - JDK (`keytool` required for Keycloak truststore generation)
 
   ```bash

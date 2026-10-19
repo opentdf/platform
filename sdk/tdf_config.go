@@ -153,6 +153,7 @@ type TDFConfig struct {
 	splitPlan                  []keySplitStep
 	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
+	unprefixedManifestName     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
 	// maxSegmentEncryptions overrides maxAESGCMSegmentsPerDEK when non-zero.
@@ -351,6 +352,18 @@ func WithTargetMode(mode string) TDFOption {
 			c.useHex = false
 			c.excludeVersionFromManifest = false
 		}
+		return nil
+	}
+}
+
+// WithUnprefixedManifestName stores the manifest under the zip entry name
+// manifest.json, the name the TDF spec defines, instead of the legacy
+// 0.manifest.json written by default. Readers that predate manifest.json
+// support, such as Go SDK releases before v0.35.0, can't open the result. A
+// pre-4.3.0 WithTargetMode overrides this option and keeps the legacy name.
+func WithUnprefixedManifestName() TDFOption {
+	return func(c *TDFConfig) error {
+		c.unprefixedManifestName = true
 		return nil
 	}
 }

@@ -299,6 +299,9 @@ func TestReaderDeflatedEmptyEntry(t *testing.T) {
 	require.NoError(t, err)
 	_, err = reader.ReadAllFileData("notempty.bin", oneMB)
 	require.ErrorIs(t, err, zip.ErrFormat)
+	// An empty read at the declared end reaches the end, so it is checked too.
+	_, err = reader.ReadFileData("notempty.bin", 0, 0)
+	require.ErrorIs(t, err, zip.ErrFormat)
 }
 
 func TestReaderDeflatedCorruptData(t *testing.T) {
@@ -632,6 +635,14 @@ func TestReaderDeflatedChecksumMismatch(t *testing.T) {
 		require.ErrorIs(t, err, zip.ErrChecksum, "read of %d at %d", r[1], r[0])
 		assert.Nil(t, part)
 	}
+
+	// An empty read at the end is checked like any read that reaches it; one
+	// short of the end needs no data and is not.
+	_, err = reader.ReadPayload(int64(len(plain)), 0)
+	require.ErrorIs(t, err, zip.ErrChecksum)
+	got, err = reader.ReadPayload(500, 0)
+	require.NoError(t, err)
+	assert.Empty(t, got)
 }
 
 // TestReaderDeflatedArchiveZipWriter reads entries archive/zip itself wrote:

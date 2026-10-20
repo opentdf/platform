@@ -511,8 +511,9 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 	}
 
 	// An empty read of a deflated entry needs no data; producing it by
-	// inflating up to index would be wasted work.
-	if fileNameEntry.deflated != nil && length == 0 {
+	// inflating up to index would be wasted work. One at the declared end
+	// still goes through, since reaching the end is what checks it.
+	if fileNameEntry.deflated != nil && length == 0 && index != fileNameEntry.size {
 		return []byte{}, nil
 	}
 

@@ -73,8 +73,9 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 // superseded manifest.
 //
 // WithRequireUnprefixedManifestName drops the fallback. The legacy prefixed
-// entry is still looked up in that mode, so an archive that has one is told
-// apart from an archive that has no manifest at all.
+// entry is still looked up in that mode, though never read, so an archive that
+// has one is told apart from an archive that has no manifest at all, whatever
+// the entry's size.
 func (tdfReader TDFReader) Manifest() (string, error) {
 	maxSize := tdfReader.manifestMaxSize
 	if maxSize <= 0 {
@@ -82,13 +83,13 @@ func (tdfReader TDFReader) Manifest() (string, error) {
 	}
 	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameSpec, maxSize)
 	if errors.Is(err, errZipFileNotFound) {
-		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, maxSize)
-		switch {
-		case errors.Is(err, errZipFileNotFound):
-			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, err)
-		case err == nil && tdfReader.requireUnprefixedManifestName:
+		if _, lookupErr := tdfReader.archiveReader.ReadFileSize(TDFManifestFileName); lookupErr != nil {
+			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, lookupErr)
+		}
+		if tdfReader.requireUnprefixedManifestName {
 			return "", ErrPrefixedManifestName
 		}
+		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, maxSize)
 	}
 	if err != nil {
 		return "", err

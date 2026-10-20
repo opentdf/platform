@@ -25,8 +25,12 @@ type rawZipEntry struct {
 	name string
 	// data is the stored (compressed) content.
 	data []byte
-	// uncompressedSize overrides the declared original size. Zero means
-	// len(data), i.e. a normal STORED entry.
+	// method is the compression method written to both headers. Zero is
+	// STORED; deflatedEntry builds a method 8 entry.
+	method uint16
+	// uncompressedSize overrides the declared original size. On a STORED
+	// entry zero means len(data); any other method declares it verbatim, so
+	// an empty deflated entry can declare zero.
 	uncompressedSize uint64
 	// comment is the central directory file comment.
 	comment string
@@ -62,7 +66,7 @@ func (e rawZipEntry) zip64Offset(actual uint64) uint64 {
 }
 
 func (e rawZipEntry) uncompressed() uint64 {
-	if e.uncompressedSize != 0 {
+	if e.uncompressedSize != 0 || e.method != zipMethodStore {
 		return e.uncompressedSize
 	}
 	return uint64(len(e.data))
@@ -87,12 +91,13 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 	for i, e := range entries {
 		offsets[i] = uint64(buf.Len())
 		lfh := LocalFileHeader{
-			Signature:        fileHeaderSignature,
-			Version:          zipVersion,
-			Crc32:            crc32.ChecksumIEEE(e.data),
-			CompressedSize:   clamp32(uint64(len(e.data))),
-			UncompressedSize: clamp32(e.uncompressed()),
-			FilenameLength:   uint16(len(e.name)),
+			Signature:         fileHeaderSignature,
+			Version:           zipVersion,
+			CompressionMethod: e.method,
+			Crc32:             crc32.ChecksumIEEE(e.data),
+			CompressedSize:    clamp32(uint64(len(e.data))),
+			UncompressedSize:  clamp32(e.uncompressed()),
+			FilenameLength:    uint16(len(e.name)),
 		}
 		require.NoError(t, binary.Write(buf, binary.LittleEndian, lfh))
 		buf.WriteString(e.name)
@@ -108,6 +113,7 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 			Signature:         centralDirectoryHeaderSignature,
 			VersionCreated:    zipVersion,
 			VersionNeeded:     zipVersion,
+			CompressionMethod: e.method,
 			Crc32:             crc32.ChecksumIEEE(e.data),
 			CompressedSize:    clamp32(uint64(len(e.data))),
 			UncompressedSize:  clamp32(e.uncompressed()),

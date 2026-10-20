@@ -24,6 +24,8 @@ type DynamicValueMappingService struct { //nolint:revive // descriptive name mir
 	config   *policyconfig.Config
 }
 
+var errNamespaceRequired = errors.New("either namespace_id or namespace_fqn must be provided")
+
 func OnConfigUpdate(svc *DynamicValueMappingService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -77,8 +79,8 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 ) (*connect.Response[dvm.CreateDynamicValueMappingResponse], error) {
 	rsp := &dvm.CreateDynamicValueMappingResponse{}
 	s.logger.DebugContext(ctx, "creating dynamic value mapping")
-	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+	if req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{

@@ -53,6 +53,7 @@ func (s *DynamicValueMappingsSuite) TestCreateAndGet() {
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceId:           s.f.GetNamespaceKey("example.com").ID,
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -68,11 +69,24 @@ func (s *DynamicValueMappingsSuite) TestCreateAndGet() {
 	s.Nil(got.GetSubjectConditionSet(), "optional static pre-gate omitted")
 }
 
+func (s *DynamicValueMappingsSuite) TestCreateRejectsMissingNamespace() {
+	attr := s.createDefinition("dvem_missing_namespace", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+
+	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(),
+		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions:               []*policy.Action{s.readAction()},
+	})
+
+	s.Require().ErrorIs(err, db.ErrMissingValue)
+}
+
 func (s *DynamicValueMappingsSuite) TestCreateWithStaticGate() {
 	attr := s.createDefinition("dvem_create_gate", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId:  attr.GetId(),
+		NamespaceFqn:           "https://example.com",
 		ValueResolver:          s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:                []*policy.Action{s.readAction()},
 		NewSubjectConditionSet: s.sampleSCSCreate(),
@@ -90,12 +104,14 @@ func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
 	unrelated := s.createDefinition("dvem_entitleable_other", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: unrelated.GetId(), ValueResolver: s.resolver(".other[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
-		Actions: []*policy.Action{s.readAction()},
+		NamespaceFqn: "https://example.com",
+		Actions:      []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
 	ungatedCreated, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
-		Actions: []*policy.Action{s.readAction()},
+		NamespaceFqn: "https://example.com",
+		Actions:      []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
 	ungated, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, ungatedCreated.GetId())
@@ -160,6 +176,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -171,6 +188,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsNotInOperator() {
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -192,6 +210,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_SubjectMappingThenDynamic(
 	// definition now has a value-level subject mapping; a dynamic mapping must be rejected
 	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -203,6 +222,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping(
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -227,6 +247,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_RegisteredResourceAAV() {
 
 	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -290,6 +311,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_RegisteredResourceAAVThenD
 	// a dynamic mapping must be rejected.
 	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -301,6 +323,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -318,6 +341,7 @@ func (s *DynamicValueMappingsSuite) TestUpdateAndDelete() {
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -342,6 +366,7 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition() {
 	attr := s.createDefinition("dvem_list", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
+		NamespaceFqn:          "https://example.com",
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
@@ -383,6 +408,7 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
 	for _, selector := range []string{".a[]", ".b[]", ".c[]"} {
 		_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 			AttributeDefinitionId: attr.GetId(),
+			NamespaceFqn:          "https://example.com",
 			ValueResolver:         s.resolver(selector, policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 			Actions:               []*policy.Action{s.readAction()},
 		})
@@ -439,7 +465,7 @@ func (s *DynamicValueMappingsSuite) createDefinition(name string, rule policy.At
 }
 
 func (s *DynamicValueMappingsSuite) readAction() *policy.Action {
-	return s.f.GetStandardAction(policydb.ActionRead.String())
+	return &policy.Action{Name: policydb.ActionRead.String()}
 }
 
 func (s *DynamicValueMappingsSuite) resolver(selector string, operator policy.SubjectMappingOperatorEnum) *policy.DynamicValueResolver {

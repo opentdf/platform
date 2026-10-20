@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	osprofiles "github.com/jrschumacher/go-osprofiles"
+	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"

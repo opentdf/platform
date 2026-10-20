@@ -3,9 +3,11 @@
 package zipstream
 
 import (
+	"archive/zip"
 	"bytes"
 	"compress/flate"
 	"encoding/binary"
+	"hash/crc32"
 	"io"
 	"math"
 	"math/rand/v2"
@@ -19,7 +21,10 @@ import (
 )
 
 // OpenTDF writers only emit STORED entries, but other TDF writers compress
-// entries with DEFLATE (method 8). These tests cover reading those archives.
+// entries with DEFLATE (method 8). These tests cover reading those archives,
+// which goes through archive/zip, so its errors are the ones expected here:
+// ErrFormat for data past the declared size, io.ErrUnexpectedEOF for data
+// short of it, ErrChecksum for a CRC-32 mismatch.
 
 // deflateRaw compresses data as a raw DEFLATE stream, the form APPNOTE
 // compression method 8 stores (no zlib or gzip framing).
@@ -36,15 +41,16 @@ func deflateRaw(t testing.TB, data []byte) []byte {
 }
 
 // deflatedEntry returns a method 8 entry holding plain and declaring its true
-// uncompressed size. Callers lie about the size by editing uncompressedSize.
+// uncompressed size and CRC-32. Callers lie about either by editing the field.
 func deflatedEntry(t testing.TB, name string, plain []byte) rawZipEntry {
 	t.Helper()
 
 	return rawZipEntry{
 		name:             name,
 		data:             deflateRaw(t, plain),
-		method:           zipMethodDeflate,
+		method:           zip.Deflate,
 		uncompressedSize: uint64(len(plain)),
+		crc32:            crc32.ChecksumIEEE(plain),
 	}
 }
 
@@ -185,13 +191,13 @@ func TestReaderRejectsUnsupportedCompression(t *testing.T) {
 			}, false)
 
 			_, err := NewReader(bytes.NewReader(data))
-			require.ErrorIs(t, err, ErrUnsupportedCompression)
+			require.ErrorIs(t, err, zip.ErrAlgorithm)
 			// The message has to say which entry and which method.
 			require.ErrorContains(t, err, TDFPayloadFileName)
 			require.ErrorContains(t, err, "method "+strconv.Itoa(int(method)))
 
 			_, err = NewTDFReader(bytes.NewReader(data))
-			require.ErrorIs(t, err, ErrUnsupportedCompression)
+			require.ErrorIs(t, err, zip.ErrAlgorithm)
 		})
 	}
 
@@ -201,9 +207,9 @@ func TestReaderRejectsUnsupportedCompression(t *testing.T) {
 		{name: TDFManifestFileNameSpec, data: []byte(testManifest), method: 12, uncompressedSize: 99},
 	}, false)
 	_, err := NewTDFReader(bytes.NewReader(data))
-	require.ErrorIs(t, err, ErrUnsupportedCompression)
+	require.ErrorIs(t, err, zip.ErrAlgorithm)
 	require.ErrorContains(t, err, TDFManifestFileNameSpec)
-	require.ErrorContains(t, err, "bzip2")
+	require.ErrorContains(t, err, "method 12")
 }
 
 // A declared size below the real inflated length: a reader that trusted the
@@ -222,13 +228,13 @@ func TestReaderDeflatedDeclaredSizeSmallerThanData(t *testing.T) {
 	require.Equal(t, int64(declared), size)
 
 	got, err := reader.ReadAllFileData("short.bin", oneMB)
-	require.ErrorIs(t, err, errInflatedSize)
+	require.ErrorIs(t, err, zip.ErrFormat)
 	assert.Nil(t, got, "no data may accompany a read error")
 
 	// A read that reaches the declared end finds the extra data.
 	for _, r := range [][2]int{{0, declared}, {declared - 1, 1}} {
 		part, err := reader.ReadFileData("short.bin", int64(r[0]), int64(r[1]))
-		require.ErrorIs(t, err, errInflatedSize, "read of %d at %d", r[1], r[0])
+		require.ErrorIs(t, err, zip.ErrFormat, "read of %d at %d", r[1], r[0])
 		assert.Nil(t, part)
 	}
 
@@ -250,20 +256,21 @@ func TestReaderDeflatedDeclaredSizeLargerThanData(t *testing.T) {
 	require.NoError(t, err)
 
 	got, err := reader.ReadAllFileData("long.bin", oneMB)
-	require.ErrorIs(t, err, errInflatedSize)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 	assert.Nil(t, got, "no data may accompany a read error")
 
 	for _, r := range [][2]int{{0, declared}, {len(plain) - 1, 2}, {len(plain), 1}, {declared - 1, 1}} {
 		part, err := reader.ReadFileData("long.bin", int64(r[0]), int64(r[1]))
-		require.ErrorIs(t, err, errInflatedSize, "read of %d at %d", r[1], r[0])
+		require.ErrorIs(t, err, io.ErrUnexpectedEOF, "read of %d at %d", r[1], r[0])
 		assert.Nil(t, part)
 	}
 
-	// The bytes that do exist are still readable.
-	got, err = reader.ReadFileData("long.bin", 0, int64(len(plain)))
+	// A read that stops well short of where the data runs out still succeeds.
+	// One that reaches it may not: archive/zip reports the shortfall as soon
+	// as the stream ends, discarding the final chunk.
+	got, err = reader.ReadFileData("long.bin", 0, 100)
 	require.NoError(t, err)
-	assert.Equal(t, plain, got)
+	assert.Equal(t, plain[:100], got)
 }
 
 func TestReaderDeflatedEmptyEntry(t *testing.T) {
@@ -291,7 +298,7 @@ func TestReaderDeflatedEmptyEntry(t *testing.T) {
 	reader, err = NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry}, false)))
 	require.NoError(t, err)
 	_, err = reader.ReadAllFileData("notempty.bin", oneMB)
-	require.ErrorIs(t, err, errInflatedSize)
+	require.ErrorIs(t, err, zip.ErrFormat)
 }
 
 func TestReaderDeflatedCorruptData(t *testing.T) {
@@ -309,7 +316,7 @@ func TestReaderDeflatedCorruptData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			entry := rawZipEntry{
 				name: "corrupt.bin", data: tc.data,
-				method: zipMethodDeflate, uncompressedSize: uint64(min(len(plain), maxDeflateRatio*len(tc.data))),
+				method: zip.Deflate, uncompressedSize: uint64(len(plain)),
 			}
 			reader, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry}, false)))
 			require.NoError(t, err)
@@ -368,7 +375,7 @@ func TestManifestDeflatedSizeCap(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := reader.Manifest()
-		require.ErrorIs(t, err, errInflatedSize)
+		require.ErrorIs(t, err, zip.ErrFormat)
 		assert.Empty(t, got)
 	})
 
@@ -387,7 +394,7 @@ func TestManifestDeflatedSizeCap(t *testing.T) {
 
 		src.n = 0
 		_, err = reader.Manifest()
-		require.ErrorIs(t, err, errInflatedSize)
+		require.ErrorIs(t, err, zip.ErrFormat)
 		assert.Less(t, src.n, int64(len(manifest.data)/4),
 			"read %d of %d compressed bytes to check a %d byte manifest", src.n, len(manifest.data), oneKB)
 	})
@@ -460,8 +467,10 @@ func TestReaderDeflatedRepeatedSegmentReadsStayLinear(t *testing.T) {
 		}
 	}
 
-	// One pass over the entry, plus at most a read buffer of slack.
-	assert.LessOrEqual(t, src.n, int64(len(entry.data))+inflateBufferSize,
+	// One pass over the entry, plus slack for archive/zip reading the
+	// central directory and local header.
+	const slack = 64 * oneKB
+	assert.LessOrEqual(t, src.n, int64(len(entry.data))+slack,
 		"read %d archive bytes for one sequential pass over a %d byte entry", src.n, len(entry.data))
 }
 
@@ -556,32 +565,162 @@ func TestParseZip64ExtraFieldUncompressedSizeOnly(t *testing.T) {
 	assert.Equal(t, uint64(56), offset)
 }
 
-// TestReaderRejectsImpossibleDeflatedSize covers declared uncompressed sizes
-// no DEFLATE stream of the entry's length could produce. They are refused up
-// front, before any read can size a buffer from them.
-func TestReaderRejectsImpossibleDeflatedSize(t *testing.T) {
+// TestReaderDeflatedDeclaredSizeBeyondInt64 covers declared uncompressed
+// sizes that do not fit the int64 reads are bounded by. They are refused when
+// the archive is opened.
+func TestReaderDeflatedDeclaredSizeBeyondInt64(t *testing.T) {
 	compressed := deflateRaw(t, []byte("payload bytes"))
-	c := uint64(len(compressed))
 
-	for _, declared := range []uint64{maxDeflateRatio * (c + 1), beyondEOF, beyondInt64, math.MaxUint64} {
+	for _, declared := range []uint64{beyondInt64, math.MaxUint64} {
 		t.Run(strconv.FormatUint(declared, 10), func(t *testing.T) {
 			_, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{{
-				name: "0.payload", data: compressed, method: zipMethodDeflate,
+				name: "0.payload", data: compressed, method: zip.Deflate,
 				uncompressedSize: declared, zip64: true,
 			}}, false)))
 			require.ErrorIs(t, err, errZipFormat)
 			require.ErrorContains(t, err, "uncompressed")
 		})
 	}
+}
 
-	// The bound itself is accepted; the shortfall surfaces on read.
-	reader, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{{
-		name: "0.payload", data: compressed, method: zipMethodDeflate,
-		uncompressedSize: maxDeflateRatio * c,
-	}}, false)))
+// TestReaderDeflatedHugeDeclaredSizeDoesNotAllocate declares a terabyte for
+// a few bytes of DEFLATE data. Reads up to that size are in range, so only
+// growing the buffer as data arrives, rather than allocating the declared size
+// up front, keeps them from exhausting memory before archive/zip reports the
+// shortfall.
+func TestReaderDeflatedHugeDeclaredSizeDoesNotAllocate(t *testing.T) {
+	entry := deflatedEntry(t, "0.payload", []byte("payload bytes"))
+	entry.uncompressedSize = beyondEOF
+	entry.zip64 = true
+	reader, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry}, false)))
 	require.NoError(t, err)
+
+	size, err := reader.ReadFileSize("0.payload")
+	require.NoError(t, err)
+	require.Equal(t, int64(beyondEOF), size)
+
 	_, err = reader.ReadAllFileData("0.payload", math.MaxInt64)
-	require.ErrorIs(t, err, errInflatedSize)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	_, err = reader.ReadFileData("0.payload", 0, size)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	_, err = reader.ReadFileData("0.payload", size/2, size/2)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+}
+
+// TestReaderDeflatedChecksumMismatch asserts the CRC-32 is verified once a
+// deflated entry is read to the end, and only then: a partial read cannot see
+// the whole entry, so it cannot check it.
+func TestReaderDeflatedChecksumMismatch(t *testing.T) {
+	plain := compressibleBytes(20 * oneKB)
+	entry := deflatedEntry(t, TDFPayloadFileName, plain)
+	entry.crc32 ^= 0xFFFFFFFF
+	manifest := deflatedEntry(t, TDFManifestFileName, []byte(testManifest))
+	manifest.crc32++
+
+	reader, err := NewTDFReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry, manifest}, false)))
+	require.NoError(t, err)
+
+	_, err = reader.Manifest()
+	require.ErrorIs(t, err, zip.ErrChecksum)
+
+	got, err := reader.ReadPayload(0, 1000)
+	require.NoError(t, err)
+	assert.Equal(t, plain[:1000], got)
+
+	for _, r := range [][2]int{{0, len(plain)}, {len(plain) - 10, 10}} {
+		part, err := reader.ReadPayload(int64(r[0]), int64(r[1]))
+		require.ErrorIs(t, err, zip.ErrChecksum, "read of %d at %d", r[1], r[0])
+		assert.Nil(t, part)
+	}
+}
+
+// TestReaderDeflatedArchiveZipWriter reads entries archive/zip itself wrote:
+// the sizes and CRC-32 follow the data in a data descriptor, and the local
+// header carries zeros.
+func TestReaderDeflatedArchiveZipWriter(t *testing.T) {
+	payload := compressibleBytes(100 * oneKB)
+
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	for _, e := range []struct {
+		name string
+		data []byte
+	}{{TDFPayloadFileName, payload}, {TDFManifestFileNameSpec, []byte(testManifest)}} {
+		dst, err := w.CreateHeader(&zip.FileHeader{Name: e.name, Method: zip.Deflate})
+		require.NoError(t, err)
+		_, err = dst.Write(e.data)
+		require.NoError(t, err)
+	}
+	require.NoError(t, w.Close())
+
+	reader, err := NewTDFReader(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+
+	manifest, err := reader.Manifest()
+	require.NoError(t, err)
+	require.JSONEq(t, testManifest, manifest)
+
+	got, err := reader.ReadPayload(int64(len(payload))-5000, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, payload[len(payload)-5000:], got)
+	got, err = reader.ReadPayload(0, int64(len(payload)))
+	require.NoError(t, err)
+	assert.Equal(t, payload, got)
+}
+
+// TestReaderDeflatedDuplicateNamesMatchByOffset gives two deflated entries the
+// same name. The reader keeps the later one, and has to read that one's data
+// through archive/zip -- matching on the name alone would find the first.
+func TestReaderDeflatedDuplicateNamesMatchByOffset(t *testing.T) {
+	first := []byte("the first entry's data, which the reader must not return")
+	second := []byte("the second entry's data, which it must")
+
+	reader, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{
+		deflatedEntry(t, TDFPayloadFileName, first),
+		deflatedEntry(t, TDFPayloadFileName, second),
+	}, false)))
+	require.NoError(t, err)
+
+	got, err := reader.ReadAllFileData(TDFPayloadFileName, oneMB)
+	require.NoError(t, err)
+	assert.Equal(t, second, got)
+
+	got, err = reader.ReadFileData(TDFPayloadFileName, 4, 6)
+	require.NoError(t, err)
+	assert.Equal(t, second[4:10], got)
+}
+
+// TestReaderArchiveZipOnlyForDeflatedEntries pins that archive/zip is reached
+// only through a deflated entry, and only once one is read: archives written
+// by OpenTDF, which are all STORED, keep this package's direct path.
+func TestReaderArchiveZipOnlyForDeflatedEntries(t *testing.T) {
+	stored := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: TDFManifestFileName, data: []byte(testManifest)},
+	}, false)
+	reader, err := NewReader(bytes.NewReader(stored))
+	require.NoError(t, err)
+	for name, entry := range reader.fileEntries {
+		assert.Nil(t, entry.deflated, "STORED entry %s must not reach archive/zip", name)
+	}
+
+	mixed := buildRawZip(t, []rawZipEntry{
+		deflatedEntry(t, TDFPayloadFileName, []byte("payload bytes")),
+		{name: TDFManifestFileName, data: []byte(testManifest)},
+	}, false)
+	reader, err = NewReader(bytes.NewReader(mixed))
+	require.NoError(t, err)
+	require.Nil(t, reader.fileEntries[TDFManifestFileName].deflated)
+	payload := reader.fileEntries[TDFPayloadFileName].deflated
+	require.NotNil(t, payload)
+
+	_, err = reader.ReadAllFileData(TDFManifestFileName, oneMB)
+	require.NoError(t, err)
+	assert.Nil(t, payload.view.zr, "reading a STORED entry must not build the archive/zip reader")
+
+	_, err = reader.ReadFileData(TDFPayloadFileName, 0, 7)
+	require.NoError(t, err)
+	assert.NotNil(t, payload.view.zr)
 }
 
 // TestReaderStoredEntryIgnoresDeclaredUncompressedSize pins that STORED

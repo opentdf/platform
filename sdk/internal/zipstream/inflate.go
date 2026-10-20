@@ -3,8 +3,7 @@
 package zipstream
 
 import (
-	"bufio"
-	"compress/flate"
+	"archive/zip"
 	"errors"
 	"fmt"
 	"io"
@@ -13,278 +12,235 @@ import (
 )
 
 // OpenTDF writers store both TDF entries uncompressed, but other TDF writers
-// compress them with DEFLATE. The reader accepts both; see zipFileEntry.
+// compress them with DEFLATE. Deflated entries are read through archive/zip,
+// which inflates them, holds them to their declared uncompressed size, and
+// checks their CRC-32 once one is read to the end. What this file adds is
+// random access in uncompressed coordinates, which payload segment reads need
+// and archive/zip does not offer. STORED entries never reach archive/zip.
 
-// APPNOTE 4.4.5 compression methods this reader can read.
-const (
-	zipMethodStore   = 0
-	zipMethodDeflate = 8
-)
+// readChunkSize caps what a deflated read allocates before it has inflated
+// the bytes to fill it. It covers the default 2 MiB segment in one step.
+const readChunkSize = 4 << 20
 
-// maxDeflateRatio is the most DEFLATE can expand its input. The longest match
-// is 258 bytes and costs at least two bits (one for its length code, one for
-// its distance code), so no stream inflates to more than 1032 times its own
-// length.
-const maxDeflateRatio = 1032
-
-const (
-	// inflateBufferSize is how much compressed data each refill pulls from
-	// the archive. A refill costs a seek and a read on a ReadSeeker that may
-	// be backed by network range requests, so it should be rare.
-	inflateBufferSize = 64 << 10
-
-	// inflateChunkSize caps what a read allocates before it has inflated the
-	// bytes to fill it. It covers the default 2 MiB segment in one step.
-	inflateChunkSize = 4 << 20
-)
-
-var (
-	// ErrUnsupportedCompression reports an archive entry compressed with a
-	// method other than STORED (0) or DEFLATE (8).
-	ErrUnsupportedCompression = errors.New("zip: unsupported compression method")
-
-	// errInflatedSize reports a deflated entry whose data inflates to more or
-	// fewer bytes than its declared uncompressed size.
-	errInflatedSize = errors.New("zip: inflated data does not match the declared uncompressed size")
-)
-
-// unsupportedCompressionError names the entry and its method.
+// unsupportedCompressionError wraps zip.ErrAlgorithm, so callers outside the
+// SDK can test for it, with the entry and the method.
 func unsupportedCompressionError(name string, method uint16) error {
-	desc := fmt.Sprintf("method %d", method)
-	if known := compressionMethodName(method); known != "" {
-		desc += " (" + known + ")"
-	}
-	return fmt.Errorf("%w %s for entry %q; only stored (0) and deflate (8) are supported",
-		ErrUnsupportedCompression, desc, name)
+	return fmt.Errorf("%w: entry %q uses compression method %d; only stored (0) and deflate (8) are supported",
+		zip.ErrAlgorithm, name, method)
 }
 
-// compressionMethodName names the APPNOTE 4.4.5 methods an archive is most
-// likely to carry, for error messages.
-//
-//nolint:mnd // APPNOTE 4.4.5 method IDs
-func compressionMethodName(method uint16) string {
-	switch method {
-	case 1:
-		return "shrink"
-	case 6:
-		return "implode"
-	case 9:
-		return "deflate64"
-	case 12:
-		return "bzip2"
-	case 14:
-		return "LZMA"
-	case 93:
-		return "zstd"
-	case 95:
-		return "xz"
-	case 98:
-		return "PPMd"
-	case 99:
-		return "AES encrypted"
-	default:
-		return ""
-	}
-}
-
-// deflatedSize checks a deflated entry's declared uncompressed size against
-// what its compressed length could hold. A larger declaration is malformed,
-// and is refused here before any read can size a buffer from it.
-func deflatedSize(name string, compressed int64, declared uint64) (int64, error) {
-	if declared > math.MaxInt64 || declared/maxDeflateRatio > uint64(compressed) {
-		return 0, fmt.Errorf("%w: %s declares %d uncompressed bytes, more than %d deflated bytes can hold",
-			errZipFormat, name, declared, compressed)
+// deflatedSize converts a deflated entry's declared uncompressed size to the
+// int64 that reads are bounded by. archive/zip enforces the size itself as the
+// entry is read; this refuses only a size too large to represent.
+func deflatedSize(name string, declared uint64) (int64, error) {
+	if declared > math.MaxInt64 {
+		return 0, fmt.Errorf("%w: %s declares %d uncompressed bytes", errZipFormat, name, declared)
 	}
 	return int64(declared), nil
 }
 
-// entrySource reads one entry's compressed bytes from the archive. Every
-// entry shares the archive's ReadSeeker, so it seeks to its own position
-// before each read rather than trusting where the last read left off, and it
-// stops at the entry's last byte so the inflater can never read into the next
-// entry or the central directory.
-type entrySource struct {
-	rs         io.ReadSeeker
-	start, end int64
-	pos        int64
+// zipView is archive/zip's reading of an archive that holds deflated
+// entries. NewReader hands one only to deflated entries, and the zip.Reader is
+// built on the first read of one, so archives with only STORED entries never
+// touch archive/zip. Callers must hold Reader.mu.
+type zipView struct {
+	rs io.ReadSeeker
+	zr *zip.Reader
 }
 
-func (s *entrySource) Read(p []byte) (int, error) {
-	if s.pos >= s.end {
-		return 0, io.EOF
+func (v *zipView) reader() (*zip.Reader, error) {
+	if v.zr != nil {
+		return v.zr, nil
 	}
-	if rem := s.end - s.pos; int64(len(p)) > rem {
-		p = p[:rem]
+	size, err := v.rs.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
-	if _, err := s.rs.Seek(s.pos, io.SeekStart); err != nil {
+	// ErrInsecurePath comes with a usable reader. It is about extracting to a
+	// filesystem, which this package never does.
+	zr, err := zip.NewReader(readerAt{rs: v.rs}, size)
+	if err != nil && !errors.Is(err, zip.ErrInsecurePath) {
+		return nil, fmt.Errorf("archive/zip cannot read the archive: %w", err)
+	}
+	v.zr = zr
+	return zr, nil
+}
+
+// readerAt adapts the archive's ReadSeeker for archive/zip. Callers must hold
+// Reader.mu, which serializes every use of the ReadSeeker.
+type readerAt struct {
+	rs io.ReadSeeker
+}
+
+func (r readerAt) ReadAt(p []byte, off int64) (int, error) {
+	if _, err := r.rs.Seek(off, io.SeekStart); err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
-	n, err := s.rs.Read(p)
-	s.pos += int64(n)
+	n, err := io.ReadFull(r.rs, p)
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		// io.ReaderAt reports a read cut short by the end of input as io.EOF.
+		err = io.EOF
+	}
 	return n, err
 }
 
-// inflater serves reads of a deflated entry in uncompressed coordinates.
+// deflatedFile serves reads of one deflated entry in uncompressed coordinates
+// from archive/zip's reader for it.
 //
-// DEFLATE decodes front to back only, so it keeps a forward cursor. A read at
-// or past the cursor inflates and discards up to the requested offset, then
-// inflates the requested bytes; a read behind the cursor restarts from the
-// start of the entry. Reading segments in order costs one pass over the entry;
-// each backward read costs re-inflating everything before its offset.
+// DEFLATE decodes front to back only, so it keeps a forward cursor over the
+// open entry. A read at or past the cursor discards up to the requested
+// offset, then reads the requested bytes; a read behind the cursor reopens the
+// entry and starts over. Reading segments in order costs one pass; each
+// backward read costs re-inflating everything before its offset.
 //
 // The range the last read returned is kept, and a read inside it is served
 // from there. The sdk's Read fetches the whole segment under its cursor on
 // every call, so a caller reading in small pieces asks for the same segment
-// many times running; without this, each repeat would restart inflation and a
-// sequential read would be quadratic in the payload size. Memory is bounded by
-// that range, the DEFLATE window, and the read buffer, never the entry size.
-//
-// It never inflates more than one byte past the declared size, which is what
-// it takes to tell that a stream holds more than it declares.
+// many times running; without this, each repeat would reopen the entry and a
+// sequential read would be quadratic in the payload size.
 //
 // It is not safe for concurrent use; Reader serializes access with its mutex.
-type inflater struct {
-	name string
-	size int64 // declared uncompressed size
-	src  entrySource
-	// buf and inflate hold the current pass. Both are nil before the first
-	// read, after a read reaches the end of the entry, and after a failure.
-	buf     *bufio.Reader
-	inflate io.ReadCloser
-	pos     int64 // uncompressed offset of the current pass
+type deflatedFile struct {
+	view   *zipView
+	name   string
+	index  int64 // data offset; it identifies the entry to archive/zip
+	length int64 // compressed size
+	size   int64 // declared uncompressed size
+	file   *zip.File
+	// rc is the current pass and pos its uncompressed offset. rc is nil
+	// before the first read, after a read reaches the end, and after a failure.
+	rc  io.ReadCloser
+	pos int64
 	// last is what the most recent read returned, starting at lastIndex.
 	last      []byte
 	lastIndex int64
 }
 
-func newInflater(rs io.ReadSeeker, name string, index, length, size int64) *inflater {
-	return &inflater{
-		name: name,
-		size: size,
-		src:  entrySource{rs: rs, start: index, end: index + length},
-	}
-}
-
 // read returns length bytes at uncompressed offset index, from the last read
 // if it covers them. The caller has checked that the range lies within the
 // declared size. Callers get their own copy, as they do from a STORED entry.
-func (z *inflater) read(index, length int64) ([]byte, error) {
-	if off := index - z.lastIndex; z.last != nil && off >= 0 && length <= int64(len(z.last))-off {
-		return slices.Clone(z.last[off : off+length]), nil
+func (d *deflatedFile) read(index, length int64) ([]byte, error) {
+	if off := index - d.lastIndex; d.last != nil && off >= 0 && length <= int64(len(d.last))-off {
+		return slices.Clone(d.last[off : off+length]), nil
 	}
 
-	data, err := z.readUncached(index, length)
+	data, err := d.readUncached(index, length)
 	if err != nil {
 		return nil, err
 	}
-	z.last, z.lastIndex = data, index
+	d.last, d.lastIndex = data, index
 	return slices.Clone(data), nil
 }
 
-// readAll inflates the whole entry. It bypasses the last-read cache: it
-// serves ReadAllFileData, which reads the manifest once.
-func (z *inflater) readAll() ([]byte, error) {
-	return z.readUncached(0, z.size)
+// readAll reads the whole entry. It bypasses the last-read cache: it serves
+// ReadAllFileData, which reads the manifest once.
+func (d *deflatedFile) readAll() ([]byte, error) {
+	return d.readUncached(0, d.size)
 }
 
-func (z *inflater) readUncached(index, length int64) ([]byte, error) {
-	if z.inflate == nil || index < z.pos {
-		if err := z.restart(); err != nil {
-			z.release()
-			return nil, err
-		}
-	}
-
-	data, err := z.advance(index, length)
+func (d *deflatedFile) readUncached(index, length int64) ([]byte, error) {
+	data, err := d.advance(index, length)
 	if err != nil {
 		// The pass is in an unknown state; the next read starts over.
-		z.release()
-		return nil, err
+		d.closePass()
+		return nil, fmt.Errorf("zip: reading %s: %w", d.name, err)
 	}
 	return data, nil
 }
 
-func (z *inflater) advance(index, length int64) ([]byte, error) {
-	if skip := index - z.pos; skip > 0 {
-		n, err := io.CopyN(io.Discard, z.inflate, skip)
-		z.pos += n
-		if err != nil {
-			return nil, z.inflateError(err)
+func (d *deflatedFile) advance(index, length int64) ([]byte, error) {
+	if d.rc == nil || index < d.pos {
+		if err := d.reopen(); err != nil {
+			return nil, err
 		}
 	}
 
-	data, err := readInflated(z.inflate, length)
-	if err != nil {
-		return nil, z.inflateError(err)
+	if skip := index - d.pos; skip > 0 {
+		n, err := io.CopyN(io.Discard, d.rc, skip)
+		d.pos += n
+		if err != nil {
+			return nil, err
+		}
 	}
-	z.pos += length
 
-	if z.pos == z.size {
-		if err := z.checkEnd(); err != nil {
+	data, err := readGrowing(d.rc, length)
+	if err != nil {
+		return nil, err
+	}
+	d.pos += length
+
+	if d.pos == d.size {
+		// archive/zip checks that the stream ends at the declared size, and
+		// verifies the CRC-32, only on the read that finds the end. It answers
+		// one byte past the declared size with ErrFormat.
+		var b [1]byte
+		if _, err := io.ReadFull(d.rc, b[:]); !errors.Is(err, io.EOF) {
 			return nil, err
 		}
 		// Nothing past the end can be read, so free the pass.
-		z.release()
+		d.closePass()
 	}
 	return data, nil
 }
 
-// restart begins a new pass at the start of the entry.
-func (z *inflater) restart() error {
-	z.src.pos = z.src.start
-	z.pos = 0
-	if z.inflate == nil {
-		z.buf = bufio.NewReaderSize(&z.src, inflateBufferSize)
-		z.inflate = flate.NewReader(z.buf)
-		return nil
+// reopen starts a new pass at the start of the entry.
+func (d *deflatedFile) reopen() error {
+	d.closePass()
+	f, err := d.zipFile()
+	if err != nil {
+		return err
 	}
-	z.buf.Reset(&z.src)
-	resetter, ok := z.inflate.(flate.Resetter)
-	if !ok {
-		return errors.New("zip: flate reader cannot be reset")
+	rc, err := f.Open()
+	if err != nil {
+		return err
 	}
-	return resetter.Reset(z.buf, nil)
+	d.rc = rc
+	return nil
 }
 
-func (z *inflater) release() {
-	z.buf = nil
-	z.inflate = nil
-	z.pos = 0
-}
-
-// checkEnd confirms the stream ends at the declared size. Asking for one more
-// byte is enough to tell a stream that carries more, without inflating
-// however much more there is.
-func (z *inflater) checkEnd() error {
-	var b [1]byte
-	n, err := io.ReadFull(z.inflate, b[:])
-	switch {
-	case n > 0:
-		return fmt.Errorf("%w: %s inflates past its declared %d bytes", errInflatedSize, z.name, z.size)
-	case errors.Is(err, io.EOF):
-		return nil
-	default:
-		return fmt.Errorf("zip: inflating %s: %w", z.name, err)
+func (d *deflatedFile) closePass() {
+	if d.rc != nil {
+		_ = d.rc.Close()
+		d.rc = nil
 	}
+	d.pos = 0
 }
 
-func (z *inflater) inflateError(err error) error {
-	// io.ReadFull reports a stream that ends early as io.ErrUnexpectedEOF,
-	// and so does flate for compressed data that is cut off.
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-		return fmt.Errorf("%w: %s inflates to fewer than its declared %d bytes: %w",
-			errInflatedSize, z.name, z.size, io.ErrUnexpectedEOF)
+// zipFile finds archive/zip's entry for this one. It matches on the data
+// offset as well as the name, so that two entries sharing a name cannot be
+// crossed, and requires archive/zip to agree on both sizes, so the bounds
+// NewReader checked hold for what archive/zip reads.
+func (d *deflatedFile) zipFile() (*zip.File, error) {
+	if d.file != nil {
+		return d.file, nil
 	}
-	return fmt.Errorf("zip: inflating %s: %w", z.name, err)
+	zr, err := d.view.reader()
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range zr.File {
+		if f.Name != d.name {
+			continue
+		}
+		if off, err := f.DataOffset(); err != nil || off != d.index {
+			continue
+		}
+		if f.Method != zip.Deflate || f.CompressedSize64 != uint64(d.length) || f.UncompressedSize64 != uint64(d.size) {
+			return nil, fmt.Errorf("%w: archive/zip disagrees about the method or sizes of %s", errZipFormat, d.name)
+		}
+		d.file = f
+		return f, nil
+	}
+	return nil, fmt.Errorf("%w: archive/zip has no entry %s with data at %d", errZipFormat, d.name, d.index)
 }
 
-// readInflated reads exactly n bytes from r. Its buffer grows as data
-// arrives rather than being allocated at n up front, so a forged size costs
-// memory only in proportion to what the stream really inflates to.
-func readInflated(r io.Reader, n int64) ([]byte, error) {
-	buf := make([]byte, 0, min(n, inflateChunkSize))
+// readGrowing reads exactly n bytes from r. Its buffer grows as data arrives
+// rather than being allocated at n up front, so a forged declared size costs
+// memory only in proportion to what the entry really inflates to.
+func readGrowing(r io.Reader, n int64) ([]byte, error) {
+	buf := make([]byte, 0, min(n, readChunkSize))
 	for int64(len(buf)) < n {
-		grow := int(min(n-int64(len(buf)), max(int64(len(buf)), inflateChunkSize)))
+		grow := int(min(n-int64(len(buf)), max(int64(len(buf)), readChunkSize)))
 		buf = slices.Grow(buf, grow)
 		start := len(buf)
 		buf = buf[:start+grow]

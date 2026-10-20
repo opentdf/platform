@@ -32,6 +32,11 @@ type rawZipEntry struct {
 	// entry zero means len(data); any other method declares it verbatim, so
 	// an empty deflated entry can declare zero.
 	uncompressedSize uint64
+	// crc32 overrides the CRC-32 written to both headers, which covers the
+	// uncompressed data. On a STORED entry zero means the CRC-32 of data; any
+	// other method declares it verbatim, and zero tells archive/zip not to
+	// check it.
+	crc32 uint32
 	// comment is the central directory file comment.
 	comment string
 	// extraPrefix is written into the extra-field area ahead of the ZIP64
@@ -66,10 +71,17 @@ func (e rawZipEntry) zip64Offset(actual uint64) uint64 {
 }
 
 func (e rawZipEntry) uncompressed() uint64 {
-	if e.uncompressedSize != 0 || e.method != zipMethodStore {
+	if e.uncompressedSize != 0 || e.method != zip.Store {
 		return e.uncompressedSize
 	}
 	return uint64(len(e.data))
+}
+
+func (e rawZipEntry) checksum() uint32 {
+	if e.crc32 != 0 || e.method != zip.Store {
+		return e.crc32
+	}
+	return crc32.ChecksumIEEE(e.data)
 }
 
 // clamp32 narrows a size for a 32-bit header field, substituting the ZIP64
@@ -94,7 +106,7 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 			Signature:         fileHeaderSignature,
 			Version:           zipVersion,
 			CompressionMethod: e.method,
-			Crc32:             crc32.ChecksumIEEE(e.data),
+			Crc32:             e.checksum(),
 			CompressedSize:    clamp32(uint64(len(e.data))),
 			UncompressedSize:  clamp32(e.uncompressed()),
 			FilenameLength:    uint16(len(e.name)),
@@ -114,7 +126,7 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 			VersionCreated:    zipVersion,
 			VersionNeeded:     zipVersion,
 			CompressionMethod: e.method,
-			Crc32:             crc32.ChecksumIEEE(e.data),
+			Crc32:             e.checksum(),
 			CompressedSize:    clamp32(uint64(len(e.data))),
 			UncompressedSize:  clamp32(e.uncompressed()),
 			FilenameLength:    uint16(len(e.name)),

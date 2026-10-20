@@ -224,12 +224,12 @@ func FuzzReader(f *testing.F) {
 			// so its in-range reads may fail, but never with partial data.
 			size, err := reader.ReadFileSize(k)
 			require.NoError(t, err)
-			if entry.inflater == nil {
+			if entry.deflated == nil {
 				require.Equal(t, entry.length, size)
 			}
 			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size, 0}} {
 				got, err := reader.ReadFileData(k, r[0], r[1])
-				if entry.inflater != nil && err != nil {
+				if entry.deflated != nil && err != nil {
 					assert.Nil(t, got)
 					continue
 				}

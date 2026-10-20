@@ -3,6 +3,7 @@
 package zipstream
 
 import (
+	"archive/zip"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -47,28 +48,28 @@ var (
 //
 // size is the entry's logical length, which every read is bounded by. For a
 // STORED entry it is length. For a DEFLATE entry it is the declared
-// uncompressed size, and inflater decodes length bytes of compressed data to
-// serve reads.
+// uncompressed size, and deflated reads the entry through archive/zip.
 type zipFileEntry struct {
 	index    int64
 	length   int64
 	size     int64
-	inflater *inflater
+	deflated *deflatedFile
 }
 
 type Reader struct {
 	readSeeker  io.ReadSeeker
 	fileEntries map[string]zipFileEntry
-	// mu serializes use of readSeeker, which every entry shares, and of the
-	// inflaters' cursors. It is a pointer so that copies of a Reader, such as
-	// the one a TDFReader holds, share it.
+	// mu serializes use of readSeeker, which every entry shares (archive/zip
+	// reads it too, for deflated entries), and of the deflated entries'
+	// cursors. It is a pointer so that copies of a Reader, such as the one a
+	// TDFReader holds, share it.
 	mu *sync.Mutex
 }
 
 // NewReader Create archive reader instance.
 //
 // Entries may be STORED or DEFLATE compressed. An entry using any other
-// compression method fails NewReader with ErrUnsupportedCompression.
+// compression method fails NewReader with an error wrapping zip.ErrAlgorithm.
 func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	reader := Reader{mu: &sync.Mutex{}}
 	reader.fileEntries = make(map[string]zipFileEntry)
@@ -170,6 +171,8 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 	nextCD := uint64(0)
 	cdFileHeader := CDFileHeader{}
+	// Deflated entries share one archive/zip view, built on first use.
+	view := &zipView{rs: readSeeker}
 
 	reader.readSeeker = readSeeker
 	for i := uint64(0); i < entryCount; i++ {
@@ -244,7 +247,7 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		name := string(fileNameByteArray)
-		entry, err := newZipFileEntry(readSeeker, name, cdFileHeader.CompressionMethod,
+		entry, err := newZipFileEntry(view, name, cdFileHeader.CompressionMethod,
 			dataStart, dataEnd-dataStart, uncompressedSize)
 		if err != nil {
 			return reader, err
@@ -270,19 +273,20 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 // so an archive that cannot be read fails before anything is decrypted.
 //
 // STORED entries keep their established behavior: the stored length is the
-// entry's size, whatever the declared uncompressed size says.
-func newZipFileEntry(rs io.ReadSeeker, name string, method uint16, index, length int64, uncompressedSize uint64) (zipFileEntry, error) {
+// entry's size, whatever the declared uncompressed size says, and they never
+// touch view.
+func newZipFileEntry(view *zipView, name string, method uint16, index, length int64, uncompressedSize uint64) (zipFileEntry, error) {
 	entry := zipFileEntry{index: index, length: length}
 	switch method {
-	case zipMethodStore:
+	case zip.Store:
 		entry.size = length
-	case zipMethodDeflate:
-		size, err := deflatedSize(name, length, uncompressedSize)
+	case zip.Deflate:
+		size, err := deflatedSize(name, uncompressedSize)
 		if err != nil {
 			return zipFileEntry{}, err
 		}
 		entry.size = size
-		entry.inflater = newInflater(rs, name, index, length, size)
+		entry.deflated = &deflatedFile{view: view, name: name, index: index, length: length, size: size}
 	default:
 		return zipFileEntry{}, unsupportedCompressionError(name, method)
 	}
@@ -488,8 +492,9 @@ func parseZip64ExtraField(extraFields []byte, h CDFileHeader) (zip64ExtraValues,
 
 // ReadFileData Read data from file of given length of size.
 //
-// index and length are in uncompressed coordinates. For a deflated entry, a
-// read that reaches the end of the entry also checks that the data ends there.
+// index and length are in uncompressed coordinates. A read that reaches the
+// end of a deflated entry also has archive/zip check that the data ends there
+// and that its CRC-32 matches.
 func (reader Reader) ReadFileData(filename string, index int64, length int64) ([]byte, error) {
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
@@ -507,14 +512,14 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 
 	// An empty read of a deflated entry needs no data; producing it by
 	// inflating up to index would be wasted work.
-	if fileNameEntry.inflater != nil && length == 0 {
+	if fileNameEntry.deflated != nil && length == 0 {
 		return []byte{}, nil
 	}
 
 	reader.mu.Lock()
 	defer reader.mu.Unlock()
-	if fileNameEntry.inflater != nil {
-		return fileNameEntry.inflater.read(index, length)
+	if fileNameEntry.deflated != nil {
+		return fileNameEntry.deflated.read(index, length)
 	}
 	return readBytes(reader.readSeeker, fileNameEntry.index+index, length)
 }
@@ -535,8 +540,8 @@ func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, er
 
 	reader.mu.Lock()
 	defer reader.mu.Unlock()
-	if fileNameEntry.inflater != nil {
-		return fileNameEntry.inflater.readAll()
+	if fileNameEntry.deflated != nil {
+		return fileNameEntry.deflated.readAll()
 	}
 	return readBytes(reader.readSeeker, fileNameEntry.index, fileNameEntry.length)
 }

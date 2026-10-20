@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/assert"
@@ -237,21 +239,75 @@ func TestParseBaseUrl(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "Valid URL with scheme and port",
+			name:        "Valid URL with scheme and port keeps path",
 			input:       "https://example.com:8080/path",
-			expected:    "https://example.com:8080",
+			expected:    "https://example.com:8080/path",
 			expectError: false,
 		},
 		{
-			name:        "Valid URL with scheme and no port",
+			name:        "Valid URL with scheme and no port keeps path",
 			input:       "https://example.com/path",
-			expected:    "https://example.com",
+			expected:    "https://example.com/path",
 			expectError: false,
 		},
 		{
 			name:        "Valid URL with default port",
 			input:       "http://example.com",
 			expected:    "http://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Host-root KAS URL strips /kas",
+			input:       "http://localhost:8080/kas",
+			expected:    "http://localhost:8080",
+			expectError: false,
+		},
+		{
+			name:        "Path-prefixed KAS URL keeps prefix",
+			input:       "https://api.example.com/dsp/kas",
+			expected:    "https://api.example.com/dsp",
+			expectError: false,
+		},
+		{
+			name:        "Path prefix without /kas suffix is kept",
+			input:       "https://api.example.com/dsp",
+			expected:    "https://api.example.com/dsp",
+			expectError: false,
+		},
+		{
+			name:        "Legacy /v2/rewrap suffix stripped",
+			input:       "https://kas.example.com/v2/rewrap",
+			expected:    "https://kas.example.com",
+			expectError: false,
+		},
+		{
+			name:        "Legacy /kas/v2/rewrap suffix stripped",
+			input:       "https://kas.example.com/kas/v2/rewrap",
+			expected:    "https://kas.example.com",
+			expectError: false,
+		},
+		{
+			name:        "Trailing slashes trimmed",
+			input:       "https://api.example.com/dsp/kas/",
+			expected:    "https://api.example.com/dsp",
+			expectError: false,
+		},
+		{
+			name:        "Only a trailing /kas segment is stripped",
+			input:       "https://api.example.com/askas",
+			expected:    "https://api.example.com/askas",
+			expectError: false,
+		},
+		{
+			name:        "Userinfo, query and fragment dropped",
+			input:       "https://user:pass@api.example.com/dsp/kas?x=1#frag",
+			expected:    "https://api.example.com/dsp",
+			expectError: false,
+		},
+		{
+			name:        "IPv6 host keeps brackets and port",
+			input:       "https://[::1]:8443/dsp/kas",
+			expected:    "https://[::1]:8443/dsp",
 			expectError: false,
 		},
 		{
@@ -271,6 +327,37 @@ func TestParseBaseUrl(t *testing.T) {
 				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
 				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
 			}
+		})
+	}
+}
+
+func TestParseBaseUrlRoutesConnectProcedures(t *testing.T) {
+	tests := []struct {
+		name     string
+		kasPath  string
+		wantPath string
+	}{
+		{name: "host-root KAS", kasPath: "/kas", wantPath: "/kas.AccessService/PublicKey"},
+		{name: "path-prefixed KAS", kasPath: "/dsp/kas", wantPath: "/dsp/kas.AccessService/PublicKey"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotPath string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			defer server.Close()
+
+			baseURL, err := parseBaseURL(server.URL + tt.kasPath)
+			require.NoError(t, err)
+
+			client := kasconnect.NewAccessServiceClient(server.Client(), baseURL, connect.WithProtoJSON())
+			_, err = client.PublicKey(t.Context(), connect.NewRequest(&kaspb.PublicKeyRequest{}))
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPath, gotPath)
 		})
 	}
 }

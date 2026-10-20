@@ -667,7 +667,8 @@ func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 
 func recordDEKFailure(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	if errors.Is(err, trust.ErrKeyLookup) {
-		if errors.Is(err, security.ErrCertNotFound) || connect.CodeOf(err) == connect.CodeNotFound {
+		code := connect.CodeOf(err)
+		if errors.Is(err, security.ErrCertNotFound) || code == connect.CodeNotFound || code == connect.CodeInvalidArgument {
 			failedKAORewrap(res, kao, err400("bad request"), rewrapReasonKeyNotFound, false)
 			return
 		}
@@ -878,9 +879,20 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
+		keyAccessObject := kao.GetKeyAccessObject()
+		keyType := keyAccessObject.GetKeyType()
+		switch keyType {
+		case "ec-wrapped", "hybrid-wrapped", "mlkem-wrapped":
+			if keyAccessObject.GetKid() == "" {
+				p.Logger.WarnContext(ctx, "key ID is empty", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+				failedKAORewrap(results, kao, err400("key ID is empty"), rewrapReasonKAOInvalid, false)
+				continue
+			}
+		}
+
 		var dek ocrypto.ProtectedKey
 		var err error
-		switch kao.GetKeyAccessObject().GetKeyType() {
+		switch keyType {
 		case "ec-wrapped":
 
 			if !p.Preview.ECTDFEnabled {

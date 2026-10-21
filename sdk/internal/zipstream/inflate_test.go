@@ -403,6 +403,112 @@ func TestManifestDeflatedSizeCap(t *testing.T) {
 	})
 }
 
+// compressibleManifest is JSON of at least n bytes that deflates to a tiny
+// fraction of that, so the archive holding it stays small.
+func compressibleManifest(n int) []byte {
+	return []byte(`{"pad":"` + strings.Repeat("a", n) + `"}`)
+}
+
+// TestManifestDeflatedInflationBudget covers the default bound on inflating
+// a deflated manifest. With no explicit manifest size limit -- the default,
+// and the only behavior IsValidTdf has -- a deflated manifest may declare at
+// most the larger of the archive's length and minInflateBudget. A STORED
+// manifest can never be longer than its archive; without this, a few-MB
+// archive could inflate to gigabytes before anything validated it.
+func TestManifestDeflatedInflationBudget(t *testing.T) {
+	payload := rawZipEntry{name: TDFPayloadFileName, data: []byte("payload bytes")}
+
+	t.Run("past the budget is refused by default, before reading", func(t *testing.T) {
+		big := compressibleManifest(minInflateBudget + oneMB)
+		manifest := deflatedEntry(t, TDFManifestFileNameSpec, big)
+		data := buildRawZip(t, []rawZipEntry{payload, manifest}, false)
+		require.Less(t, len(data), oneMB, "the archive must be far smaller than its manifest")
+
+		src := &byteCountingSeeker{ReadSeeker: bytes.NewReader(data)}
+		reader, err := NewTDFReader(src)
+		require.NoError(t, err)
+
+		src.n = 0
+		got, err := reader.Manifest()
+		require.ErrorIs(t, err, errZipFileSizeError)
+		require.ErrorContains(t, err, "manifest size limit")
+		assert.Empty(t, got)
+		assert.Zero(t, src.n, "the budget must be applied before any entry data is read")
+
+		// A non-positive limit means no limit, so the budget applies too.
+		reader, err = NewTDFReader(bytes.NewReader(data), WithTDFManifestMaxSize(0))
+		require.NoError(t, err)
+		_, err = reader.Manifest()
+		require.ErrorIs(t, err, errZipFileSizeError)
+
+		// An explicit limit overrides the budget.
+		reader, err = NewTDFReader(bytes.NewReader(data), WithTDFManifestMaxSize(int64(len(big))))
+		require.NoError(t, err)
+		got, err = reader.Manifest()
+		require.NoError(t, err)
+		assert.Equal(t, string(big), got)
+	})
+
+	t.Run("within the budget reads by default", func(t *testing.T) {
+		big := compressibleManifest(minInflateBudget - oneKB)
+		data := buildRawZip(t, []rawZipEntry{payload, deflatedEntry(t, TDFManifestFileName, big)}, false)
+
+		reader, err := NewTDFReader(bytes.NewReader(data))
+		require.NoError(t, err)
+		got, err := reader.Manifest()
+		require.NoError(t, err)
+		assert.Equal(t, string(big), got)
+	})
+
+	t.Run("an archive longer than the floor sets the budget", func(t *testing.T) {
+		// A STORED payload pushes the archive past minInflateBudget, and the
+		// manifest declares more than the floor but less than the archive.
+		bigPayload := rawZipEntry{name: TDFPayloadFileName, data: randomBytes(minInflateBudget + 2*oneMB)}
+		big := compressibleManifest(minInflateBudget + oneMB)
+		data := buildRawZip(t, []rawZipEntry{bigPayload, deflatedEntry(t, TDFManifestFileName, big)}, false)
+		require.Greater(t, len(data), len(big))
+
+		reader, err := NewTDFReader(bytes.NewReader(data))
+		require.NoError(t, err)
+		got, err := reader.Manifest()
+		require.NoError(t, err)
+		assert.Equal(t, string(big), got)
+	})
+}
+
+// TestReaderDeflatedPayloadInflationBudget covers payload reads, which have no
+// override: a legitimate payload is ciphertext, which does not compress, so a
+// deflated one never declares more than the archive holds.
+func TestReaderDeflatedPayloadInflationBudget(t *testing.T) {
+	bomb := make([]byte, minInflateBudget+oneMB)
+	data := buildRawZip(t, []rawZipEntry{deflatedEntry(t, TDFPayloadFileName, bomb)}, false)
+	require.Less(t, len(data), oneMB)
+
+	src := &byteCountingSeeker{ReadSeeker: bytes.NewReader(data)}
+	reader, err := NewTDFReader(src)
+	require.NoError(t, err)
+
+	size, err := reader.PayloadSize()
+	require.NoError(t, err)
+	require.Equal(t, int64(len(bomb)), size)
+
+	src.n = 0
+	for _, r := range [][2]int64{{0, 100}, {size - 100, 100}, {0, 0}} {
+		got, err := reader.ReadPayload(r[0], r[1])
+		require.ErrorIs(t, err, errZipFileSizeError, "read of %d at %d", r[1], r[0])
+		assert.Nil(t, got)
+	}
+	assert.Zero(t, src.n, "the budget must be applied before any entry data is read")
+
+	// The same data declared within the budget reads normally.
+	small := bomb[:minInflateBudget-oneMB]
+	reader, err = NewTDFReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{deflatedEntry(t, TDFPayloadFileName, small)}, false)))
+	require.NoError(t, err)
+	got, err := reader.ReadPayload(int64(len(small))-100, 100)
+	require.NoError(t, err)
+	assert.Equal(t, small[len(small)-100:], got)
+}
+
 // TestReaderDeflatedPayloadRandomAccess drives a deflated entry the way the
 // sdk's ReadAt and Seek do: backwards, overlapping, repeated and skipping
 // ahead. The payload is larger than the DEFLATE window and the inflater's
@@ -587,10 +693,11 @@ func TestReaderDeflatedDeclaredSizeBeyondInt64(t *testing.T) {
 }
 
 // TestReaderDeflatedHugeDeclaredSizeDoesNotAllocate declares a terabyte for
-// a few bytes of DEFLATE data. Reads up to that size are in range, so only
-// growing the buffer as data arrives, rather than allocating the declared size
-// up front, keeps them from exhausting memory before archive/zip reports the
-// shortfall.
+// a few bytes of DEFLATE data. By default the inflation budget refuses it
+// outright. An explicit size limit lifts the budget for ReadAllFileData; then
+// only growing the buffer as data arrives, rather than allocating the declared
+// size up front, keeps the read from exhausting memory before archive/zip
+// reports the shortfall.
 func TestReaderDeflatedHugeDeclaredSizeDoesNotAllocate(t *testing.T) {
 	entry := deflatedEntry(t, "0.payload", []byte("payload bytes"))
 	entry.uncompressedSize = beyondEOF
@@ -603,10 +710,13 @@ func TestReaderDeflatedHugeDeclaredSizeDoesNotAllocate(t *testing.T) {
 	require.Equal(t, int64(beyondEOF), size)
 
 	_, err = reader.ReadAllFileData("0.payload", math.MaxInt64)
-	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.ErrorIs(t, err, errZipFileSizeError)
 	_, err = reader.ReadFileData("0.payload", 0, size)
-	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.ErrorIs(t, err, errZipFileSizeError)
 	_, err = reader.ReadFileData("0.payload", size/2, size/2)
+	require.ErrorIs(t, err, errZipFileSizeError)
+
+	_, err = reader.ReadAllFileData("0.payload", math.MaxInt64-1)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 }
 

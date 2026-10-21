@@ -64,6 +64,10 @@ type Reader struct {
 	// cursors. It is a pointer so that copies of a Reader, such as the one a
 	// TDFReader holds, share it.
 	mu *sync.Mutex
+	// inflateBudget is the most uncompressed bytes a deflated entry may
+	// declare without an explicit limit: the larger of the archive's length
+	// and minInflateBudget.
+	inflateBudget int64
 }
 
 // NewReader Create archive reader instance.
@@ -84,6 +88,8 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	if err != nil {
 		return reader, err
 	}
+	// archiveBound has checked that the archive's length fits an int64.
+	reader.inflateBudget = max(eocdStart+endOfCDRecordSize, minInflateBudget)
 
 	endOfCDRecord := EndOfCDRecord{}
 	err = binary.Read(readSeeker, binary.LittleEndian, &endOfCDRecord)
@@ -510,6 +516,15 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 			errZipFileSizeError, filename, length, index, fileNameEntry.size)
 	}
 
+	// There is no override here. Payload ciphertext does not compress, so a
+	// legitimate deflated payload never declares more than the archive holds;
+	// and archive/zip stops one byte past the declared size, so bounding it
+	// bounds inflation.
+	if fileNameEntry.deflated != nil && fileNameEntry.size > reader.inflateBudget {
+		return nil, inflateBudgetError(filename, fileNameEntry.size, reader.inflateBudget,
+			"a deflated payload cannot be larger than its archive")
+	}
+
 	// An empty read of a deflated entry needs no data; producing it by
 	// inflating up to index would be wasted work. One at the declared end
 	// still goes through, since reaching the end is what checks it.
@@ -529,7 +544,11 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 // NOTE: Use this method for small file sizes.
 //
 // maxSize applies to the uncompressed size, and is checked before any data
-// is read.
+// is read. math.MaxInt64, which is what TDFReader passes when no manifest size
+// limit is configured, means no explicit limit: a deflated entry is then held
+// to the Reader's inflation budget instead. Any other maxSize applies as given,
+// even above the budget; that is how a caller admits a legitimately large
+// deflated manifest.
 func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, error) {
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
@@ -537,6 +556,10 @@ func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, er
 	}
 	if fileNameEntry.size > maxSize {
 		return nil, fmt.Errorf("%s size too large: %d KiB", filename, fileNameEntry.size/1024) //nolint:mnd // convert byte->kb
+	}
+	if fileNameEntry.deflated != nil && maxSize == math.MaxInt64 && fileNameEntry.size > reader.inflateBudget {
+		return nil, inflateBudgetError(filename, fileNameEntry.size, reader.inflateBudget,
+			"set an explicit manifest size limit to read it")
 	}
 
 	reader.mu.Lock()

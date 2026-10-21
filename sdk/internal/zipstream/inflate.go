@@ -22,6 +22,22 @@ import (
 // the bytes to fill it. It covers the default 2 MiB segment in one step.
 const readChunkSize = 4 << 20
 
+// minInflateBudget is the floor of a Reader's inflation budget: the most
+// uncompressed bytes a deflated entry may declare is the larger of the
+// archive's length and this. A STORED entry can never be longer than its
+// archive, but DEFLATE expands up to about 1000 times, so without a budget a
+// few-MB archive could make a reader allocate gigabytes. Payload ciphertext
+// does not compress, so a legitimate deflated payload stays under the
+// archive's length; the floor leaves room for a manifest that compresses well.
+// An explicit manifest size limit overrides the budget; see ReadAllFileData.
+const minInflateBudget = 10 << 20
+
+// inflateBudgetError reports a deflated entry declaring more than the budget.
+func inflateBudgetError(name string, declared, budget int64, remedy string) error {
+	return fmt.Errorf("%w: %s declares %d uncompressed bytes, more than the %d bytes allowed for a deflated entry in this archive; %s",
+		errZipFileSizeError, name, declared, budget, remedy)
+}
+
 // unsupportedCompressionError wraps zip.ErrAlgorithm, so callers outside the
 // SDK can test for it, with the entry and the method.
 func unsupportedCompressionError(name string, method uint16) error {

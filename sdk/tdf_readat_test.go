@@ -440,6 +440,50 @@ func (s *TDFSuite) Test_TDFReaderReadAtBoundaries() {
 	}
 }
 
+// countingReadSeeker counts bytes read through it.
+type countingReadSeeker struct {
+	io.ReadSeeker
+	n int64
+}
+
+func (c *countingReadSeeker) Read(p []byte) (int, error) {
+	n, err := c.ReadSeeker.Read(p)
+	c.n += int64(n)
+	return n, err
+}
+
+// Test_TDFReaderWriteToSkipsSegmentBeforeBoundary checks that WriteTo from an
+// offset exactly on a segment boundary reads none of the segment ending there.
+// Over an HTTP range reader that segment would be a wasted fetch and decrypt.
+func (s *TDFSuite) Test_TDFReaderWriteToSkipsSegmentBeforeBoundary() {
+	plain := readAtSweepPayload()
+	var tdfBuf bytes.Buffer
+	_, err := s.sdk.CreateTDF(&tdfBuf, bytes.NewReader(plain),
+		WithKasInformation(KASInfo{URL: s.kasTestURLLookup["http://localhost:65432/"]}),
+		WithSegmentSize(readAtSegSize),
+	)
+	s.Require().NoError(err)
+
+	src := &countingReadSeeker{ReadSeeker: bytes.NewReader(tdfBuf.Bytes())}
+	reader, err := s.sdk.LoadTDF(src)
+	s.Require().NoError(err)
+	s.Require().Len(reader.manifest.Segments, readAtSegCount)
+
+	_, err = reader.Seek(readAtSegSize, io.SeekStart)
+	s.Require().NoError(err)
+	src.n = 0
+	var out bytes.Buffer
+	_, err = reader.WriteTo(&out)
+	s.Require().NoError(err)
+	s.Require().Equal(string(plain[readAtSegSize:]), out.String())
+
+	var want int64
+	for _, seg := range reader.manifest.Segments[1:] {
+		want += seg.EncryptedSize
+	}
+	s.Equal(want, src.n, "WriteTo read payload bytes outside the requested range")
+}
+
 // Test_TDFReaderMultiSegmentSeekReadWriteTo checks that Read, which routes
 // through ReadAt, and WriteTo agree on a multi-segment payload. WriteTo walks
 // cumulative segment sizes on its own, so a disagreement means one of the two

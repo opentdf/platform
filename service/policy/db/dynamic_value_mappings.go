@@ -26,6 +26,10 @@ type dynamicValueMappingRow struct {
 }
 
 func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynamicvaluemapping.CreateDynamicValueMappingRequest) (*policy.DynamicValueMapping, error) {
+	if r.GetNamespaceId() == "" && r.GetNamespaceFqn() == "" {
+		return nil, errors.Join(db.ErrMissingValue, errors.New("either namespace_id or namespace_fqn must be provided"))
+	}
+
 	resolver := r.GetValueResolver()
 	if err := validateDynamicValueResolverOperator(resolver.GetOperator()); err != nil {
 		return nil, err
@@ -123,7 +127,7 @@ func (c PolicyDBClient) ListDynamicValueMappings(ctx context.Context, r *dynamic
 
 	rows, err := c.queries.listDynamicValueMappings(ctx, listDynamicValueMappingsParams{
 		NamespaceID:           pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn:          pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn:          pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
 		AttributeDefinitionID: pgtypeUUID(r.GetAttributeDefinitionId()),
 		Limit:                 limit,
 		Offset:                offset,

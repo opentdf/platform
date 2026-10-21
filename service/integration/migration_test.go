@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +30,7 @@ type migrationTestHarness struct {
 
 func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	c := *Config
 	c.DB.Schema = schema
 
@@ -61,7 +62,11 @@ func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness 
 
 	t.Cleanup(func() {
 		sqlDB.Close()
-		dropSchema(ctx, t, dbClient, schema)
+		// t.Context() is canceled before cleanups run, so detach from its
+		// cancellation (keeping its values) and bound the drop with a timeout.
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		dropSchema(cleanupCtx, t, dbClient, schema)
 		dbClient.Pgx.Close()
 	})
 
@@ -101,7 +106,7 @@ func dropSchema(ctx context.Context, t *testing.T, client *db.Client, schema str
 	t.Helper()
 	q := "DROP SCHEMA IF EXISTS " + pgx.Identifier{schema}.Sanitize() + " CASCADE"
 	if _, err := client.Pgx.Exec(ctx, q); err != nil {
-		t.Logf("warning: failed to drop schema %s: %v", schema, err)
+		t.Errorf("failed to drop schema %s: %v", schema, err)
 	}
 }
 

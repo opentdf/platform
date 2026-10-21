@@ -139,6 +139,9 @@ Root level key `server`
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable Go performance profiling under `/debug/pprof/`; uses HTTP authentication and authorization when server authentication is enabled, with collection durations capped at 30 seconds | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
+| `grpc.maxRecvMsgSize`   | Maximum size in bytes of a request message from external Connect, gRPC, and gRPC-Web clients, measured after decompression. Larger messages fail with `resource_exhausted` (HTTP 429 for Connect). Values of zero or less use the default. | `4194304` | OPENTDF_SERVER_GRPC_MAXRECVMSGSIZE |
+| `grpc.maxCallRecvMsgSize` | Maximum size in bytes of a response message the in-process client accepts when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLRECVMSGSIZE |
+| `grpc.maxCallSendMsgSize` | Maximum size in bytes of a request message the in-process client sends when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLSENDMSGSIZE |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
 | `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |
@@ -631,6 +634,10 @@ Root level key `policy`
 | `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
 | `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. When disabled (default), namespace fields are accepted but not enforced — objects may be created without a namespace (legacy behavior). Non-namespaced versions are deprecated and this flag will become the default in a future version. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
+
+New dynamic value mappings always require a namespace, regardless of `namespaced_policy`. Existing
+dynamic value mappings with a null `namespace_id` remain readable and removable for backward
+compatibility.
 
 Example:
 

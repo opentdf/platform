@@ -75,10 +75,10 @@ message CreateDynamicValueMappingRequest {
     fields: ["attribute_definition_id", "attribute_definition_fqn"]
     required: true
   };
-  // Optional: Namespace ID or FQN to scope the mapping to
+  // Required: Namespace ID or FQN to scope the mapping to
   option (buf.validate.message).oneof = {
     fields: ["namespace_id", "namespace_fqn"]
-    required: false
+    required: true
   };
 
   string attribute_definition_id = 1 [(buf.validate.field).string.uuid = true];
@@ -111,7 +111,7 @@ message CreateDynamicValueMappingRequest {
   // ... or create a new one (ignored if existing_subject_condition_set_id is provided)
   policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 6;
 
-  // Optional: namespace ID or FQN for the mapping
+  // Required: namespace ID or FQN for the mapping
   string namespace_id = 7 [(buf.validate.field).string.uuid = true];
   string namespace_fqn = 8 [
     (buf.validate.field).string = {

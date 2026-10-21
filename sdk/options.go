@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -45,6 +46,7 @@ type config struct {
 	clientCredentials                  *oauth.ClientCredentials
 	tokenExchange                      *oauth.TokenExchangeInfo
 	tokenEndpoint                      string
+	tokenExpirationBuffer              time.Duration
 	scopes                             []string
 	certExchange                       *oauth.CertExchangeInfo
 	kasSessionKey                      *ocrypto.RsaKeyPair
@@ -96,6 +98,15 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	return func(c *config) {
 		c.clientCredentials = &oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
+	}
+}
+
+// WithTokenExpirationBuffer sets how early SDK-managed access tokens are renewed.
+// The default is 10 seconds. Zero disables early renewal; negative values are rejected by New.
+// It applies to client credentials, token exchange, and certificate exchange, not custom token sources.
+func WithTokenExpirationBuffer(buffer time.Duration) Option {
+	return func(c *config) {
+		c.tokenExpirationBuffer = buffer
 	}
 }
 

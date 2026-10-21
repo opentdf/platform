@@ -12,6 +12,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	claimsERSV2 "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,7 @@ import (
 type recordingERSV2Client struct {
 	createResponse  *entityresolutionV2.CreateEntityChainsFromTokensResponse
 	resolveResponse *entityresolutionV2.ResolveEntitiesResponse
+	resolveFn       func(context.Context, *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error)
 	createCalls     int
 	resolveCalls    int
 	createReq       *entityresolutionV2.CreateEntityChainsFromTokensRequest
@@ -35,9 +37,12 @@ func (c *recordingERSV2Client) CreateEntityChainsFromTokens(_ context.Context, r
 	return c.createResponse, nil
 }
 
-func (c *recordingERSV2Client) ResolveEntities(_ context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
+func (c *recordingERSV2Client) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
 	c.resolveCalls++
 	c.resolveReq = req
+	if c.resolveFn != nil {
+		return c.resolveFn(ctx, req)
+	}
 	return c.resolveResponse, nil
 }
 
@@ -281,6 +286,40 @@ func TestResolveEntitiesFromTokenPreservesDirectEntitlements(t *testing.T) {
 	require.Len(t, reps[0].GetDirectEntitlements(), 1, "direct entitlements must survive token resolution")
 	require.Equal(t, "https://example.com/attr/workspace/value/sdk-test", reps[0].GetDirectEntitlements()[0].GetAttributeValueFqn())
 	require.ElementsMatch(t, []string{"read", "view"}, reps[0].GetDirectEntitlements()[0].GetActions())
+}
+
+func TestResolveEntitiesFromTokenDoesNotExposeDirectEntitlementsAsSubjectProperties(t *testing.T) {
+	claimsAny := claimsAnyForTest(t, map[string]interface{}{
+		"username": "alice",
+		"direct_entitlements": []interface{}{
+			map[string]interface{}{
+				"attribute_value_fqn": "https://example.com/attr/workspace/value/sdk-test",
+				"actions":             []interface{}{"read"},
+			},
+		},
+	})
+	client := &recordingERSV2Client{
+		createResponse: &entityresolutionV2.CreateEntityChainsFromTokensResponse{
+			EntityChains: []*entity.EntityChain{{Entities: []*entity.Entity{{
+				EphemeralId: "jwtentity-claims",
+				EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			}}}},
+		},
+		resolveFn: func(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
+			resp, err := claimsERSV2.EntityResolution(ctx, req, logger.CreateTestLogger(), true)
+			return &resp, err
+		},
+	}
+
+	reps, err := testJITPDP(client).resolveEntitiesFromToken(t.Context(), &entity.Token{EphemeralId: "alice-token", Jwt: "token"}, true, nil)
+	require.NoError(t, err)
+	require.Len(t, reps, 1)
+	require.Equal(t, 1, client.resolveCalls, "direct entitlements require ERS hydration")
+	require.Len(t, reps[0].GetDirectEntitlements(), 1)
+	require.Len(t, reps[0].GetAdditionalProps(), 1)
+	assert.NotContains(t, reps[0].GetAdditionalProps()[0].GetFields(), "direct_entitlements")
+	assert.Contains(t, reps[0].GetAdditionalProps()[0].GetFields(), "username")
 }
 
 func TestEntityRepresentationsFromResolvedChainRequiresHydrationForDirectEntitlements(t *testing.T) {

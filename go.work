@@ -3,7 +3,6 @@ go 1.25.5
 toolchain go1.25.14
 
 use (
-	./examples
 	./lib/fixtures
 	./lib/flattening
 	./lib/identifier

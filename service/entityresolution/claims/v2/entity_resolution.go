@@ -178,6 +178,12 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 		})
 	}
 
+	// These reserved claims have been projected onto DirectEntitlements. Do not also expose either
+	// alias through AdditionalProps, which is evaluated as subject-mapping input.
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		delete(entityStruct.GetFields(), key)
+	}
+
 	return out, nil
 }
 

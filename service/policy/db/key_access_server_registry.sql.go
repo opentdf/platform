@@ -1300,6 +1300,32 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 	return items, nil
 }
 
+const rotateActiveKey = `-- name: rotateActiveKey :execrows
+UPDATE key_access_server_keys
+SET key_status = $1::integer
+WHERE id = $2 AND key_status = $3::integer
+`
+
+type rotateActiveKeyParams struct {
+	RotatedStatus int32  `json:"rotated_status"`
+	ID            string `json:"id"`
+	ActiveStatus  int32  `json:"active_status"`
+}
+
+// The status predicate is rechecked after acquiring the row lock, so concurrent
+// rotations cannot both create a successor.
+//
+//	UPDATE key_access_server_keys
+//	SET key_status = $1::integer
+//	WHERE id = $2 AND key_status = $3::integer
+func (q *Queries) rotateActiveKey(ctx context.Context, arg rotateActiveKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rotateActiveKey, arg.RotatedStatus, arg.ID, arg.ActiveStatus)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setBaseKey = `-- name: setBaseKey :execrows
 INSERT INTO base_keys (key_access_server_key_id)
 VALUES ($1)

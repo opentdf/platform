@@ -267,9 +267,9 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 // the value-level subject mappings. It runs two selective queries: the attribute
 // FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
 // query, avoiding the full-policy load used by the entitlement path today.
-// A value that does not exist under a definition with allow_traversal is returned
-// with its definition and an empty value identity (no value_id, no subject
-// mappings), so front-loaded values still carry their definition context.
+// Missing policy values retain active definition context. Unknown/inactive parents
+// are omitted; inactive values retain their identity and state for the PDP to deny.
+// Dynamic mappings are fetched only for referenced definitions.
 func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
 	ctx, span := c.Start(ctx, "DB:GetEntitleableAttributesByFqns")
 	defer span.End()
@@ -321,10 +321,11 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 		subjectMappingsByFqn[row.ValueFqn] = append(subjectMappingsByFqn[row.ValueFqn], sm)
 	}
 
-	entitleableValue := func(fqn, valueID string) *attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue {
+	entitleableValue := func(fqn string, value *policy.Value) *attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue {
 		return &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
 			Fqn:             fqn,
-			ValueId:         valueID,
+			ValueId:         value.GetId(),
+			Active:          value.GetActive(),
 			SubjectMappings: subjectMappingsByFqn[fqn],
 		}
 	}
@@ -353,19 +354,22 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			if attr.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 				def.Values = make([]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue, 0, len(attr.GetValues()))
 				for _, v := range attr.GetValues() {
-					def.Values = append(def.Values, entitleableValue(v.GetFqn(), v.GetId()))
+					def.Values = append(def.Values, entitleableValue(v.GetFqn(), v))
 				}
 			}
 			rsp.Definitions[defFqn] = def
 		}
 
-		// For an allow_traversal miss, pair.GetValue() is nil: GetId() yields "" and
+		// For a missing policy value, pair.GetValue() is nil: GetId() yields "" and
 		// there are no value-level subject mappings, so the entry carries only the
 		// definition context and an empty value identity.
 		rsp.FqnEntitleableAttributes[fqn] = &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
 			DefinitionFqn: defFqn,
-			Value:         entitleableValue(fqn, pair.GetValue().GetId()),
+			Value:         entitleableValue(fqn, pair.GetValue()),
 		}
+	}
+	if err := c.addEntitleableDynamicValueMappings(ctx, rsp); err != nil {
+		return nil, err
 	}
 
 	return rsp, nil

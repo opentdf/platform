@@ -384,6 +384,11 @@ type chunkedWriterConfig struct {
 	// Defaults to a splitterKeyAccess over splitter.
 	keyAccess keyAccessResolver
 
+	// maxEncryptions caps the segment encryptions attempted under the
+	// DEK. Zero means maxAESGCMSegmentsPerDEK; tests set a small value
+	// to reach the cap without encrypting billions of segments.
+	maxEncryptions uint64
+
 	// rand is the entropy source used to generate the DEK. Defaults
 	// to crypto/rand.Reader.
 	rand io.Reader
@@ -484,6 +489,14 @@ type chunkedWriter struct {
 	// excludeVersion omits schemaVersion from the manifest unless a
 	// Finalize option overrides it.
 	excludeVersion bool
+
+	// encryptions counts the segment encryptions attempted under dek,
+	// including ones that later failed. Guarded by mu.
+	encryptions uint64
+
+	// maxEncryptions is the most segment encryptions this writer will
+	// attempt; see maxAESGCMSegmentsPerDEK.
+	maxEncryptions uint64
 
 	// unusable is non-nil once the archive has been left in a state no
 	// later call can recover from: its Finalize failed partway through
@@ -594,11 +607,16 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 	if keyAccess == nil {
 		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
+	maxEncryptions := cfg.maxEncryptions
+	if maxEncryptions == 0 {
+		maxEncryptions = maxAESGCMSegmentsPerDEK
+	}
 	return &chunkedWriter{
 		archiveWriter:     cfg.archiveFactory(cfg.clock),
 		block:             block,
 		dek:               dek,
 		excludeVersion:    cfg.excludeVersion,
+		maxEncryptions:    maxEncryptions,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
 		keyAccess:         keyAccess,
@@ -753,6 +771,14 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		w.mu.Unlock()
 		return nil, ErrChunkedSegmentAlreadyWritten
 	}
+	// Every attempt below encrypts under a fresh random IV, so it is counted
+	// here, before encrypting, and is not given back if the write fails.
+	if w.encryptions >= w.maxEncryptions {
+		w.mu.Unlock()
+		return nil, fmt.Errorf("%w: segment %d: %d segment encryptions already attempted, limit is %d",
+			ErrAESGCMExhausted, index, w.encryptions, w.maxEncryptions)
+	}
+	w.encryptions++
 	// Reserve the index so a concurrent write to the same one is
 	// rejected, but leave the slot unwritten: the segment does not
 	// count as written until its bytes are in the archive.

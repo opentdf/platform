@@ -245,7 +245,7 @@ func Test_NewLogger_NoopProviderPreservesInboundTraceContext(t *testing.T) {
 			lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
 			require.NoError(t, err)
 
-			ctx, span := tracer.Start(context.Background(), "rewrap")
+			ctx, span := tracer.Start(t.Context(), "rewrap")
 			defer span.End()
 
 			lg.InfoContext(ctx, "handled request")
@@ -263,7 +263,7 @@ func Test_NewLogger_UntracedRequestHasNoTraceFields(t *testing.T) {
 		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
 		require.NoError(t, err)
 
-		lg.InfoContext(context.Background(), "startup")
+		lg.InfoContext(t.Context(), "startup")
 	})
 	require.Len(t, lines, 1)
 

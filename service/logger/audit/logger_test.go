@@ -28,6 +28,7 @@ func TestBuiltInHelpersReturnProcessorErrors(t *testing.T) {
 		record func(context.Context, *Logger) error
 	}{
 		{"rewrap success", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapSuccess(ctx, rewrapParams) }},
+		{"rewrap denied", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapDenied(ctx, rewrapParams) }},
 		{"rewrap failure", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapFailure(ctx, rewrapParams) }},
 		{"policy success", VerbPolicyCRUD, func(ctx context.Context, l *Logger) error { return l.PolicyCRUDSuccess(ctx, policyCRUDParams) }},
 		{"policy failure", VerbPolicyCRUD, func(ctx context.Context, l *Logger) error { return l.PolicyCRUDFailure(ctx, policyCRUDParams) }},
@@ -71,6 +72,21 @@ func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
 	require.Equal(t, ActionResultError.String(), requireMap(t, payload["action"])["result"])
+}
+
+func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
+	l, output := createTestLogger()
+	params := rewrapParams
+	params.IsSuccess = true
+	require.NoError(t, l.RewrapDenied(t.Context(), params))
+	entry, _ := extractLogEntry(t, output)
+	payload := decodeAuditPayload(t, entry.Audit)
+	require.Equal(t, ActionResultFailure.String(), requireMap(t, payload["action"])["result"])
+}
+
+func TestRewrapRejectsUnsupportedResult(t *testing.T) {
+	l, _ := createTestLogger()
+	require.ErrorIs(t, l.Rewrap(t.Context(), ActionResultEncrypt, rewrapParams), ErrInvalidEvent)
 }
 
 func TestBuiltInRecordingPreservesCanceledProducerContext(t *testing.T) {
@@ -152,10 +168,12 @@ var rewrapParams = RewrapAuditEventParams{
 			},
 		},
 	},
-	TDFFormat:     "test-tdf-format",
-	Algorithm:     "test-algorithm",
-	PolicyBinding: "test-policy-binding",
-	KeyID:         "r1",
+	PolicyVerified: true,
+	TDFFormat:      "test-tdf-format",
+	Algorithm:      "test-algorithm",
+	PolicyBinding:  "test-policy-binding",
+	KeyID:          "r1",
+	SessionKeyType: "test-session-key-type",
 }
 
 var policyCRUDParams = PolicyEventParams{
@@ -271,9 +289,12 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",
@@ -290,6 +311,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
@@ -330,9 +352,13 @@ func TestAuditRewrapFailure(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"failure_reason": "rewrap_error",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",
@@ -349,6 +375,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,

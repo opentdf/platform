@@ -41,6 +41,9 @@ var (
 	ErrInvalidSegmentIndex = sdk.ErrChunkedInvalidSegmentIndex
 	// ErrMissingSegmentZero is returned when Finalize is called without segment 0
 	ErrMissingSegmentZero = sdk.ErrChunkedMissingSegmentZero
+	// ErrAESGCMExhausted is returned when another segment would push the
+	// AES-GCM IV collision probability under the writer's key above 2^-32
+	ErrAESGCMExhausted = sdk.ErrAESGCMExhausted
 	// ErrSegmentAlreadyWritten is returned when trying to write to an existing segment index
 	ErrSegmentAlreadyWritten = sdk.ErrChunkedSegmentAlreadyWritten
 )
@@ -168,6 +171,8 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 //   - ErrAlreadyFinalized: Writer has been finalized, no more segments accepted
 //   - ErrInvalidSegmentIndex: Negative index provided
 //   - ErrSegmentAlreadyWritten: Segment index already contains data
+//   - ErrAESGCMExhausted: The writer has attempted as many segment encryptions
+//     as its key safely allows; start a new TDF
 //   - Encryption errors: AES-GCM operation failures
 //   - Archive errors: ZIP structure creation failures
 //

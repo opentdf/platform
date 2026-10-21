@@ -568,94 +568,107 @@ func Test_retrieveObligationsFromMetadata_EmptyList(t *testing.T) {
 	require.Empty(t, fqns)
 }
 
-func Test_processRSAResponse(t *testing.T) {
-	c := newKASClient(nil, nil, nil, nil, nil)
+func Test_processAsymResponse(t *testing.T) {
+	// RSA and ML-KEM session keys share the same response handling and differ
+	// only in how the client-side decryptor is derived from the session key.
+	for _, kt := range []ocrypto.KeyType{ocrypto.RSA2048Key, ocrypto.MLKEM768Key, ocrypto.MLKEM1024Key} {
+		t.Run(string(kt), func(t *testing.T) {
+			sessionKey, err := ocrypto.NewKeyPair(kt)
+			require.NoError(t, err)
+			c := newKASClient(nil, nil, nil, sessionKey, nil)
 
-	// Create a mock AsymDecryption
-	mockPrivateKey, err := ocrypto.NewRSAKeyPair(2048)
-	require.NoError(t, err)
-	privateKeyPEM, err := mockPrivateKey.PrivateKeyInPemFormat()
-	require.NoError(t, err)
-	mockPrivateDecryptor, err := ocrypto.FromPrivatePEM(privateKeyPEM)
-	require.NoError(t, err)
-	mockDecryptor, ok := mockPrivateDecryptor.(ocrypto.AsymDecryption)
-	require.True(t, ok)
+			publicKeyPEM, err := sessionKey.PublicKeyInPemFormat()
+			require.NoError(t, err)
+			salt := sha256.Sum256([]byte("TDF"))
+			mockEncryptor, err := ocrypto.FromPublicPEMWithSalt(publicKeyPEM, salt[:], nil)
+			require.NoError(t, err)
 
-	// Create a mock AsymEncryption to create the wrapped key
-	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()
-	require.NoError(t, err)
-	mockEncryptor, err := ocrypto.FromPublicPEM(publicKeyPEM)
-	require.NoError(t, err)
+			symmetricKey := []byte("supersecretkey")
+			wrappedKey, err := mockEncryptor.Encrypt(symmetricKey)
+			require.NoError(t, err)
 
-	symmetricKey := []byte("supersecretkey")
-	wrappedKey, err := mockEncryptor.Encrypt(symmetricKey)
-	require.NoError(t, err)
-
-	response := &kaspb.RewrapResponse{
-		Responses: []*kaspb.PolicyRewrapResult{
-			{
-				PolicyId: "policy1",
-				Results: []*kaspb.KeyAccessRewrapResult{
+			response := &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
 					{
-						KeyAccessObjectId: "kao1",
-						Status:            "fail",
-						Result: &kaspb.KeyAccessRewrapResult_Error{
-							Error: "Access denied",
+						PolicyId: "policy1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao1",
+								Status:            "fail",
+								Result: &kaspb.KeyAccessRewrapResult_Error{
+									Error: "Access denied",
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val1",
+								}),
+							},
+							{
+								KeyAccessObjectId: "kao2",
+								Status:            "fail",
+								Result: &kaspb.KeyAccessRewrapResult_Error{
+									Error: "Access denied",
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val2",
+								}),
+							},
 						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val1",
-						}),
 					},
 					{
-						KeyAccessObjectId: "kao2",
-						Status:            "fail",
-						Result: &kaspb.KeyAccessRewrapResult_Error{
-							Error: "Access denied",
+						PolicyId: "policy2",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao1",
+								Status:            "permit",
+								Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+									KasWrappedKey: wrappedKey,
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val3",
+								}),
+							},
+							{
+								// A corrupt wrapped key is a per-KAO error, not a failure of the whole response.
+								KeyAccessObjectId: "kao2",
+								Status:            "permit",
+								Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+									KasWrappedKey: []byte("not a wrapped key"),
+								},
+							},
 						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val2",
-						}),
 					},
 				},
-			},
-			{
-				PolicyId: "policy2",
-				Results: []*kaspb.KeyAccessRewrapResult{
-					{
-						KeyAccessObjectId: "kao1",
-						Status:            "permit",
-						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
-							KasWrappedKey: wrappedKey,
-						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val3",
-						}),
-					},
-				},
-			},
-		},
+			}
+
+			policyResults, err := c.handleKeyResponse(response)
+			require.NoError(t, err)
+			assert.Len(t, policyResults, 2)
+
+			// Length checks guard the indexing below, so they stay fatal.
+			result := policyResults["policy1"]
+			require.Len(t, result, 2)
+			assert.Nil(t, result[0].SymmetricKey)
+			assert.Nil(t, result[1].SymmetricKey)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val1"}, result[0].RequiredObligations)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val2"}, result[1].RequiredObligations)
+
+			result2 := policyResults["policy2"]
+			require.Len(t, result2, 2)
+			assert.Equal(t, symmetricKey, result2[0].SymmetricKey)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val3"}, result2[0].RequiredObligations)
+			require.Error(t, result2[1].Error)
+			assert.Nil(t, result2[1].SymmetricKey)
+		})
 	}
+}
 
-	policyResults, err := c.processRSAResponse(response, mockDecryptor)
+func Test_handleKEMKeyResponse_RejectsRSASessionKey(t *testing.T) {
+	sessionKey, err := ocrypto.NewKeyPair(ocrypto.RSA2048Key)
 	require.NoError(t, err)
-	require.Len(t, policyResults, 2)
+	c := newKASClient(nil, nil, nil, sessionKey, nil)
 
-	result, ok := policyResults["policy1"]
-	require.True(t, ok)
-	require.Len(t, result, 2)
-	require.Nil(t, result[0].SymmetricKey)
-	require.Nil(t, result[1].SymmetricKey)
-	require.Len(t, result[0].RequiredObligations, 1)
-	require.Len(t, result[1].RequiredObligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result[0].RequiredObligations[0])
-	require.Equal(t, "https://example.com/attr/attr1/value/val2", result[1].RequiredObligations[0])
-
-	result2, ok := policyResults["policy2"]
-	require.True(t, ok)
-	require.Len(t, result2, 1)
-	require.Equal(t, symmetricKey, result2[0].SymmetricKey)
-	require.Len(t, result2[0].RequiredObligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val3", result2[0].RequiredObligations[0])
+	_, err = c.handleKEMKeyResponse(&kaspb.RewrapResponse{})
+	assert.ErrorContains(t, err, "not an ML-KEM private key")
 }
 
 func Test_processECResponse(t *testing.T) {
@@ -741,7 +754,7 @@ func Test_processECResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	// 7. Process the response
-	policyResults, err := c.processECResponse(response, decryptor)
+	policyResults, err := c.processResponse(response, decryptor)
 	require.NoError(t, err)
 	require.Len(t, policyResults, 2)
 

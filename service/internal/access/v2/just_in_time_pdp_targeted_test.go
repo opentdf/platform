@@ -104,7 +104,7 @@ func TestJITPDP_GetEntitlements_TargetedFetch(t *testing.T) {
 		sdk:    &otdfSDK.SDK{Attributes: attrFake, SubjectMapping: smFake, EntityResolutionV2: ers},
 	}
 
-	ents, err := p.GetEntitlements(context.Background(), entityChainIdentifier(), nil, false)
+	ents, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), false)
 	require.NoError(t, err)
 	require.Len(t, ents, 1)
 	assert.Equal(t, "e1", ents[0].GetEphemeralId())
@@ -130,21 +130,23 @@ func TestJITPDP_GetEntitlements_NoMatchReturnsNil(t *testing.T) {
 		sdk:    &otdfSDK.SDK{Attributes: attrFake, SubjectMapping: smFake, EntityResolutionV2: ers},
 	}
 
-	ents, err := p.GetEntitlements(context.Background(), entityChainIdentifier(), nil, false)
+	ents, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), false)
 	require.NoError(t, err)
+	assert.Nil(t, ents)
+	assert.Empty(t, attrFake.requests)
 }
 
-func TestJITPDP_GetEntitlements_ResourceScopedDirectEntitlements(t *testing.T) {
+func TestJITPDP_GetEntitlements_DirectEntitlementsWithoutSubjectMappings(t *testing.T) {
 	definitionFQN := "https://example.com/attr/project"
-	requestedFQN := definitionFQN + "/value/requested"
-	outsideFQN := definitionFQN + "/value/outside"
+	firstFQN := definitionFQN + "/value/first"
+	secondFQN := definitionFQN + "/value/second"
 	directEntitlements := []*entityresolutionV2.DirectEntitlement{
-		{AttributeValueFqn: requestedFQN, Actions: []string{"read", "delete"}},
-		{AttributeValueFqn: outsideFQN, Actions: []string{"view"}},
+		{AttributeValueFqn: firstFQN, Actions: []string{"read", "delete"}},
+		{AttributeValueFqn: secondFQN, Actions: []string{"view"}},
 	}
 	directClaims := []interface{}{
-		map[string]interface{}{"attribute_value_fqn": requestedFQN, "actions": []interface{}{"read", "delete"}},
-		map[string]interface{}{"attribute_value_fqn": outsideFQN, "actions": []interface{}{"view"}},
+		map[string]interface{}{"attribute_value_fqn": firstFQN, "actions": []interface{}{"read", "delete"}},
+		map[string]interface{}{"attribute_value_fqn": secondFQN, "actions": []interface{}{"view"}},
 	}
 	claims := claimsAnyForTest(t, map[string]interface{}{"direct_entitlements": directClaims})
 	ers := &recordingERSV2Client{
@@ -160,7 +162,7 @@ func TestJITPDP_GetEntitlements_ResourceScopedDirectEntitlements(t *testing.T) {
 		t.Context(), logger.CreateTestLogger(),
 		[]*policy.Attribute{{
 			Fqn: definitionFQN, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*policy.Value{{Fqn: requestedFQN}, {Fqn: outsideFQN}},
+			Values: []*policy.Value{{Fqn: firstFQN}, {Fqn: secondFQN}},
 		}}, []*policy.SubjectMapping{}, nil, true, false,
 	)
 	require.NoError(t, err)
@@ -170,18 +172,18 @@ func TestJITPDP_GetEntitlements_ResourceScopedDirectEntitlements(t *testing.T) {
 		fullPolicyPDP:           fullPDP,
 		allowDirectEntitlements: true,
 	}
-	resources := attrValueResource(requestedFQN)
 	identifier := &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_Token{Token: &entity.Token{EphemeralId: "token", Jwt: "jwt"}}}
 
-	entitlements, err := p.GetEntitlements(t.Context(), identifier, resources, false)
+	entitlements, err := p.GetEntitlements(t.Context(), identifier, false)
 	require.NoError(t, err)
 	require.Len(t, entitlements, 1)
 	actionsByFQN := entitlements[0].GetActionsPerAttributeValueFqn()
-	require.Contains(t, actionsByFQN, requestedFQN)
-	assert.ElementsMatch(t, []string{"read", "delete"}, actionNames(actionsByFQN[requestedFQN].GetActions()))
-	assert.NotContains(t, actionsByFQN, outsideFQN)
+	require.Contains(t, actionsByFQN, firstFQN)
+	assert.ElementsMatch(t, []string{"read", "delete"}, actionNames(actionsByFQN[firstFQN].GetActions()))
+	require.Contains(t, actionsByFQN, secondFQN)
+	assert.Equal(t, []string{"view"}, actionNames(actionsByFQN[secondFQN].GetActions()))
 
-	require.Equal(t, resources, ers.createReq.GetResources())
+	assert.Empty(t, ers.createReq.GetResources())
 	require.Len(t, ers.resolveReq.GetEntities(), 1)
 	assert.Equal(t, "subject", ers.resolveReq.GetEntities()[0].GetEphemeralId())
 }

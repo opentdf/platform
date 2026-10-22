@@ -1746,7 +1746,9 @@ func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
 		{
 			name: "disabled key type",
 			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
-				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().KeyType = "ec-wrapped"
+				kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+				kao.KeyType = "ec-wrapped"
+				kao.Kid = "test-kid"
 			},
 			wantReason: rewrapReasonKeyTypeDisabled,
 		},
@@ -1756,6 +1758,7 @@ func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
 				provider.Preview.ECTDFEnabled = true
 				kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
 				kao.KeyType = "ec-wrapped"
+				kao.Kid = "test-kid"
 				kao.EphemeralPublicKey = "not-a-public-key"
 			},
 			wantReason: rewrapReasonInvalidEphemeralKey,
@@ -1906,6 +1909,14 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			wantMessage: "bad request",
 		},
 		{
+			name:        "invalid key ID rejected by registry",
+			kid:         "invalid-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeInvalidArgument, errors.New("invalid key ID"))},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
+		},
+		{
 			name:        "in-process key ID not found",
 			kid:         "missing-kid",
 			index:       &fakeKeyIndex{findErr: security.ErrCertNotFound},
@@ -1942,6 +1953,57 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			require.Contains(t, result.Error.Error(), tt.wantMessage)
 			require.Equal(t, tt.wantResult, result.Audit.Result)
 			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
+			require.False(t, result.Audit.SuspectedTamper)
+			require.True(t, result.Audit.Classified)
+		})
+	}
+}
+
+func TestVerifyRewrapRequestsRejectsMissingKIDForNonRSAKeyTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		keyType string
+		enable  func(*Provider)
+	}{
+		{
+			name:    "EC",
+			keyType: "ec-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.ECTDFEnabled = true
+			},
+		},
+		{
+			name:    "hybrid",
+			keyType: "hybrid-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.HybridTDFEnabled = true
+			},
+		},
+		{
+			name:    "ML-KEM",
+			keyType: "mlkem-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.MLKEMTDFEnabled = true
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, nil)
+			tt.enable(provider)
+			request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+			kao := request.GetKeyAccessObjects()[0]
+			kao.GetKeyAccessObject().KeyType = tt.keyType
+			kao.GetKeyAccessObject().Kid = ""
+
+			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
+			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+			result := results[kao.GetKeyAccessObjectId()]
+			require.Equal(t, connectv2.CodeInvalidArgument, connectv2.CodeOf(result.Error))
+			require.Contains(t, result.Error.Error(), "key ID is empty")
+			require.Equal(t, audit.ActionResultFailure, result.Audit.Result)
+			require.Equal(t, rewrapReasonKAOInvalid, result.Audit.FailureReason)
 			require.False(t, result.Audit.SuspectedTamper)
 			require.True(t, result.Audit.Classified)
 		})

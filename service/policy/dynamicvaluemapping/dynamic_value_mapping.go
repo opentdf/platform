@@ -2,6 +2,7 @@ package dynamicvaluemapping
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -22,6 +23,8 @@ type DynamicValueMappingService struct { //nolint:revive // descriptive name mir
 	logger   *logger.Logger
 	config   *policyconfig.Config
 }
+
+var errNamespaceRequired = errors.New("either namespace_id or namespace_fqn must be provided")
 
 func OnConfigUpdate(svc *DynamicValueMappingService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
@@ -76,8 +79,8 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 ) (*dvm.CreateDynamicValueMappingResponse, error) {
 	rsp := &dvm.CreateDynamicValueMappingResponse{}
 	s.logger.DebugContext(ctx, "creating dynamic value mapping")
-	if s.config.NamespacedPolicy && req.GetNamespaceId() == "" && req.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "either namespace_id or namespace_fqn must be provided")
+	if req.GetNamespaceId() == "" && req.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespaceRequired.Error()).WithCause(errNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{

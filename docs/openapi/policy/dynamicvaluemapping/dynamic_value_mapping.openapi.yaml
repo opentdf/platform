@@ -1230,7 +1230,7 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: 'Optional: namespace ID or FQN for the mapping'
+          description: 'Required: namespace ID or FQN for the mapping'
         namespaceFqn:
           type: string
           title: namespace_fqn

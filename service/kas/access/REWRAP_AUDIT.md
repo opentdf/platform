@@ -55,7 +55,7 @@ flowchart TD
 | Policy request | No KAOs; policy invalid | failure | `policy_body_invalid` | true | false | request |
 | KAO validation | Duplicate KAO ID | failure | `kao_invalid` | false | false | KAO |
 | Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
-| KAO validation | KAO nil or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
+| KAO validation | KAO nil, wrapped key empty, or required key ID missing | failure | `kao_invalid` | false | false | KAO |
 | KAO validation | EC, hybrid, or ML-KEM disabled | failure | `key_type_disabled` | false | false | KAO |
 | KAO validation | Key type unsupported | failure | `unsupported_key_type` | false | false | KAO |
 | KAO validation | EC ephemeral key invalid | failure | `invalid_ephemeral_key` | false | false | KAO |

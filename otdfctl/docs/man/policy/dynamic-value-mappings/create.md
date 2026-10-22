@@ -30,6 +30,7 @@ command:
     - name: namespace
       description: Namespace ID or FQN
       shorthand: n
+      required: true
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l
@@ -46,6 +47,9 @@ values.
 The `--attribute` flag is required and accepts either the URI (FQN) or ID of the Attribute
 Definition to scope the mapping to. A HIERARCHY Attribute Definition is not supported.
 
+The `--namespace` flag is required and accepts either the namespace FQN or ID. Dynamic Value
+Mappings are always namespace-scoped, regardless of the platform's `namespaced_policy` setting.
+
 Optionally provide a static pre-gate Subject Condition Set with `--subject-condition-set`, which
 accepts either an existing Subject Condition Set ID or a JSON array of Subject Sets to create a new
 one. When a gate is present, both the gate and the resolver must pass for entitlement.
@@ -59,19 +63,19 @@ For more information about subject condition sets, see the `subject-condition-se
 Create a dynamic value mapping entitling 'read' where a patient assignment matches the requested value:
 
 ```shell
-otdfctl policy dynamic-value-mappings create --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read
+otdfctl policy dynamic-value-mappings create --namespace https://hospital.co --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read
 ```
 
 Create a dynamic value mapping scoped by Attribute Definition FQN with a substring operator:
 
 ```shell
-otdfctl policy dynamic-value-mappings create --attribute https://hospital.co/attr/mrn --selector '.patientAssignments[]' --operator IN_CONTAINS --action read
+otdfctl policy dynamic-value-mappings create --namespace https://hospital.co --attribute https://hospital.co/attr/mrn --selector '.patientAssignments[]' --operator IN_CONTAINS --action read
 ```
 
 Create a dynamic value mapping with a static pre-gate Subject Condition Set:
 
 ```shell
-otdfctl policy dynamic-value-mappings create --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read --subject-condition-set '[
+otdfctl policy dynamic-value-mappings create --namespace https://hospital.co --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read --subject-condition-set '[
   {
     "condition_groups": [
       {

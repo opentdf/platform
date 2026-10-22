@@ -637,6 +637,10 @@ Root level key `policy`
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
 | `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. When disabled (default), namespace fields are accepted but not enforced — objects may be created without a namespace (legacy behavior). Non-namespaced versions are deprecated and this flag will become the default in a future version. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
 
+New dynamic value mappings always require a namespace, regardless of `namespaced_policy`. Existing
+dynamic value mappings with a null `namespace_id` remain readable and removable for backward
+compatibility.
+
 Example:
 
 ```yaml

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.43.0](https://github.com/opentdf/platform/compare/protocol/go/v0.42.0...protocol/go/v0.43.0) (2026-10-22)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **policy:** require namespaces for dynamic value mappings ([#4236](https://github.com/opentdf/platform/issues/4236)) ([d83dbef](https://github.com/opentdf/platform/commit/d83dbeff073436539d80d8a252c2c2267490f58c))
+
 ## [0.42.0](https://github.com/opentdf/platform/compare/protocol/go/v0.41.0...protocol/go/v0.42.0) (2026-10-14)
 
 

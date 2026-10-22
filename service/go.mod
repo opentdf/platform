@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.26.0
+go 1.26.10
 
 require (
 	buf.build/go/protovalidate v1.0.0

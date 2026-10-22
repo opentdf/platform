@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/test/integration
 
-go 1.26.0
+go 1.26.10
 
 replace (
 	github.com/opentdf/platform/lib/fixtures => ../../lib/fixtures

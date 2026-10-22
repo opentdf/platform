@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/lib/ocrypto
 
-go 1.26.0
+go 1.26.10
 
 require (
 	github.com/cloudflare/circl v1.6.3

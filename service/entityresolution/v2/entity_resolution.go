@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connectv2"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
-	"github.com/opentdf/platform/service/internal/connectv2/entityresolution/v2/entityresolutionv2connectv2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"

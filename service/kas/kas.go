@@ -11,7 +11,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/internal/connectv2/kas/kasconnectv2"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnectv2"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/logger"

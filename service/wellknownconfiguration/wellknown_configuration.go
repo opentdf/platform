@@ -10,7 +10,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/service/internal/connectv2/wellknownconfiguration/wellknownconfigurationconnectv2"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/protobuf/types/known/structpb"

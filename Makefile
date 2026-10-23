@@ -88,9 +88,8 @@ govulncheck:
 proto-generate: toolcheck
 	# remove all generated directories under protocol/go
 	find protocol/go -mindepth 1 -maxdepth 1 -type d ! -name internal -exec rm -rf {} +
-	rm -rf docs/grpc docs/openapi service/internal/connectv2
+	rm -rf docs/grpc docs/openapi
 	buf generate service
-	buf generate service --template buf.gen.connectv2.yaml
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml
 

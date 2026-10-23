@@ -8,7 +8,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
-	"github.com/opentdf/platform/service/internal/connectv2/policy/obligations/obligationsconnectv2"
+	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"

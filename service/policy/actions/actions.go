@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
-	"github.com/opentdf/platform/service/internal/connectv2/policy/actions/actionsconnectv2"
+	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"

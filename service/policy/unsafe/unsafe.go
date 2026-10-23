@@ -8,7 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"github.com/opentdf/platform/service/internal/connectv2/policy/unsafe/unsafeconnectv2"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"

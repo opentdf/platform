@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	keyMgmtProto "github.com/opentdf/platform/protocol/go/policy/keymanagement"
-	keyMgmtConnect "github.com/opentdf/platform/service/internal/connectv2/policy/keymanagement/keymanagementconnectv2"
+	keyMgmtConnect "github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"

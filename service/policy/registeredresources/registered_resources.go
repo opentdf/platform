@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
-	"github.com/opentdf/platform/service/internal/connectv2/policy/registeredresources/registeredresourcesconnectv2"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"

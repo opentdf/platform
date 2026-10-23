@@ -3,6 +3,7 @@
 package zipstream
 
 import (
+	"archive/zip"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -90,9 +91,15 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	// 4 GiB, so keying off the offset by itself misses it.
 	var entryCount uint64
 	var centralDirectoryStart uint64
+	var centralDirectorySize uint64
+	// The central directory ends before the record that follows it: the
+	// ZIP64 end of central directory record when there is one, otherwise the
+	// end of central directory record.
+	trailerName, trailerStart := boundEOCD, uint64(eocdStart)
 	if !eocdNeedsZip64(endOfCDRecord) { //nolint:nestif // pkzip is complicated
 		entryCount = uint64(endOfCDRecord.NumberOfCDRecordEntries)
 		centralDirectoryStart = uint64(endOfCDRecord.CentralDirectoryOffset)
+		centralDirectorySize = uint64(endOfCDRecord.SizeOfCentralDirectory)
 	} else {
 		// read zip64 end of central directory locator
 		_, err := readSeeker.Seek(-(endOfCDRecordSize + zip64EndOfCDRecordLocatorSize), io.SeekEnd)
@@ -135,6 +142,8 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		entryCount = zip64EndOfCDRecord.NumberOfCDRecordEntries
 		centralDirectoryStart = zip64EndOfCDRecord.StartingDiskCentralDirectoryOffset
+		centralDirectorySize = zip64EndOfCDRecord.CentralDirectorySize
+		trailerName, trailerStart = boundZip64EOCD, uint64(zip64EndOfCD)
 	}
 
 	// Local file headers and file data precede the central directory, so its
@@ -144,13 +153,24 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		return reader, err
 	}
 
+	// The declared size is read off disk as well. The central directory has to
+	// fit before the record that follows it, and after the walk below its
+	// records have to fill it exactly.
+	trailer, err := archive.narrow(trailerName, trailerStart)
+	if err != nil {
+		return reader, err
+	}
+	if _, err := trailer.offset("central directory", centralDirectoryStart, centralDirectorySize); err != nil {
+		return reader, err
+	}
+
 	// Each central directory record is at least cdFileHeaderSize bytes, so a
 	// larger count is impossible. This is an early-out, not what makes the loop
 	// safe; the per-entry offset and signature checks already stop the walk.
-	if maxEntries := archive.limit / cdFileHeaderSize; entryCount > maxEntries {
+	if maxEntries := centralDirectorySize / cdFileHeaderSize; entryCount > maxEntries {
 		return reader, fmt.Errorf(
-			"%w: %d central directory entries declared, but a %d byte archive has room for at most %d",
-			errZipFormat, entryCount, archive.limit, maxEntries)
+			"%w: %d central directory entries declared, but a %d byte central directory has room for at most %d",
+			errZipFormat, entryCount, centralDirectorySize, maxEntries)
 	}
 
 	nextCD := uint64(0)
@@ -186,7 +206,7 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		// readSeeker is now positioned at this entry's extra-field area.
-		offset, bytesToRead, err := resolveEntryLocation(readSeeker, cdFileHeader)
+		offset, bytesToRead, uncompressedSize, err := resolveEntryLocation(readSeeker, cdFileHeader)
 		if err != nil {
 			return reader, err
 		}
@@ -228,7 +248,12 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 			return reader, err
 		}
 
-		reader.fileEntries[string(fileNameByteArray)] = zipFileEntry{
+		name := string(fileNameByteArray)
+		if err := checkEntrySizes(name, cdFileHeader.CompressionMethod, bytesToRead, uncompressedSize); err != nil {
+			return reader, err
+		}
+
+		reader.fileEntries[name] = zipFileEntry{
 			index:  dataStart,
 			length: dataEnd - dataStart,
 		}
@@ -244,6 +269,15 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 			uint64(cdFileHeader.FileCommentLength)
 	}
 
+	// Each record was read where the previous one ended, so nextCD is the
+	// length the records actually span. Anything else leaves bytes in the
+	// declared central directory that no record accounts for, or records that
+	// run past it.
+	if nextCD != centralDirectorySize {
+		return reader, fmt.Errorf("%w: central directory declares %d bytes, but its %d records span %d",
+			errZipFormat, centralDirectorySize, entryCount, nextCD)
+	}
+
 	return reader, nil
 }
 
@@ -251,7 +285,23 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 const (
 	boundArchiveEnd = "end of the archive"
 	boundCDStart    = "start of the central directory"
+	boundEOCD       = "end of central directory record"
+	boundZip64EOCD  = "zip64 end of central directory record"
 )
+
+// checkEntrySizes rejects a STORED entry whose compressed and uncompressed
+// sizes differ. Stored data is its own content, so the two can only disagree
+// in a malformed archive, and a reader that bounds the entry by the other
+// field would read a different entry. The sizes are the central directory's,
+// after ZIP64 resolution. The local header's are not consulted: streaming
+// writers, this package's included, zero them and append a data descriptor.
+func checkEntrySizes(name string, method uint16, compressedSize, uncompressedSize uint64) error {
+	if method == zip.Store && compressedSize != uncompressedSize {
+		return fmt.Errorf("%w: stored entry %q declares %d compressed bytes but %d uncompressed",
+			errZipFormat, name, compressedSize, uncompressedSize)
+	}
+	return nil
+}
 
 // bound is a named limit inside the archive. Construct one only via
 // archiveBound or narrow; offset also rejects a limit above MaxInt64, so a
@@ -300,9 +350,10 @@ func (b bound) offset(field string, base, delta uint64) (int64, error) {
 	return int64(base + delta), nil
 }
 
-// resolveEntryLocation returns the local header offset and the number of
-// stored bytes for a central directory entry, reading the ZIP64 extended
-// information extra field when the 32-bit fields carry the sentinel.
+// resolveEntryLocation returns the local header offset, the number of stored
+// (compressed) bytes, and the declared uncompressed size for a central
+// directory entry, reading the ZIP64 extended information extra field when the
+// 32-bit fields carry the sentinel.
 //
 // That field is a property of the entry, not of the archive: APPNOTE permits
 // one on an entry whose EOCD is not ZIP64, so the lookup is driven off this
@@ -310,25 +361,29 @@ func (b bound) offset(field string, base, delta uint64) (int64, error) {
 // must be positioned at the start of the entry's extra-field area, and the
 // area is only consumed when the entry declares one -- reading
 // unconditionally would eat the bytes of whatever record follows.
-func resolveEntryLocation(readSeeker io.Reader, cdFileHeader CDFileHeader) (uint64, uint64, error) {
+func resolveEntryLocation(readSeeker io.Reader, cdFileHeader CDFileHeader) (uint64, uint64, uint64, error) {
 	offset := uint64(cdFileHeader.LocalHeaderOffset)
 	bytesToRead := uint64(cdFileHeader.CompressedSize)
+	uncompressedSize := uint64(cdFileHeader.UncompressedSize)
 
 	if cdFileHeader.ExtraFieldLength == 0 || !cdHeaderHasZip64Sentinel(cdFileHeader) {
-		return offset, bytesToRead, nil
+		return offset, bytesToRead, uncompressedSize, nil
 	}
 
 	extraFields := make([]byte, cdFileHeader.ExtraFieldLength)
 	if _, err := io.ReadFull(readSeeker, extraFields); err != nil {
-		return 0, 0, fmt.Errorf("io.ReadFull failed: %w", err)
+		return 0, 0, 0, fmt.Errorf("io.ReadFull failed: %w", err)
 	}
 
 	zip64, err := parseZip64ExtraField(extraFields, cdFileHeader)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	if zip64.found {
+		if cdFileHeader.UncompressedSize == zip64MagicVal {
+			uncompressedSize = zip64.uncompressedSize
+		}
 		if cdFileHeader.CompressedSize == zip64MagicVal {
 			bytesToRead = zip64.compressedSize
 		}
@@ -337,7 +392,7 @@ func resolveEntryLocation(readSeeker io.Reader, cdFileHeader CDFileHeader) (uint
 		}
 	}
 
-	return offset, bytesToRead, nil
+	return offset, bytesToRead, uncompressedSize, nil
 }
 
 // eocdNeedsZip64 reports whether the end of central directory record defers
@@ -362,6 +417,7 @@ func cdHeaderHasZip64Sentinel(h CDFileHeader) bool {
 // central directory counterpart carried the sentinel are populated.
 type zip64ExtraValues struct {
 	found             bool
+	uncompressedSize  uint64
 	compressedSize    uint64
 	localHeaderOffset uint64
 }
@@ -375,9 +431,8 @@ type zip64ExtraValues struct {
 // Within the field the values appear in APPNOTE 4.5.3 order: original
 // (uncompressed) size, compressed size, then local header offset. Each is
 // present only when the matching central directory field holds the
-// 0xFFFFFFFF sentinel, so the uncompressed size has to be stepped over even
-// though nothing here consumes it -- reading the compressed size first
-// would hand back the wrong value for any entry where the two differ.
+// 0xFFFFFFFF sentinel. Reading the compressed size first would hand back the
+// wrong value for any entry where the two differ.
 func parseZip64ExtraField(extraFields []byte, h CDFileHeader) (zip64ExtraValues, error) {
 	var values zip64ExtraValues
 
@@ -410,9 +465,11 @@ func parseZip64ExtraField(extraFields []byte, h CDFileHeader) (zip64ExtraValues,
 		}
 
 		if h.UncompressedSize == zip64MagicVal {
-			if _, ok := read(); !ok {
+			v, ok := read()
+			if !ok {
 				return values, errZipFormat
 			}
+			values.uncompressedSize = v
 		}
 		if h.CompressedSize == zip64MagicVal {
 			v, ok := read()

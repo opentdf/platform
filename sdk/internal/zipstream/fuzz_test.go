@@ -179,6 +179,22 @@ func FuzzReader(f *testing.F) {
 	// it back in bounds.
 	f.Add(overrunningCentralDirectorySeed(f))
 
+	// DSPX-5354: a STORED entry whose compressed and uncompressed sizes
+	// differ, once with 32-bit sizes and once with the sizes in a ZIP64 extra
+	// field, where they have to be resolved before they can be compared.
+	for _, zip64 := range []bool{false, true} {
+		f.Add(buildRawZip(f, []rawZipEntry{
+			{name: "0.payload", data: []byte("payload bytes"), uncompressedSize: 14, zip64: zip64},
+			{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+		}, zip64))
+	}
+
+	// DSPX-5354: valid records under an EOCD central directory size of
+	// 0xfffffff0, far past the end of the archive.
+	f.Add(withCentralDirectorySize(f, buildRawZip(f, []rawZipEntry{
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false), 0xfffffff0))
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))
 		if err != nil {
@@ -234,4 +250,14 @@ func overrunningCentralDirectorySeed(f *testing.F) []byte {
 	}
 
 	return buildRawZip(f, []rawZipEntry{payload, manifest}, false)
+}
+
+// withCentralDirectorySize rewrites the central directory size declared in a
+// 32-bit end of central directory record.
+func withCentralDirectorySize(tb testing.TB, data []byte, size uint32) []byte {
+	tb.Helper()
+
+	eocd := eocdOf(tb, data)
+	eocd.SizeOfCentralDirectory = size
+	return overwrite(tb, data, len(data)-endOfCDRecordSize, eocd)
 }

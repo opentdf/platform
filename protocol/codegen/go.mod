@@ -1,3 +1,3 @@
 module github.com/opentdf/platform/protocol/codegen
 
-go 1.26.0
+go 1.26.10

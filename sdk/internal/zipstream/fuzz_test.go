@@ -3,6 +3,7 @@
 package zipstream
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/base64"
 	"math"
@@ -194,6 +195,18 @@ func FuzzReader(f *testing.F) {
 	f.Add(withCentralDirectorySize(f, buildRawZip(f, []rawZipEntry{
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false), 0xfffffff0))
+
+	// DSPX-5354: entries that are not STORED -- a payload that really is
+	// deflated, and method 8 declared over bytes that are not.
+	plain := bytes.Repeat([]byte{0}, 64)
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{name: "0.payload", data: deflate(f, plain), method: zip.Deflate, uncompressedSize: uint64(len(plain))},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{name: "0.payload", data: plain, method: zip.Deflate},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))

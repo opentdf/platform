@@ -1,7 +1,9 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"encoding/binary"
 	"hash/crc32"
 	"testing"
@@ -118,6 +120,15 @@ func zipProfileCases(t *testing.T) []zipProfileCase {
 	mismatched := payload
 	mismatched.uncompressedSize = uint32(len(payload.data)) + 1
 
+	deflated := payload
+	deflated.data = deflate(t, payload.data)
+	deflated.method = zip.Deflate
+	deflated.crcOf = payload.data
+	deflated.uncompressedSize = uint32(len(payload.data))
+
+	mislabeled := payload
+	mislabeled.method = zip.Deflate
+
 	return []zipProfileCase{
 		{
 			name:    "0.payload compressed size differs from uncompressed size",
@@ -129,7 +140,37 @@ func zipProfileCases(t *testing.T) []zipProfileCase {
 			archive: buildProbeZip(t, []probeEntry{manifest}, 0xfffffff0),
 			check:   errorContains("runs past the end of central directory record"),
 		},
+		{
+			name:    "0.payload deflated",
+			archive: buildProbeZip(t, []probeEntry{deflated, manifest}, 0),
+			check:   errorIs(zip.ErrAlgorithm),
+		},
+		{
+			name:    "deflate declared on stored 0.payload bytes",
+			archive: buildProbeZip(t, []probeEntry{mislabeled, manifest}, 0),
+			check:   errorIs(zip.ErrAlgorithm),
+		},
 	}
+}
+
+func errorIs(target error) func(*testing.T, error) {
+	return func(t *testing.T, err error) {
+		t.Helper()
+		require.ErrorIs(t, err, target)
+	}
+}
+
+// deflate compresses data as a raw DEFLATE stream, the form ZIP method 8 holds.
+func deflate(t *testing.T, data []byte) []byte {
+	t.Helper()
+
+	buf := &bytes.Buffer{}
+	w, err := flate.NewWriter(buf, flate.BestCompression)
+	require.NoError(t, err)
+	_, err = w.Write(data)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	return buf.Bytes()
 }
 
 // TestZipProfileControls pins that buildProbeZip's honest archives open, so

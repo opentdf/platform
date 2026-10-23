@@ -55,6 +55,9 @@ type Reader struct {
 }
 
 // NewReader Create archive reader instance.
+//
+// Every entry must be STORED. An entry using any other compression method
+// fails NewReader with an error wrapping zip.ErrAlgorithm.
 func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	reader := Reader{}
 	reader.fileEntries = make(map[string]zipFileEntry)
@@ -249,6 +252,9 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		name := string(fileNameByteArray)
+		if err := checkEntryMethod(name, cdFileHeader.CompressionMethod); err != nil {
+			return reader, err
+		}
 		if err := checkEntrySizes(name, cdFileHeader.CompressionMethod, bytesToRead, uncompressedSize); err != nil {
 			return reader, err
 		}
@@ -288,6 +294,18 @@ const (
 	boundEOCD       = "end of central directory record"
 	boundZip64EOCD  = "zip64 end of central directory record"
 )
+
+// checkEntryMethod rejects an entry that is not STORED. The TDF container
+// profile stores both entries uncompressed, and this reader returns an entry's
+// bytes verbatim: a compressed entry would be handed back as its own content,
+// so a deflated payload would be taken for ciphertext.
+func checkEntryMethod(name string, method uint16) error {
+	if method != zip.Store {
+		return fmt.Errorf("%w: entry %q uses compression method %d; TDF entries must be stored (method 0)",
+			zip.ErrAlgorithm, name, method)
+	}
+	return nil
+}
 
 // checkEntrySizes rejects a STORED entry whose compressed and uncompressed
 // sizes differ. Stored data is its own content, so the two can only disagree

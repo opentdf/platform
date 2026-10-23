@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.40.0](https://github.com/opentdf/platform/compare/otdfctl/v0.39.0...otdfctl/v0.40.0) (2026-10-23)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+* **deps:** bump github.com/opentdf/platform/lib/flattening from 0.1.3 to 0.2.0 in /otdfctl ([#4196](https://github.com/opentdf/platform/issues/4196)) ([99bcbce](https://github.com/opentdf/platform/commit/99bcbce15701931f80212971f6287f72b95e76a8))
+* **policy:** require namespaces for dynamic value mappings ([#4236](https://github.com/opentdf/platform/issues/4236)) ([d83dbef](https://github.com/opentdf/platform/commit/d83dbeff073436539d80d8a252c2c2267490f58c))
+
 ## [0.39.0](https://github.com/opentdf/platform/compare/otdfctl/v0.38.0...otdfctl/v0.39.0) (2026-10-19)
 
 

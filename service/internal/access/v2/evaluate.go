@@ -157,6 +157,63 @@ func getResourceDecision(
 	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues, namespacedPolicy)
 }
 
+// getResourceDecisionForRequestedAction evaluates a normal concrete action, or
+// for the reserved any-action name, determines whether one concrete action can
+// satisfy the complete resource. Evaluating concrete candidates separately is
+// necessary for ALL_OF resources: independently matching any action on each
+// value could incorrectly combine different actions into a permit.
+func getResourceDecisionForRequestedAction(
+	ctx context.Context,
+	l *logger.Logger,
+	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resource *authz.Resource,
+	namespacedPolicy bool,
+) (*ResourceDecision, error) {
+	if !isAnyAction(action) {
+		return getResourceDecision(ctx, l, accessibleAttributeValues, accessibleRegisteredResourceValues, entitlements, action, resource, namespacedPolicy)
+	}
+
+	// Action names are the public decision identity when an ID is not supplied.
+	// Sort and deduplicate them so wildcard decisions and their audit details are
+	// deterministic even though entitlements are stored in maps.
+	actionNamesByFoldedName := make(map[string]string)
+	for _, entitledActions := range entitlements {
+		for _, entitledAction := range entitledActions {
+			name := entitledAction.GetName()
+			if name == "" {
+				continue
+			}
+			folded := strings.ToLower(name)
+			if existing, ok := actionNamesByFoldedName[folded]; !ok || name < existing {
+				actionNamesByFoldedName[folded] = name
+			}
+		}
+	}
+	actionNames := make([]string, 0, len(actionNamesByFoldedName))
+	for _, name := range actionNamesByFoldedName {
+		actionNames = append(actionNames, name)
+	}
+	slices.Sort(actionNames)
+
+	for _, name := range actionNames {
+		candidate := &policy.Action{Name: name, Namespace: action.GetNamespace()}
+		decision, err := getResourceDecision(ctx, l, accessibleAttributeValues, accessibleRegisteredResourceValues, entitlements, candidate, resource, namespacedPolicy)
+		if err != nil {
+			return nil, err
+		}
+		if decision.Entitled {
+			return decision, nil
+		}
+	}
+
+	// Produce the ordinary denial shape, including failures attributed to the
+	// requested wildcard, when no concrete candidate permits the resource.
+	return getResourceDecision(ctx, l, accessibleAttributeValues, accessibleRegisteredResourceValues, entitlements, action, resource, namespacedPolicy)
+}
+
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
 // and lowercases the FQNs to ensure case-insensitive matching
 func evaluateResourceAttributeValues(
@@ -429,11 +486,11 @@ func hierarchyRule(
 				if isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, entitledAction, namespacedPolicy) {
 					l.DebugContext(ctx, "hierarchy rule satisfied",
 						slog.Group("entitled_by_value",
-							slog.String("FQN", entitlementFQN),
+							slog.String("fqn", entitlementFQN),
 							slog.Int("index", idx),
 						),
 						slog.Group("resource_highest_hierarchy_value",
-							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
+							slog.String("fqn", attrValues[lowestValueFQNIndex].GetFqn()),
 							slog.Int("index", lowestValueFQNIndex),
 						),
 					)

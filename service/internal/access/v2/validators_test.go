@@ -53,6 +53,20 @@ func TestValidateGetDecision(t *testing.T) {
 			wantErr:   nil,
 		},
 		{
+			name:      "Any action",
+			entityRep: validEntityRepresentation,
+			action:    &policy.Action{Name: AnyActionName},
+			resources: validResources,
+			wantErr:   nil,
+		},
+		{
+			name:      "Any action with ID",
+			entityRep: validEntityRepresentation,
+			action:    &policy.Action{Id: "action-id", Name: AnyActionName},
+			resources: validResources,
+			wantErr:   ErrInvalidAction,
+		},
+		{
 			name:      "Nil entity representation",
 			entityRep: nil,
 			action:    validAction,

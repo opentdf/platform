@@ -104,7 +104,10 @@ message ResourceDecision {
 message GetDecisionRequest {
   // an entity must be identified for authorization decisioning
   EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
-  // name on action is required
+  // Name on action is required. Use the reserved name `*` to check whether one
+  // concrete action permits the complete resource. This entitlement-only mode
+  // does not evaluate action-specific obligations and must not include action.id.
+  // An optional action.namespace ID or FQN limits which concrete actions are considered.
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
 
@@ -120,6 +123,11 @@ message GetDecisionRequest {
     id: "get_decision_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
+  };
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.any_action_id_forbidden"
+    message: "action.id must not be provided when action.name is *"
+    expression: "this.action.name != '*' || this.action.id == ''"
   };
 }
 message GetDecisionResponse {
@@ -138,7 +146,10 @@ message GetDecisionResponse {
 message GetDecisionMultiResourceRequest {
   // an entity must be identified for authorization decisioning
   EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
-  // name on action is required
+  // Name on action is required. Use the reserved name `*` to check whether one
+  // concrete action permits each complete resource. This entitlement-only mode
+  // does not evaluate action-specific obligations and must not include action.id.
+  // An optional action.namespace ID or FQN limits which concrete actions are considered.
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [(buf.validate.field).repeated = {
     min_items: 1
@@ -156,6 +167,11 @@ message GetDecisionMultiResourceRequest {
     id: "get_decision_multi_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
+  };
+  option (buf.validate.message).cel = {
+    id: "get_decision_multi_request.any_action_id_forbidden"
+    message: "action.id must not be provided when action.name is *"
+    expression: "this.action.name != '*' || this.action.id == ''"
   };
 }
 message GetDecisionMultiResourceResponse {

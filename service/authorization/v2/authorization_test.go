@@ -472,6 +472,19 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 		request *authzV2.GetDecisionRequest
 	}{
 		{
+			name: "entity: token, action: any, resource: attribute values",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_Token{Token: &entity.Token{
+					EphemeralId: "123",
+					Jwt:         "sample-jwt-token",
+				}}},
+				Action: &policy.Action{Name: "*"},
+				Resource: &authzV2.Resource{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{
+					Fqns: []string{sampleResourceFQN},
+				}}},
+			},
+		},
+		{
 			name: "entity: token, action: create, resource: attribute values",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
@@ -693,6 +706,20 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 		request                 *authzV2.GetDecisionRequest
 		expectedValidationError string
 	}{
+		{
+			name: "any action with ID",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_Token{Token: &entity.Token{
+					EphemeralId: "123",
+					Jwt:         "sample-jwt-token",
+				}}},
+				Action: &policy.Action{Id: "action-id", Name: "*"},
+				Resource: &authzV2.Resource{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{
+					Fqns: []string{sampleResourceFQN},
+				}}},
+			},
+			expectedValidationError: "any_action_id_forbidden",
+		},
 		{
 			name: "missing entity identifier",
 			request: &authzV2.GetDecisionRequest{
@@ -999,6 +1026,19 @@ func Test_GetDecisionMultiResourceRequest_ProtoValidationAllowsManyObligations(t
 	}
 	err := v.Validate(req)
 	require.NoError(t, err, "validation should allow more than 50 obligations so the service can enforce configured limits")
+}
+
+func Test_GetDecisionMultiResourceRequest_AnyActionValidation(t *testing.T) {
+	v := getValidator()
+	req, ok := proto.Clone(goodMultiResourceRequests[0].request).(*authzV2.GetDecisionMultiResourceRequest)
+	require.True(t, ok)
+	req.Action = &policy.Action{Name: "*"}
+	require.NoError(t, v.Validate(req))
+
+	req.Action.Id = "action-id"
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "any_action_id_forbidden")
 }
 
 func Test_GetDecisionMultiResourceRequest_ProtoValidationAllowsManyResources(t *testing.T) {

@@ -1,0 +1,38 @@
+# TEMPORARY: remove after the author confirms the read-only preview.
+name: TEMPORARY driver-review read-only preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  preview:
+    if: github.event.pull_request.number == 4137
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      # Ordinary PR merge checkout only, never privileged or persisted credentials.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test temporary read-only boundary
+        run: node --test .github/actions/driver-review-preview.test.cjs
+      - name: Preview actual helper with live PR and comments (NO WRITES)
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { preview } = require('./.github/actions/driver-review-preview.cjs');
+            const report = await preview({ github, context });
+            const json = JSON.stringify(report, null, 2);
+            console.log(json);
+            const escaped = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            await core.summary
+              .addHeading('DRY RUN — NO REAL STATUS OR COMMENT WRITTEN')
+              .addRaw('<p>Only driver-review workflow/helper behavior is previewed. Comments do not trigger this workflow: post /reviewed yourself, then re-run the latest-head job.</p>')
+              .addRaw(`<pre>${escaped}</pre>`)
+              .write();

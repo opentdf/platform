@@ -203,6 +203,30 @@ func (sm *SegmentMetadata) SetOrder(order []int) error {
 	return nil
 }
 
+// removeFromOrder drops an index from an explicit order, keeping the remaining
+// indices in their existing positions. Order is consulted by IsComplete,
+// GetMissingSegments and FinalizeCRC, all of which treat a named-but-absent
+// index as an incomplete archive, so an index removed from Segments has to
+// leave the order with it. Removing the last remaining index clears Order
+// rather than leaving an empty non-nil slice, so the "no explicit order" checks
+// elsewhere keep working by length.
+func (sm *SegmentMetadata) removeFromOrder(index int) {
+	if len(sm.Order) == 0 {
+		return
+	}
+	remaining := sm.Order[:0]
+	for _, idx := range sm.Order {
+		if idx != index {
+			remaining = append(remaining, idx)
+		}
+	}
+	if len(remaining) == 0 {
+		sm.Order = nil
+		return
+	}
+	sm.Order = remaining
+}
+
 // CentralDirectory manages the ZIP central directory structure
 type CentralDirectory struct {
 	Entries []FileEntry // File entries in the archive

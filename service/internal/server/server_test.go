@@ -8,12 +8,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
+	"github.com/creasty/defaults"
 	"github.com/go-chi/cors"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -730,6 +735,27 @@ func noopInterceptor() connect.Interceptor {
 	})
 }
 
+func noopServerInterceptor() connectv2.ServerInterceptor {
+	return func(next connectv2.ServerFunc) connectv2.ServerFunc { return next }
+}
+
+// testConnectRPCInterceptors builds newConnectRPC inputs with no-op v2 forms
+// for each v1 interceptor.
+func testConnectRPCInterceptors(authInts, extraInts []connect.Interceptor) connectRPCInterceptors {
+	ints := connectRPCInterceptors{
+		auth:        authInts,
+		requestIP:   noopInterceptor(),
+		requestIPV2: noopServerInterceptor(),
+	}
+	for range authInts {
+		ints.authV2 = append(ints.authV2, noopServerInterceptor())
+	}
+	for i, extra := range extraInts {
+		ints.extras = append(ints.extras, ExtraInterceptor{Name: strconv.Itoa(i), V1: extra, V2: noopServerInterceptor()})
+	}
+	return ints
+}
+
 func TestNewConnectRPC(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 
@@ -792,7 +818,7 @@ func TestNewConnectRPC(t *testing.T) {
 				Auth: auth.Config{Enabled: tt.authEnabled},
 			}
 
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, noopInterceptor(), testLogger)
+			result, err := newConnectRPC(cfg, testConnectRPCInterceptors(tt.authInts, tt.extraInts), testLogger)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, result)
@@ -854,7 +880,7 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			callOrder = nil
 
 			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, noopInterceptor(), testLogger)
+			result, err := newConnectRPC(cfg, testConnectRPCInterceptors(tt.authInts, tt.extras), testLogger)
 			require.NoError(t, err)
 
 			// Register a minimal unary handler to exercise the interceptor chain
@@ -877,6 +903,134 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			require.Equal(t, http.StatusOK, rr.Code, "handler should succeed")
 			assert.Equal(t, tt.wantOrder, callOrder,
 				"extra interceptors must run after built-in interceptors")
+		})
+	}
+}
+
+func TestRouteConnectRPCRequests_StoresHTTPMethod(t *testing.T) {
+	var (
+		gotMethod string
+		gotOK     bool
+	)
+	record := func(status int) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotMethod, gotOK = auth.HTTPMethodFromContext(r.Context())
+			w.WriteHeader(status)
+		})
+	}
+	router := routeConnectRPCRequests(record(http.StatusNoContent), record(http.StatusNotFound))
+
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		t.Run(method, func(t *testing.T) {
+			gotMethod, gotOK = "", false
+			rr := httptest.NewRecorder()
+
+			router.ServeHTTP(rr, httptest.NewRequest(method, "/test.v1.TestService/Method", nil))
+
+			assert.Equal(t, http.StatusNoContent, rr.Code, "RPC paths route to the Connect handler")
+			assert.True(t, gotOK)
+			assert.Equal(t, method, gotMethod)
+		})
+	}
+
+	t.Run("other HTTP routes", func(t *testing.T) {
+		gotMethod, gotOK = "", false
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+		assert.False(t, gotOK, "only Connect requests carry the stored method")
+	})
+}
+
+func TestExternalConnectRequestGates(t *testing.T) {
+	enabled := Config{Auth: auth.Config{Enabled: true}}
+
+	assert.Empty(t, externalConnectRequestGates(Config{}, &auth.Authentication{}), "auth disabled")
+	assert.Empty(t, externalConnectRequestGates(enabled, nil), "no authenticator")
+	assert.Len(t, externalConnectRequestGates(enabled, &auth.Authentication{}), 1)
+}
+
+// newTestOIDCServer serves OIDC discovery and an empty key set, enough for
+// auth.NewAuthenticator to start.
+func newTestOIDCServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/.well-known/openid-configuration":
+			_, _ = fmt.Fprintf(w, `{"issuer":%q,"jwks_uri":%q}`, srv.URL, srv.URL+"/jwks")
+		case "/jwks":
+			_, _ = w.Write([]byte(`{"keys":[]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestNewOpenTDFServer_AuthenticatesConnectRequestsBeforeDecoding(t *testing.T) {
+	const procedure = "/test.v1.TestService/Method"
+	undecodable := []byte{0xff, 0xff, 0xff, 0xff}
+
+	tests := []struct {
+		name        string
+		authEnabled bool
+		wantStatus  int
+	}{
+		{"auth enabled rejects before decoding", true, http.StatusUnauthorized},
+		{"auth disabled decodes the body", false, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{WellKnownConfigRegister: func(string, any) error { return nil }}
+			if tt.authEnabled {
+				policyCfg := authz.PolicyConfig{}
+				require.NoError(t, defaults.Set(&policyCfg))
+				cfg.Auth = auth.Config{
+					Enabled: true,
+					AuthNConfig: auth.AuthNConfig{
+						Issuer:   newTestOIDCServer(t).URL,
+						Audience: "test",
+						Policy:   policyCfg,
+					},
+				}
+			}
+			srv, err := NewOpenTDFServer(cfg, logger.CreateTestLogger(), nil)
+			require.NoError(t, err)
+
+			var called atomic.Bool
+			newHandler := func(opts []connect.HandlerOption) http.Handler {
+				return connect.NewUnaryHandler(
+					procedure,
+					func(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+						called.Store(true)
+						return connect.NewResponse(&emptypb.Empty{}), nil
+					},
+					opts...,
+				)
+			}
+			srv.ConnectRPC.Mux.Handle("/test.v1.TestService/", newHandler(srv.ConnectRPC.Interceptors))
+
+			req := httptest.NewRequest(http.MethodPost, procedure, bytes.NewReader(undecodable))
+			req.Header.Set("Content-Type", "application/proto")
+			rr := httptest.NewRecorder()
+			srv.HTTPServer.Handler.ServeHTTP(rr, req)
+
+			assert.Equal(t, tt.wantStatus, rr.Code)
+			assert.False(t, called.Load())
+
+			// The in-process server keeps decoding before its IPC interceptor.
+			ipcReq := httptest.NewRequest(http.MethodPost, procedure, bytes.NewReader(undecodable))
+			ipcReq.Header.Set("Content-Type", "application/proto")
+			ipcRR := httptest.NewRecorder()
+			newHandler(srv.ConnectRPCInProcess.Interceptors).ServeHTTP(ipcRR, ipcReq)
+
+			assert.Equal(t, http.StatusBadRequest, ipcRR.Code)
+			assert.False(t, called.Load())
 		})
 	}
 }

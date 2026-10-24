@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -47,17 +47,17 @@ func RegisterClaimsERS(cfg config.ServiceConfig, logger *logger.Logger) (EntityR
 	return claimsSVC, nil
 }
 
-func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
-	resp, err := EntityResolution(ctx, req.Msg, s.logger, s.allowDirectEntitlements)
-	return connect.NewResponse(&resp), err
+func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
+	resp, err := EntityResolution(ctx, req, s.logger, s.allowDirectEntitlements)
+	return &resp, err
 }
 
-func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+	resp, err := CreateEntityChainsFromTokens(ctx, req, s.logger)
+	return &resp, err
 }
 
 func CreateEntityChainsFromTokens(
@@ -93,21 +93,21 @@ func EntityResolution(_ context.Context,
 			if claims != nil {
 				err := claims.UnmarshalTo(entityStruct)
 				if err != nil {
-					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err).Error())
 				}
 			}
 			if allowDirectEntitlements {
 				var err error
 				directEntitlements, err = parseDirectEntitlementsFromClaims(entityStruct)
 				if err != nil {
-					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, err)
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 				}
 			}
 		default:
 			retrievedStruct, err := entityToStructPb(ident)
 			if err != nil {
 				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
+				return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err).Error())
 			}
 			entityStruct = retrievedStruct
 		}

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -329,7 +329,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
 	entityNotFound := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "random@sample.org"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }
 
@@ -660,7 +660,7 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
 	entityNotFound := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }
 
@@ -681,11 +681,9 @@ func Test_GetConnectorTokenRefresh(t *testing.T) {
 		Tracer:    noop.NewTracerProvider().Tracer("test"),
 	}
 
-	req := &connect.Request[entityresolution.ResolveEntitiesRequest]{
-		Msg: &entityresolution.ResolveEntitiesRequest{
-			Entities: []*authorization.Entity{
-				{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}},
-			},
+	req := &entityresolution.ResolveEntitiesRequest{
+		Entities: []*authorization.Entity{
+			{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}},
 		},
 	}
 	// First call to trigger initial token acquisition

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/stretchr/testify/assert"
@@ -177,7 +177,7 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: testCase.Input.Tokens,
 	}
-	resp, err := implementation.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := implementation.CreateEntityChainsFromTokens(ctx, req)
 
 	if testCase.Expected.ShouldError {
 		require.Error(t, err, "Expected error but got none")
@@ -192,7 +192,7 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 	require.NoError(t, err, "Unexpected error: %v", err)
 	require.NotNil(t, resp, "Response should not be nil")
 
-	return resp.Msg.GetEntityChains(), nil
+	return resp.GetEntityChains(), nil
 }
 
 // handleConnectionErrors checks for connection-related errors and skips tests if service unavailable

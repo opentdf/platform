@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -79,6 +80,17 @@ func TestReadLimitHandlerOptions_GzipStopsDecompressionAtLimit(t *testing.T) {
 	// stream; the bounded decompressor ends the drain at the limit instead.
 	assert.Contains(t, rr.Body.String(), "unable to determine message size")
 	assert.NotContains(t, rr.Body.String(), strconv.Itoa(expandedSize))
+}
+
+// TestReadLimitHandlerOptions_GzipAtMaxIntLimit covers the largest configurable
+// limit, where adding the byte Connect reads past the limit would overflow.
+func TestReadLimitHandlerOptions_GzipAtMaxIntLimit(t *testing.T) {
+	handler, calls := newReadLimitTestHandler(readLimitHandlerOptions(math.MaxInt)...)
+
+	rr := serveConnectUnary(t, handler, paddedProtoMessage(t, 1024), true)
+
+	assert.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	assert.Equal(t, int32(1), calls.Load())
 }
 
 func TestReadLimitHandlerOptions_GRPCProtocol(t *testing.T) {
@@ -214,11 +226,17 @@ func newReadLimitTestHandler(opts ...connect.HandlerOption) (http.Handler, *atom
 // serveConnectUnary sends body as a binary Connect unary request.
 func serveConnectUnary(t *testing.T, handler http.Handler, body []byte, compress bool) *httptest.ResponseRecorder {
 	t.Helper()
+	return serveConnectUnaryTo(t, handler, readLimitTestProcedure, body, compress)
+}
+
+// serveConnectUnaryTo sends body as a binary Connect unary request to procedure.
+func serveConnectUnaryTo(t *testing.T, handler http.Handler, procedure string, body []byte, compress bool) *httptest.ResponseRecorder {
+	t.Helper()
 
 	if compress {
 		body = gzipCompress(t, body)
 	}
-	req := httptest.NewRequest(http.MethodPost, readLimitTestProcedure, bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, procedure, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/proto")
 	req.Header.Set("Connect-Protocol-Version", "1")
 	if compress {

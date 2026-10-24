@@ -18,6 +18,7 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // InterceptorAuthzSuite tests the authorization flow through the interceptor
@@ -470,7 +471,7 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
 	})
 
 	resolverCalled := false
-	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ proto.Message) (internalauthz.ResolverContext, error) {
 		resolverCalled = true
 		resolverCtx := internalauthz.NewResolverContext()
 		res := resolverCtx.NewResource()
@@ -490,7 +491,7 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
 		procedure: "/policy.attributes.AttributesService/UpdateAttribute",
 	}
 
-	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req, ActionWrite)
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req.Spec().Procedure, requestMessage(req), ActionWrite)
 
 	s.Require().NoError(result.err)
 	s.Require().NotNil(result.decision)
@@ -510,7 +511,7 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_ResolverErrorFailsClosed() {
 		},
 	})
 
-	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ proto.Message) (internalauthz.ResolverContext, error) {
 		return internalauthz.NewResolverContext(), errors.New("resolver db unavailable")
 	})
 
@@ -525,7 +526,7 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_ResolverErrorFailsClosed() {
 		procedure: "/policy.attributes.AttributesService/UpdateAttribute",
 	}
 
-	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req, ActionWrite)
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req.Spec().Procedure, requestMessage(req), ActionWrite)
 
 	s.Require().Error(result.err)
 	s.Equal(connect.CodePermissionDenied, result.errCode)
@@ -664,7 +665,7 @@ func (s *InterceptorAuthzSuite) TestStreaming_DimensionScopedPolicyFailsClosed()
 	resolverCalled := false
 	s.Require().NoError(registry.ScopedForService(&attributes.AttributesService_ServiceDesc).Register(
 		"GetAttribute",
-		func(context.Context, connect.AnyRequest) (internalauthz.ResolverContext, error) {
+		func(context.Context, proto.Message) (internalauthz.ResolverContext, error) {
 			resolverCalled = true
 			return internalauthz.NewResolverContext(), nil
 		},
@@ -778,6 +779,12 @@ type authzGetKeyTestRequest struct {
 
 func (r *authzGetKeyTestRequest) Spec() connect.Spec {
 	return connect.Spec{Procedure: r.procedure}
+}
+
+// requestMessage returns the decoded request message that resolvers receive.
+func requestMessage(req connect.AnyRequest) proto.Message {
+	msg, _ := req.Any().(proto.Message)
+	return msg
 }
 
 // Action Mapping Tests (used by getAction in the interceptor)
@@ -923,7 +930,7 @@ func (s *InterceptorAuthzSuite) TestAuthorize_AuthorizerReturnsError_ReturnsCode
 		procedure: "/policy.attributes.AttributesService/GetAttribute",
 	}
 
-	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req.Spec().Procedure, requestMessage(req), ActionRead)
 
 	s.Require().Error(result.err)
 	s.Equal(connect.CodeInternal, result.errCode)
@@ -940,7 +947,7 @@ func (s *InterceptorAuthzSuite) TestAuthorize_NilAuthorizer_ReturnsCodeInternal(
 		procedure: "/policy.attributes.AttributesService/GetAttribute",
 	}
 
-	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req.Spec().Procedure, requestMessage(req), ActionRead)
 
 	s.Require().Error(result.err)
 	s.Equal(connect.CodeInternal, result.errCode)
@@ -970,7 +977,7 @@ func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure
 			{MethodName: "GetKey"},
 		},
 	})
-	scopedRegistry.MustRegister("OtherMethod", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+	scopedRegistry.MustRegister("OtherMethod", func(_ context.Context, _ proto.Message) (internalauthz.ResolverContext, error) {
 		ctx := internalauthz.NewResolverContext()
 		return ctx, nil
 	})
@@ -981,13 +988,12 @@ func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure
 		authzResolverRegistry: registry,
 	}
 
-	req := &authzTestRequest{
-		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
-		procedure: "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
-	}
-
 	// resolveResourceContext for an unregistered method should return nil, errNoResourceContext
-	resourceCtx, err := authn.resolveResourceContext(s.T().Context(), s.logger, req)
+	resourceCtx, err := authn.resolveResourceContext(
+		s.T().Context(), s.logger,
+		"/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		&attributes.GetAttributeRequest{},
+	)
 
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, errNoResourceContext)

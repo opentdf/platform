@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -170,11 +170,9 @@ func Test_GetConnectorTokenRefresh(t *testing.T) {
 	}
 
 	// First call to trigger initial token acquisition
-	req := &connect.Request[entityresolutionV2.ResolveEntitiesRequest]{
-		Msg: &entityresolutionV2.ResolveEntitiesRequest{
-			Entities: []*entity.Entity{
-				{EphemeralId: "1234", EntityType: &entity.Entity_ClientId{ClientId: "opentdf"}},
-			},
+	req := &entityresolutionV2.ResolveEntitiesRequest{
+		Entities: []*entity.Entity{
+			{EphemeralId: "1234", EntityType: &entity.Entity_ClientId{ClientId: "opentdf"}},
 		},
 	}
 	_, err := service.ResolveEntities(t.Context(), req)
@@ -367,7 +365,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
 	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "random@sample.org"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }
 
@@ -689,6 +687,6 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
 	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }

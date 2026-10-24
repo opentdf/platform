@@ -6,11 +6,11 @@ import (
 	"sync"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // Test suite for Resolver functionality
@@ -43,7 +43,7 @@ func (s *ResolverSuite) TestRegistry_Get_NotFound() {
 func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 	registry := NewResolverRegistry()
 	called := false
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		called = true
 		return NewResolverContext(), nil
 	}
@@ -63,7 +63,7 @@ func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 func (s *ResolverSuite) TestRegistry_ZeroValueRegisterAndGet() {
 	var registry ResolverRegistry
 	called := false
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		called = true
 		return NewResolverContext(), nil
 	}
@@ -94,7 +94,7 @@ func (s *ResolverSuite) TestRegistry_ThreadSafety() {
 			defer wg.Done()
 			for j := range numOperations {
 				methodPath := fmt.Sprintf("/test.Service/Method%d_%d", id, j)
-				if err := registry.register(methodPath, func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+				if err := registry.register(methodPath, func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 					return NewResolverContext(), nil
 				}); err != nil {
 					s.T().Errorf("register resolver: %v", err)
@@ -155,7 +155,7 @@ func (s *ResolverSuite) TestScoped_Register_ValidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		return NewResolverContext(), nil
 	}
 
@@ -180,11 +180,11 @@ func (s *ResolverSuite) TestScoped_Register_DuplicateMethodReturnsErrorAndKeepsO
 	scoped := registry.ScopedForService(serviceDesc)
 
 	firstResolverCalled := false
-	firstResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	firstResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		firstResolverCalled = true
 		return NewResolverContext(), nil
 	}
-	secondResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	secondResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		s.Fail("duplicate registration overwrote original resolver")
 		return NewResolverContext(), nil
 	}
@@ -212,7 +212,7 @@ func (s *ResolverSuite) TestScoped_Register_InvalidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		return NewResolverContext(), nil
 	}
 
@@ -236,7 +236,7 @@ func (s *ResolverSuite) TestScoped_MustRegister_ValidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		return NewResolverContext(), nil
 	}
 
@@ -261,7 +261,7 @@ func (s *ResolverSuite) TestScoped_MustRegister_DuplicateMethodPanics() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		return NewResolverContext(), nil
 	}
 
@@ -289,7 +289,7 @@ func (s *ResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	testResolver := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		return NewResolverContext(), nil
 	}
 
@@ -317,13 +317,13 @@ func (s *ResolverSuite) TestScoped_MultipleServicesIsolation() {
 	scopedA := registry.ScopedForService(serviceA)
 	scopedB := registry.ScopedForService(serviceB)
 
-	resolverA := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	resolverA := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("service", "A")
 		return ctx, nil
 	}
-	resolverB := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	resolverB := func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("service", "B")
@@ -460,7 +460,7 @@ func (s *ResolverSuite) TestFullWorkflow_ServiceRegistration() {
 	scopedRegistry := registry.ScopedForService(serviceDesc)
 
 	// Service registers resolvers during initialization (like in RegisterFunc)
-	scopedRegistry.MustRegister("CreateAttribute", func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	scopedRegistry.MustRegister("CreateAttribute", func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("namespace", "test-ns")
@@ -468,7 +468,7 @@ func (s *ResolverSuite) TestFullWorkflow_ServiceRegistration() {
 		return ctx, nil
 	})
 
-	scopedRegistry.MustRegister("GetAttribute", func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+	scopedRegistry.MustRegister("GetAttribute", func(_ context.Context, _ proto.Message) (ResolverContext, error) {
 		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("namespace", "test-ns")

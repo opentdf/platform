@@ -98,6 +98,10 @@ type Config struct {
 	// zip field before the archive switches to ZIP64. Zero means
 	// maxNonZip64Value (2 GiB - 1). See WithMaxNonZip64Value.
 	MaxNonZip64Value uint64
+	// UnprefixedManifestName writes the manifest under the zip entry name
+	// manifest.json instead of the legacy 0.manifest.json. Readers that
+	// predate manifest.json support can't open the result.
+	UnprefixedManifestName bool
 }
 
 // Option is a functional option for configuring writers
@@ -159,6 +163,16 @@ func WithMaxNonZip64Value(maxValue uint64) Option {
 		if maxValue > 0 && maxValue <= maxNonZip64Value {
 			c.MaxNonZip64Value = maxValue
 		}
+	}
+}
+
+// WithUnprefixedManifestName stores the manifest under the zip entry name
+// manifest.json, the name the TDF spec defines, instead of the legacy
+// 0.manifest.json written by default. Readers that predate manifest.json
+// support, such as Go SDK releases before v0.35.0, can't open the result.
+func WithUnprefixedManifestName() Option {
+	return func(c *Config) {
+		c.UnprefixedManifestName = true
 	}
 }
 

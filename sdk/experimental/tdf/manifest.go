@@ -48,7 +48,8 @@ type (
 	EncryptionInformation = sdk.EncryptionInformation
 
 	// Manifest is the TDF manifest, written to the archive as
-	// 0.manifest.json.
+	// 0.manifest.json by default, or manifest.json when
+	// [WithUnprefixedManifestName] is set.
 	//
 	// See [sdk.Manifest].
 	Manifest = sdk.Manifest

@@ -301,7 +301,7 @@ func (p *JustInTimePDP) GetDecision(
 }
 
 // GetEntitlements retrieves the entitlements for the provided entity identifier.
-// It resolves the entity identifier to get the entity representations and then calls the embedded PDP to get the entitlements.
+// It includes subject-mapping grants and direct entitlements when enabled.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,
@@ -312,7 +312,7 @@ func (p *JustInTimePDP) GetEntitlements(
 	var (
 		entityRepresentations   []*entityresolutionV2.EntityRepresentation
 		err                     error
-		skipEnvironmentEntities = false
+		skipEnvironmentEntities = true
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
@@ -320,7 +320,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, nil)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
@@ -333,7 +333,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		return innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, nil)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -346,8 +346,9 @@ func (p *JustInTimePDP) GetEntitlements(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
 	}
-	// If no subject mappings matched, return empty entitlements
-	if len(matchedSubjectMappings) == 0 {
+	// Direct entitlements do not require subject mappings. Preserve the no-match shortcut only when
+	// no resolved subject entity carries direct entitlements that this PDP is configured to honor.
+	if len(matchedSubjectMappings) == 0 && !p.hasDirectEntitlements(entityRepresentations) {
 		p.logger.DebugContext(ctx, "matched subject mappings is empty")
 		return nil, nil
 	}
@@ -363,6 +364,18 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil
+}
+
+func (p *JustInTimePDP) hasDirectEntitlements(entityRepresentations []*entityresolutionV2.EntityRepresentation) bool {
+	if !p.allowDirectEntitlements {
+		return false
+	}
+	for _, entityRepresentation := range entityRepresentations {
+		if len(entityRepresentation.GetDirectEntitlements()) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // buildFullPolicyPDP preserves full-policy evaluation for cached decisions and entitlement

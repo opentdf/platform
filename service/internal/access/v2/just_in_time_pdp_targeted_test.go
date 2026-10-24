@@ -133,8 +133,59 @@ func TestJITPDP_GetEntitlements_NoMatchReturnsNil(t *testing.T) {
 	ents, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), false)
 	require.NoError(t, err)
 	assert.Nil(t, ents)
-	// No match means no entitleable fetch is performed.
 	assert.Empty(t, attrFake.requests)
+}
+
+func TestJITPDP_GetEntitlements_DirectEntitlementsWithoutSubjectMappings(t *testing.T) {
+	definitionFQN := "https://example.com/attr/project"
+	firstFQN := definitionFQN + "/value/first"
+	secondFQN := definitionFQN + "/value/second"
+	directEntitlements := []*entityresolutionV2.DirectEntitlement{
+		{AttributeValueFqn: firstFQN, Actions: []string{"read", "delete"}},
+		{AttributeValueFqn: secondFQN, Actions: []string{"view"}},
+	}
+	directClaims := []interface{}{
+		map[string]interface{}{"attribute_value_fqn": firstFQN, "actions": []interface{}{"read", "delete"}},
+		map[string]interface{}{"attribute_value_fqn": secondFQN, "actions": []interface{}{"view"}},
+	}
+	claims := claimsAnyForTest(t, map[string]interface{}{"direct_entitlements": directClaims})
+	ers := &recordingERSV2Client{
+		createResponse: &entityresolutionV2.CreateEntityChainsFromTokensResponse{EntityChains: []*entity.EntityChain{{Entities: []*entity.Entity{
+			{EphemeralId: "subject", Category: entity.Entity_CATEGORY_SUBJECT, EntityType: &entity.Entity_Claims{Claims: claims}},
+			{EphemeralId: "environment", Category: entity.Entity_CATEGORY_ENVIRONMENT, EntityType: &entity.Entity_Claims{Claims: claims}},
+		}}}},
+		resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: []*entityresolutionV2.EntityRepresentation{{
+			OriginalId: "subject", DirectEntitlements: directEntitlements,
+		}}},
+	}
+	fullPDP, err := NewPolicyDecisionPoint(
+		t.Context(), logger.CreateTestLogger(),
+		[]*policy.Attribute{{
+			Fqn: definitionFQN, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{{Fqn: firstFQN}, {Fqn: secondFQN}},
+		}}, []*policy.SubjectMapping{}, nil, true, false,
+	)
+	require.NoError(t, err)
+	p := &JustInTimePDP{
+		logger:                  logger.CreateTestLogger(),
+		sdk:                     &otdfSDK.SDK{EntityResolutionV2: ers, SubjectMapping: &fakeSubjectMappingClient{resp: &subjectmapping.MatchSubjectMappingsResponse{}}},
+		fullPolicyPDP:           fullPDP,
+		allowDirectEntitlements: true,
+	}
+	identifier := &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_Token{Token: &entity.Token{EphemeralId: "token", Jwt: "jwt"}}}
+
+	entitlements, err := p.GetEntitlements(t.Context(), identifier, false)
+	require.NoError(t, err)
+	require.Len(t, entitlements, 1)
+	actionsByFQN := entitlements[0].GetActionsPerAttributeValueFqn()
+	require.Contains(t, actionsByFQN, firstFQN)
+	assert.ElementsMatch(t, []string{"read", "delete"}, actionNames(actionsByFQN[firstFQN].GetActions()))
+	require.Contains(t, actionsByFQN, secondFQN)
+	assert.Equal(t, []string{"view"}, actionNames(actionsByFQN[secondFQN].GetActions()))
+
+	assert.Empty(t, ers.createReq.GetResources())
+	require.Len(t, ers.resolveReq.GetEntities(), 1)
+	assert.Equal(t, "subject", ers.resolveReq.GetEntities()[0].GetEphemeralId())
 }
 
 func newTestObligationsPDP(t *testing.T) *obligations.ObligationsPolicyDecisionPoint {

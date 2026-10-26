@@ -146,12 +146,12 @@ The platform mounts each service on the external and in-process servers with the
 External services accept request messages up to `server.grpc.maxRecvMsgSize`. A connect-go v2 service sets other limits with `ConnectRPCMountOptions`:
 
 ```go
-ConnectRPCRegisterFunc: myservicev1connect.RegisterMyServiceHandler,
-ConnectRPCMountOptions: func(myservicev1connect.MyServiceHandler) []connecthttp.Option {
+ConnectRPCRegisterFunc: myservicev1connectv2.RegisterMyServiceHandler,
+ConnectRPCMountOptions: func(myservicev1connectv2.MyServiceHandler) []connecthttp.Option {
     return append(
         serviceregistry.ConnectReadLimitOptions(1<<20),
         serviceregistry.ConnectProcedureReadLimits(map[string]int{
-            myservicev1connect.MyServiceUploadProcedure: 64 << 20,
+            myservicev1connectv2.MyServiceUploadProcedure: 64 << 20,
         }),
     )
 },

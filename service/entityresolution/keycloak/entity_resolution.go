@@ -90,7 +90,8 @@ func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, r
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err).Error())
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
 	resp, err := EntityResolution(ctx, req, s.idpConfig, connector, s.logger)
 
@@ -104,7 +105,8 @@ func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.C
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err).Error())
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
 	resp, err := CreateEntityChainFromJwt(ctx, req, s.idpConfig, connector, s.logger)
 

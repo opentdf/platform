@@ -87,7 +87,8 @@ func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *en
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err).Error())
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
 	resp, err := EntityResolution(ctx, req, s.idpConfig, connector, s.logger, s.svcCache)
 	return &resp, err
@@ -100,7 +101,8 @@ func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Con
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err).Error())
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
 	resp, err := CreateEntityChainsFromTokens(ctx, req, s.idpConfig, connector, s.logger, s.svcCache)
 	return &resp, err

@@ -65,7 +65,8 @@ func (ers *ERS) ResolveEntities(
 				var claimsStruct structpb.Struct
 				err := claims.UnmarshalTo(&claimsStruct)
 				if err != nil {
-					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err).Error())
+					cause := fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err)
+					return nil, connect.NewError(connect.CodeInvalidArgument, cause.Error()).WithCause(cause)
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()

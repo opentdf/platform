@@ -32,7 +32,8 @@ func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, err
 
 	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", slog.String("algorithm", algorithm))
-		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")).Error())
+		cause := errors.Join(ErrConfig, errors.New("no default keys configured"))
+		return "", connect.NewError(connect.CodeNotFound, cause.Error()).WithCause(cause)
 	}
 
 	for _, k := range p.Keyring {
@@ -41,7 +42,8 @@ func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, err
 		}
 	}
 	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", slog.String("algorithm", algorithm))
-	return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default key for algorithm")).Error())
+	cause := errors.Join(ErrConfig, errors.New("no default key for algorithm"))
+	return "", connect.NewError(connect.CodeNotFound, cause.Error()).WithCause(cause)
 }
 
 func (p *Provider) LegacyPublicKey(ctx context.Context, req *kaspb.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
@@ -65,7 +67,8 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *kaspb.LegacyPublicK
 	keyDetails, err := p.KeyDelegator.FindKeyByID(ctx, keyID)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "checkpoint SecurityProvider.FindKeyByID failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")).Error())
+		cause := errors.Join(ErrConfig, errors.New("configuration error"))
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
 
 	switch algorithm {
@@ -74,7 +77,8 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *kaspb.LegacyPublicK
 		pem, err = keyDetails.ExportCertificate(ctx)
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "keyDetails.ExportCertificate failed", slog.Any("error", err))
-			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")).Error())
+			cause := errors.Join(ErrConfig, errors.New("configuration error"))
+			return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 		}
 	case security.AlgorithmRSA2048, security.AlgorithmHPQTXWing,
 		security.AlgorithmHPQTSecp256r1MLKEM768, security.AlgorithmHPQTSecp384r1MLKEM1024,
@@ -83,10 +87,12 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *kaspb.LegacyPublicK
 		pem, err = keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "keyDetails.ExportPublicKey failed", slog.Any("error", err))
-			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")).Error())
+			cause := errors.Join(ErrConfig, errors.New("configuration error"))
+			return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 		}
 	default:
-		return nil, connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("invalid algorithm")).Error())
+		cause := errors.Join(ErrConfig, errors.New("invalid algorithm"))
+		return nil, connect.NewError(connect.CodeNotFound, cause.Error()).WithCause(cause)
 	}
 
 	return &wrapperspb.StringValue{Value: pem}, nil

@@ -159,19 +159,23 @@ const (
 // Do not change the generic "bad request" message without updating the SDK
 // constant, and do not use "bad request" in descriptive error messages.
 func err400(s string) error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)).Error())
+	cause := errors.Join(ErrUser, status.Error(codes.InvalidArgument, s))
+	return connect.NewError(connect.CodeInvalidArgument, cause.Error()).WithCause(cause)
 }
 
 func err401(s string) error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.Join(ErrUser, status.Error(codes.Unauthenticated, s)).Error())
+	cause := errors.Join(ErrUser, status.Error(codes.Unauthenticated, s))
+	return connect.NewError(connect.CodeUnauthenticated, cause.Error()).WithCause(cause)
 }
 
 func err403(s string) error {
-	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)).Error())
+	cause := errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
+	return connect.NewError(connect.CodePermissionDenied, cause.Error()).WithCause(cause)
 }
 
 func err500(s string) error {
-	return connect.NewError(connect.CodeInternal, errors.Join(ErrInternal, status.Error(codes.Internal, s)).Error())
+	cause := errors.Join(ErrInternal, status.Error(codes.Internal, s))
+	return connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 }
 
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {

@@ -61,7 +61,7 @@ func (a Authentication) ConnectAuthZInterceptorV2() connectv2.ServerInterceptor 
 
 			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, spec.Procedure)
 			if err != nil {
-				return connectv2.NewError(connectv2.CodeInvalidArgument, err.Error())
+				return connectv2.NewError(connectv2.CodeInvalidArgument, err.Error()).WithCause(err)
 			}
 
 			log := a.logger

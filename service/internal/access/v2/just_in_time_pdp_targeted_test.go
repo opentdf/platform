@@ -16,9 +16,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/sdkconnect"
+	ent "github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -108,11 +110,135 @@ func TestJITPDP_GetEntitlements_TargetedFetch(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ents, 1)
 	assert.Equal(t, "e1", ents[0].GetEphemeralId())
+	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, ents[0].GetEntityCategory())
 	require.Contains(t, ents[0].GetActionsPerAttributeValueFqn(), valueFQN)
 
 	// The entitleable fetch was targeted to only the matched value FQN.
 	require.Len(t, attrFake.requests, 1)
 	assert.Equal(t, []string{valueFQN}, attrFake.requests[0].GetFqns())
+}
+
+func TestJITPDP_GetEntitlements_EntityCategories(t *testing.T) {
+	const (
+		definitionFQN = "https://example.com/attr/classification"
+		valueFQN      = definitionFQN + "/value/confidential"
+	)
+	for _, tc := range []struct {
+		name         string
+		identifier   string
+		inlineClaims bool
+	}{
+		{name: "explicit chain", identifier: "chain"},
+		{name: "body token with resolved claims", identifier: "token", inlineClaims: true},
+		{name: "request token with resolved claims", identifier: "request", inlineClaims: true},
+		{name: "body token with hydration", identifier: "token"},
+		{name: "request token with hydration", identifier: "request"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			chain := &entity.EntityChain{Entities: []*entity.Entity{
+				{EphemeralId: "subject", Category: entity.Entity_CATEGORY_SUBJECT},
+				{EphemeralId: "environment", Category: entity.Entity_CATEGORY_ENVIRONMENT},
+				{Category: entity.Entity_CATEGORY_SUBJECT},
+				{EphemeralId: "uncategorized"},
+			}}
+			entityIDs := []string{"subject", "environment", ent.EntityIDPrefix + "2", "uncategorized"}
+			clientIDs := []string{"service-account", "application", "service-account", "unentitled"}
+			var representations []*entityresolutionV2.EntityRepresentation
+			for idx, chained := range chain.GetEntities() {
+				// Client IDs can identify subjects as well as environment entities.
+				chained.EntityType = &entity.Entity_ClientId{ClientId: clientIDs[idx]}
+				if tc.inlineClaims {
+					chained.EntityType = &entity.Entity_Claims{Claims: claimsAnyForTest(t, map[string]interface{}{"clientId": clientIDs[idx]})}
+				}
+				rep := entityRepWithClientID(clientIDs[idx])
+				rep.OriginalId = entityIDs[idx]
+				// ERS response order is deliberately different from chain order.
+				representations = append([]*entityresolutionV2.EntityRepresentation{rep}, representations...)
+			}
+			ers := &recordingERSV2Client{
+				createResponse:  &entityresolutionV2.CreateEntityChainsFromTokensResponse{EntityChains: []*entity.EntityChain{chain}},
+				resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: representations},
+			}
+			subjectMappings := []*policy.SubjectMapping{
+				{Id: "subject-read", AttributeValue: &policy.Value{Fqn: valueFQN}, SubjectConditionSet: clientIDInConditionSet("service-account"), Actions: []*policy.Action{{Name: "read"}}},
+				{Id: "environment-update", AttributeValue: &policy.Value{Fqn: valueFQN}, SubjectConditionSet: clientIDInConditionSet("application"), Actions: []*policy.Action{{Name: "update"}}},
+			}
+			attrFake := &fakeAttributesClient{
+				respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+					return &attrs.GetEntitleableAttributesByFqnsResponse{
+						Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+							definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
+						},
+						FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+							valueFQN: {
+								DefinitionFqn: definitionFQN,
+								Value:         &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN, ValueId: "conf-id", SubjectMappings: subjectMappings},
+							},
+						},
+					}, nil
+				},
+			}
+			p := &JustInTimePDP{
+				logger: logger.CreateTestLogger(),
+				sdk: &otdfSDK.SDK{
+					Attributes: attrFake, EntityResolutionV2: ers,
+					SubjectMapping: &fakeSubjectMappingClient{resp: &subjectmapping.MatchSubjectMappingsResponse{SubjectMappings: subjectMappings}},
+				},
+			}
+			ctx := t.Context()
+			var identifier *authzV2.EntityIdentifier
+			switch tc.identifier {
+			case "chain":
+				identifier = &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_EntityChain{EntityChain: chain}}
+			case "token":
+				identifier = &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_Token{Token: &entity.Token{Jwt: "test-token"}}}
+			case "request":
+				identifier = &authzV2.EntityIdentifier{Identifier: &authzV2.EntityIdentifier_WithRequestToken{WithRequestToken: wrapperspb.Bool(true)}}
+				ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, nil, "test-token")
+			}
+			entitlements, err := p.GetEntitlements(ctx, identifier, false)
+			require.NoError(t, err)
+			require.Len(t, entitlements, 4)
+			byID := make(map[string]*authzV2.EntityEntitlements, len(entitlements))
+			for _, entitlement := range entitlements {
+				byID[entitlement.GetEphemeralId()] = entitlement
+			}
+			for _, expected := range []struct {
+				id       string
+				category entity.Entity_Category
+				action   string
+			}{
+				{id: "subject", category: entity.Entity_CATEGORY_SUBJECT, action: "read"},
+				{id: "environment", category: entity.Entity_CATEGORY_ENVIRONMENT, action: "update"},
+				{id: ent.EntityIDPrefix + "2", category: entity.Entity_CATEGORY_SUBJECT, action: "read"},
+				{id: "uncategorized", category: entity.Entity_CATEGORY_UNSPECIFIED},
+			} {
+				require.Contains(t, byID, expected.id)
+				actual := byID[expected.id]
+				assert.Equal(t, expected.category, actual.GetEntityCategory(), expected.id)
+				if expected.action == "" {
+					assert.Empty(t, actual.GetActionsPerAttributeValueFqn(), expected.id)
+					continue
+				}
+				require.Len(t, actual.GetActionsPerAttributeValueFqn(), 1)
+				require.Contains(t, actual.GetActionsPerAttributeValueFqn(), valueFQN)
+				actions := actual.GetActionsPerAttributeValueFqn()[valueFQN].GetActions()
+				require.Len(t, actions, 1)
+				assert.Equal(t, expected.action, actions[0].GetName(), expected.id)
+			}
+			if tc.inlineClaims {
+				assert.Zero(t, ers.resolveCalls)
+			} else {
+				assert.Equal(t, 1, ers.resolveCalls)
+			}
+			if tc.identifier == "chain" {
+				assert.Zero(t, ers.createCalls)
+			} else {
+				assert.Equal(t, 1, ers.createCalls)
+				assert.Equal(t, "test-token", ers.createReq.GetTokens()[0].GetJwt())
+			}
+		})
+	}
 }
 
 func TestJITPDP_GetEntitlements_NoMatchReturnsNil(t *testing.T) {

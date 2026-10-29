@@ -20,6 +20,7 @@ func TestLinuxFilesystemProfileAuthenticationLifecycle(t *testing.T) {
 	keyring.MockInit()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	linux, err := platform.NewPlatform(config.ServicePublisher, config.AppName, "linux")
 	require.NoError(t, err)
 	dir := linux.UserAppConfigDirectory()

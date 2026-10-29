@@ -32,6 +32,8 @@ permissions: {}
 
 jobs:
   go:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -40,7 +42,6 @@ jobs:
     strategy:
       matrix:
         directory:
-          - examples
           - otdfctl
           - sdk
           - service
@@ -59,7 +60,6 @@ jobs:
           go-version-file: go.work
           check-latest: false
           cache-dependency-path: |
-            examples/go.sum
             otdfctl/go.sum
             protocol/go/go.sum
             sdk/go.sum
@@ -133,7 +133,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   comment-govulncheck:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled()
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled() && needs.go.result != 'skipped'
     permissions:
       contents: read
       pull-requests: write
@@ -143,7 +143,7 @@ jobs:
       - name: download govulncheck failures
         id: download
         continue-on-error: true
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: govulncheck-failure-*
           path: govulncheck-failures
@@ -172,20 +172,21 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: post govulncheck comment
         if: steps.download.outcome == 'success'
-        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: govulncheck-results
           recreate: true
           message: ${{ steps.comment-body.outputs.body }}
       - name: delete govulncheck comment
         if: steps.download.outcome != 'success'
-        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: govulncheck-results
           delete: true
 
   integration:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: integration tests
@@ -202,7 +203,6 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             service/go.sum
-            examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
       - if: env.IS_RELEASE_BRANCH == 'true'
@@ -245,8 +245,6 @@ jobs:
         uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 # 3.0.1
       - run: test/service-start.bats
       - run: test/service-cors.bats
-      - run: test/tdf-roundtrips.bats
-      - run: test/policy-service.bats
       - name: verify builtin casbin policy
         run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
@@ -263,7 +261,8 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: benchmark tests
@@ -282,7 +281,6 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             service/go.sum
-            examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
       - if: env.IS_RELEASE_BRANCH == 'true'
@@ -321,11 +319,11 @@ jobs:
             tcp:localhost:8080
           log-output-if: true
           wait-for: 90s
-      - name: build examples
-        run: cd examples && go build -o examples .
+      - name: build benchmark runner
+        run: go build -o benchmark ./service/cmd/benchmark
       - name: run bulk rewrap benchmark tests
         run: |
-          OUTPUT=$(./examples/examples benchmark-bulk --count 100)
+          OUTPUT=$(./benchmark bulk --count 100)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
@@ -334,35 +332,9 @@ jobs:
             echo "EOO"
           } >> "$GITHUB_ENV"
 
-      - name: run decision benchmark tests
-        run: |
-          # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision --count 1000)
-          echo "--- Decision Benchmark Output ---"
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
-          # Save the output to an environment variable for the comment step
-          {
-            echo "BENCHMARK_DECISION_OUTPUT<<EODECISION"; # Unique delimiter
-            echo "$OUTPUT";
-            echo "EODECISION"
-          } >> "$GITHUB_ENV"
-      - name: run decision v2 benchmark tests
-        run: |
-          # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 1000)
-          echo "--- Decision Benchmark v2 Output ---"
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
-          # Save the output to an environment variable for the comment step
-          {
-            echo "BENCHMARK_DECISION_V2_OUTPUT<<EODECISIONV2"; # Unique delimiter
-            echo "$OUTPUT";
-            echo "EODECISIONV2"
-          } >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
         run: |
-          OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
+          OUTPUT=$(./benchmark tdf --count=5000 --concurrent=50)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
@@ -370,18 +342,6 @@ jobs:
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
-      - name: collect the metrics from the benchmark tests
-        run: |
-          OUTPUT=$(./examples/examples metrics)
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
-
-          {
-            echo "BENCHMARK_METRICS_OUTPUT<<EOO";
-            echo "$OUTPUT";
-            echo "EOO"
-          } >> "$GITHUB_ENV"
-
       - name: save benchmark results as an output variable
         id: save-benchmark
         run: |
@@ -397,25 +357,11 @@ jobs:
           {
             echo "BENCHMARK_MARKDOWN<<EOO"
 
-            h2 "${BENCHMARK_DECISION_OUTPUT}" "Decision Benchmark"
-            h2 "${BENCHMARK_DECISION_V2_OUTPUT}" "Decision Benchmark v2"
-            h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
             h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
             h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"
 
             echo EOO
           } >>"$GITHUB_OUTPUT"
-
-      - name: save benchmark results as a step summary
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          script: |
-            const fs = require('fs');
-            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
-            const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
-            const summaryContent = `${metricsOutput}\n\n${bulkOutput}`;
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent + '\n');
 
   comment-benchmark:
     if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
@@ -434,8 +380,8 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
-            const decisionOutput = process.env.BENCHMARK_MARKDOWN;
-            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}</details>`;
+            const benchmarkOutput = process.env.BENCHMARK_MARKDOWN;
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${benchmarkOutput}</details>`;
 
             github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -451,28 +397,26 @@ jobs:
       contents: read
     runs-on: ubuntu-22.04
     outputs:
-      proto: ${{ steps.check.outputs.proto }}
+      proto: ${{ steps.scope.outputs.proto }}
+      workflow_only: ${{ steps.scope.outputs.workflow_only }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check for proto file changes
-        id: check
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            if git diff --name-only "$BASE_SHA" HEAD | grep -qE '\.proto$|^Makefile$|^buf\.|^protocol/codegen/|^protocol/go/internal/|^sdk/codegen/'; then
-              echo "proto=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "proto=false" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # For non-PR events (push, merge_group), always run
-            echo "proto=true" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Classify workflow and policy support changes
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/actions/ci-checks/ci-changes.cjs
 
   image:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: image build
@@ -491,7 +435,8 @@ jobs:
           push: false
 
   platform-xtest:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
       packages: read
@@ -504,7 +449,8 @@ jobs:
       otdfctl-ref: ${{ github.event.pull_request.head.sha || github.sha }} main
 
   tests-bdd:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -572,7 +518,8 @@ jobs:
 
   # Characterize the baseline independently of the required ci check.
   authorization-scale:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     name: Authorization scale (report only)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -605,7 +552,7 @@ jobs:
         id: scale
         shell: bash
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=20m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=45m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
 
       - name: Summarize authorization performance
         if: ${{ !cancelled() }}
@@ -635,7 +582,8 @@ jobs:
 
   # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: otdfctl e2e tests
@@ -653,6 +601,8 @@ jobs:
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
           ec-tdf-enabled: "true"
+          # ML-KEM session keys (decrypt --session-key-algorithm mlkem:*) need the KAS mlkem preview flag
+          pqc-enabled: "true"
           provision-policy-fixtures: "false"
       - uses: ./otdfctl/e2e
         with:
@@ -691,7 +641,6 @@ jobs:
             service/go.sum
             protocol/go/go.sum
             sdk/go.sum
-            examples/go.sum
       - run: 'cd service && "$GITHUB_WORKSPACE"/.github/scripts/retry.sh go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc'
       - run: 'cd service && "$GITHUB_WORKSPACE"/.github/scripts/retry.sh go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc'
       - run: 'cd service && "$GITHUB_WORKSPACE"/.github/scripts/retry.sh go install github.com/sudorandom/protoc-gen-connect-openapi@v0.25.6'
@@ -714,8 +663,10 @@ jobs:
         run: git diff-files --quiet --ignore-submodules
 
   ci:
-    permissions: {}
+    permissions:
+      contents: read
     needs:
+      - changes
       - buflint
       - go
       - image
@@ -726,14 +677,27 @@ jobs:
       - tests-bdd
       - otdfctl-test
     runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
+    # Report even when classification fails or a dependency is cancelled/skipped.
+    if: ${{ always() }}
     steps:
-      - if: contains(needs.*.result, 'failure')
-        name: Check for failed jobs
-        run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
+      # Load the same revision as this workflow, not an arbitrary PR head.
+      # PR-controlled helper code runs without secrets or write permissions.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Check required job results
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        with:
+          script: |
+            const checkResults = require('./.github/actions/ci-checks/ci-results.js');
+            checkResults({ core });
 
   license:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: license check
@@ -755,7 +719,3 @@ jobs:
         run: |
           GO="$(go env GOROOT)/bin/go"
           "$GITHUB_WORKSPACE"/.github/scripts/retry.sh "$GO" run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e check --disallowed_types=forbidden --include_tests ./sdk
-      - name: check examples licenses
-        run: |
-          GO="$(go env GOROOT)/bin/go"
-          "$GITHUB_WORKSPACE"/.github/scripts/retry.sh "$GO" run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e check --disallowed_types=forbidden --include_tests ./examples

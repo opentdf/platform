@@ -1,7 +1,6 @@
 package wellknownconfiguration
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -88,7 +87,7 @@ func (s *WellKnownConfigurationSuite) TestUpdateConfigurationBaseKey() {
 
 func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_EmptyConfig() {
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+	resp, err := s.service.GetWellKnownConfiguration(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -122,7 +121,7 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigur
 
 	// Get the configuration
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+	resp, err := s.service.GetWellKnownConfiguration(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -165,7 +164,7 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_KeyManagersS
 	s.Require().NoError(err)
 
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+	resp, err := s.service.GetWellKnownConfiguration(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -207,7 +206,7 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_InvalidData(
 	s.Require().NoError(err)
 
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+	resp, err := s.service.GetWellKnownConfiguration(s.T().Context(), req)
 
 	s.Require().Error(err)
 	s.Nil(resp)
@@ -244,7 +243,7 @@ func (s *WellKnownConfigurationSuite) TestConcurrentAccess() {
 
 	// Verify all configurations were registered
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+	resp, err := s.service.GetWellKnownConfiguration(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)

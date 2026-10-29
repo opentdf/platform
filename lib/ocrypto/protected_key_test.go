@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"context"
 	"crypto/rand"
 	"testing"
 
@@ -159,7 +158,7 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 	require.NoError(t, err)
 
 	policy := []byte("test-policy-data")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate the expected HMAC
 	expectedHMAC := protectedKey.generateHMACDigest(policy)
@@ -176,7 +175,7 @@ func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
 
 	policy := []byte("test-policy-data")
 	wrongBinding := []byte("wrong-binding-data")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err = protectedKey.VerifyBinding(ctx, policy, wrongBinding)
 	require.Error(t, err)
@@ -188,7 +187,7 @@ func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate HMAC for first policy
 	policy1 := []byte("policy-data-1")

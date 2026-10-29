@@ -59,6 +59,9 @@ message EntityEntitlements {
   // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
   map<string, ActionsList> actions_per_attribute_value_fqn = 2;
+  // category of the entity these entitlements belong to; unspecified for registered resources
+  // and entities whose category was not provided
+  entity.Entity.Category entity_category = 3;
 }
 
 // Either a set of attribute values (such as those on a TDF) or a registered resource value

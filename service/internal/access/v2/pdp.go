@@ -16,6 +16,7 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/proto"
 )
 
 // Decision represents the overall access decision for an entity.
@@ -140,7 +141,7 @@ func NewPolicyDecisionPoint(
 		// Not every value may have a subject mapping and be entitleable, but a lookup must still be possible
 		for _, value := range attr.GetValues() {
 			mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-				Value:     value,
+				Value:     proto.CloneOf(value),
 				Attribute: attr,
 			}
 			allEntitleableAttributesByValueFQN[value.GetFqn()] = mapped
@@ -181,6 +182,7 @@ func NewPolicyDecisionPoint(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get attribute definition: %w", err)
 		}
+		mappedValue = proto.CloneOf(mappedValue)
 		mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
 		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Value:     mappedValue,

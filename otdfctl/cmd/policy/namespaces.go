@@ -18,11 +18,11 @@ func getAttributeNamespace(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.Flags.GetRequiredID("id")
+	identifier := getIDFQNLookupIdentifier(c)
 
-	ns, err := h.GetNamespace(cmd.Context(), id)
+	ns, err := h.GetNamespace(cmd.Context(), identifier)
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed to get namespace (%s)", id)
+		errMsg := fmt.Sprintf("Failed to get namespace (%s)", identifier)
 		cli.ExitWithError(errMsg, err)
 	}
 
@@ -326,12 +326,7 @@ func initNamespacesCommands() {
 		"policy/namespaces/get",
 		man.WithRun(getAttributeNamespace),
 	)
-	getDoc.Flags().StringP(
-		getDoc.GetDocFlag("id").Name,
-		getDoc.GetDocFlag("id").Shorthand,
-		getDoc.GetDocFlag("id").Default,
-		getDoc.GetDocFlag("id").Description,
-	)
+	injectIDFQNLookupFlags(getDoc)
 
 	listDoc := man.Docs.GetCommand(
 		"policy/namespaces/list",

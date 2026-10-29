@@ -138,7 +138,7 @@ func TestRetrieverListRegisteredResourcesForNamespacesDedupesNamespacesAndHydrat
 	}
 
 	resources, err := newRetriever(handler, 25).listRegisteredResourcesForNamespaces(
-		context.Background(),
+		t.Context(),
 		[]*policy.Namespace{namespace, namespace},
 	)
 	require.NoError(t, err)
@@ -316,7 +316,7 @@ func TestRetrieverListObligationTriggersForNamespacesFailsWhenNamespaceMissingFr
 	}
 
 	_, err := newRetriever(&pagedRetrieveTestHandler{}, 25).listObligationTriggersForNamespaces(
-		context.Background(),
+		t.Context(),
 		[]*policy.Namespace{namespace},
 		map[string]map[string]struct{}{},
 	)

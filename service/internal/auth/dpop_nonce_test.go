@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -180,7 +179,7 @@ func (s *AuthSuite) newAuthWithNonce() *Authentication {
 // with the nonce challenge toggled by requireNonce.
 func (s *AuthSuite) newAuthDPoP(requireNonce bool) *Authentication {
 	auth, err := NewAuthenticator(
-		context.Background(),
+		s.T().Context(),
 		Config{
 			AuthNConfig: AuthNConfig{
 				Issuer:    s.server.URL,
@@ -279,7 +278,7 @@ func (s *AuthSuite) TestDPoP_MissingNonce_Returns_DPoPNonceError() {
 	}, nil) // no nonce claim
 
 	_, _, err := auth.checkToken(
-		context.Background(),
+		s.T().Context(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
 		[]string{dpopToken},
@@ -301,7 +300,7 @@ func (s *AuthSuite) TestDPoP_ValidNonce_Succeeds() {
 	}, nonce)
 
 	_, _, err := auth.checkToken(
-		context.Background(),
+		s.T().Context(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
 		[]string{dpopToken},
@@ -321,7 +320,7 @@ func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
 	}, 42)
 
 	_, _, err := auth.checkToken(
-		context.Background(),
+		s.T().Context(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
 		[]string{dpopToken},
@@ -349,7 +348,7 @@ func (s *AuthSuite) TestDPoP_WrongNonce_Returns_DPoPNonceError() {
 	}, "not-the-right-nonce")
 
 	_, _, err := auth.checkToken(
-		context.Background(),
+		s.T().Context(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
 		[]string{dpopToken},

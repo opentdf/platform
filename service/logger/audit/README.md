@@ -16,11 +16,27 @@ err := params.Logger.Audit.Record(ctx, *event)
 synchronously with a deadline detached from request cancellation. Check its
 returned error. Request context values remain available to the processor.
 
-The built-in `RewrapSuccess`, `RewrapFailure`, `PolicyCRUDSuccess`,
+The built-in `RewrapSuccess`, `RewrapDenied`, `RewrapFailure`, `PolicyCRUDSuccess`,
 `PolicyCRUDFailure`, `GetDecision`, and `GetDecisionV2` helpers construct an event
-and call `Record`. They also return errors; callers must handle them. Record
+and call `Record`. `Rewrap` accepts an explicitly classified result for validation,
+tamper, dependency, and other outcomes that do not fit a helper. They also return
+errors; callers must handle them. Record
 policy success only after the database transaction commits. An audit failure
 after a commit does not undo the operation.
+
+## Rewrap outcome contract
+
+- KAS records one event per processed KAO; pre-KAO failures produce one
+  request-level event.
+- Results are `success` (key returned), `failure` (request rejected), or `error`
+  (KAS or a dependency could not finish).
+- Non-success events include `failure_reason`. All events include
+  `policy_verified` and `suspected_tamper`; KAO events also include `kao_id`.
+- Unverified policy attributes are omitted. Downstream mappings must treat
+  denials as `failure` and can route `suspected_tamper: true`.
+
+See the [KAS rewrap audit outcomes](../../kas/access/REWRAP_AUDIT.md) reference
+for the flow and failure-reason taxonomy.
 
 ## Processing and delivery
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/sdk/v0.34.0...sdk/v0.35.0) (2026-10-15)
+
+
+### Features
+
+* **kas:** support ML-KEM client session keys in rewrap ([#3814](https://github.com/opentdf/platform/issues/3814)) ([b81da1e](https://github.com/opentdf/platform/commit/b81da1eea030e75925187a2d6b11bcc763f67d60))
+* **sdk:** DSPX-4975 configure token expiration buffer ([#4224](https://github.com/opentdf/platform/issues/4224)) ([90f4aa0](https://github.com/opentdf/platform/commit/90f4aa0115bcd7157895b3a9c67cb5f813569d72))
+* **sdk:** return ErrAESGCMExhausted when IV collision risk exceeds 2^-32 (DSPX-4492) ([#4203](https://github.com/opentdf/platform/issues/4203)) ([55a9b57](https://github.com/opentdf/platform/commit/55a9b57f34af252dbffdd609f2840cf0cf58132d))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.41.0 to 0.42.0 in /sdk ([#4227](https://github.com/opentdf/platform/issues/4227)) ([daf575c](https://github.com/opentdf/platform/commit/daf575c8249afa66a50da7de2d998ae4fd39f769))
+* **sdk:** bound zip64 reader offsets against the archive (DSPX-4590) ([#4043](https://github.com/opentdf/platform/issues/4043)) ([85179a6](https://github.com/opentdf/platform/commit/85179a6fb689403a43e66238d4cd587c18771ec5))
+* **sdk:** make the manifest size limit opt-in (DSPX-4502) ([#4214](https://github.com/opentdf/platform/issues/4214)) ([08ecb66](https://github.com/opentdf/platform/commit/08ecb66b8eeac18f0c3e3a6f847bccda2190285b))
+* **sdk:** read the TDF manifest under the spec name manifest.json ([#4063](https://github.com/opentdf/platform/issues/4063)) ([a36b5df](https://github.com/opentdf/platform/commit/a36b5dfd59a11e76c8a3ac10466b5f1b5a5bce27))
+* **sdk:** read the TDF spec version at the manifest root and under payload ([#4060](https://github.com/opentdf/platform/issues/4060)) ([943df98](https://github.com/opentdf/platform/commit/943df9822506a17ab650d26c8ce34c420d62373c))
+* **sdk:** remove panic with null assertions (DSPX-5102) ([#4212](https://github.com/opentdf/platform/issues/4212)) ([3afe2d0](https://github.com/opentdf/platform/commit/3afe2d02efb5ec8e9b88084e6a50a8cf17c7dc05))
+
 ## [0.34.0](https://github.com/opentdf/platform/compare/sdk/v0.33.0...sdk/v0.34.0) (2026-09-28)
 
 

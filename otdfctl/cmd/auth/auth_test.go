@@ -3,16 +3,19 @@ package auth
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestKeyringUnavailable(t *testing.T) {
+func TestAuthCommandsDoNotBlockLinuxKeyring(t *testing.T) {
 	InitCommands()
-	login, _, err := Cmd.Find([]string{"login"})
-	require.NoError(t, err)
-
-	assert.False(t, keyringUnavailable(Cmd, "linux"), "the group only prints help")
-	assert.True(t, keyringUnavailable(login, "linux"), "a subcommand does touch the keyring")
-	assert.False(t, keyringUnavailable(login, "darwin"), "other platforms have a keyring")
+	// Linux availability is determined by the store/Secret Service operation,
+	// never by a blanket auth-group pre-run that exits before login or logout.
+	require.Nil(t, Cmd.PersistentPreRun)
+	require.Nil(t, Cmd.PersistentPreRunE)
+	for _, name := range []string{"login", "logout", "client-credentials"} {
+		cmd, _, err := Cmd.Find([]string{name})
+		require.NoError(t, err)
+		require.NotSame(t, Cmd, cmd)
+		require.NotNil(t, cmd.Run)
+	}
 }

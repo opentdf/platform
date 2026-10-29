@@ -67,7 +67,7 @@ func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
 				RPC:    tc.rpc,
 				Action: tc.action,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
@@ -112,7 +112,7 @@ func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
 				RPC:    tc.rpc,
 				Action: tc.action,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
@@ -149,7 +149,7 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRoleDenied() {
 				RPC:    tc.rpc,
 				Action: ActionRead,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
@@ -184,7 +184,7 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRolePublicRoutes() {
 				RPC:    tc.rpc,
 				Action: ActionRead,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
@@ -215,7 +215,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 		RPC:    "/policy.attributes.AttributesService/CreateAttribute",
 		Action: ActionWrite,
 	}
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "mapped admin role should be allowed")
@@ -227,7 +227,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 		RPC:    "/policy.attributes.AttributesService/CreateAttribute",
 		Action: ActionWrite,
 	}
-	decision, err = authorizer.Authorize(context.Background(), req)
+	decision, err = authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "mapped standard role should be denied for write")
@@ -253,7 +253,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 		RPC:    "/custom.service.CustomService/GetCustom",
 		Action: ActionRead,
 	}
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "custom role should be allowed for custom service")
@@ -264,7 +264,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: ActionRead,
 	}
-	decision, err = authorizer.Authorize(context.Background(), req)
+	decision, err = authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "custom role should be denied for policy service")
@@ -293,7 +293,7 @@ func (s *InterceptorAuthzSuite) TestV2_AdminWildcardAccess() {
 				RPC:    tc.rpc,
 				Action: ActionRead,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
@@ -316,7 +316,7 @@ p, role:kas-user, /kas.*, *, allow`
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: ActionRead,
 	}
-	decision, err := authorizer.Authorize(context.Background(), policyReq)
+	decision, err := authorizer.Authorize(s.T().Context(), policyReq)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "policy-reader should access policy service")
@@ -327,7 +327,7 @@ p, role:kas-user, /kas.*, *, allow`
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: ActionRead,
 	}
-	decision, err = authorizer.Authorize(context.Background(), kasReq)
+	decision, err = authorizer.Authorize(s.T().Context(), kasReq)
 
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "policy-reader should not access kas service")
@@ -339,7 +339,7 @@ p, role:kas-user, /kas.*, *, allow`
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: ActionRead,
 	}
-	decision, err = authorizer.Authorize(context.Background(), kasReq)
+	decision, err = authorizer.Authorize(s.T().Context(), kasReq)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "kas-user should access kas service")
@@ -356,7 +356,7 @@ func (s *InterceptorAuthzSuite) TestV2_UnknownRoleDenied() {
 		RPC:    "/some.Service/Method",
 		Action: ActionRead,
 	}
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
@@ -380,7 +380,7 @@ p, role:role-b, /service.B/*, *, allow`
 		RPC:    "/service.A/Method",
 		Action: ActionRead,
 	}
-	decision, err := authorizer.Authorize(context.Background(), reqA)
+	decision, err := authorizer.Authorize(s.T().Context(), reqA)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "token with role-a should access service A")
 
@@ -390,7 +390,7 @@ p, role:role-b, /service.B/*, *, allow`
 		RPC:    "/service.B/Method",
 		Action: ActionRead,
 	}
-	decision, err = authorizer.Authorize(context.Background(), reqB)
+	decision, err = authorizer.Authorize(s.T().Context(), reqB)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "token with role-b should access service B")
 
@@ -400,7 +400,7 @@ p, role:role-b, /service.B/*, *, allow`
 		RPC:    "/service.C/Method",
 		Action: ActionRead,
 	}
-	decision, err = authorizer.Authorize(context.Background(), reqC)
+	decision, err = authorizer.Authorize(s.T().Context(), reqC)
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "token should not access service C")
 }
@@ -423,7 +423,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 			Resources: []*internalauthz.ResolverResource{&hrResource},
 		},
 	}
-	decision, err := authorizer.Authorize(context.Background(), hrReq)
+	decision, err := authorizer.Authorize(s.T().Context(), hrReq)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "hr-admin should be allowed with namespace=hr dimension")
@@ -438,7 +438,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 			Resources: []*internalauthz.ResolverResource{&financeResource},
 		},
 	}
-	decision, err = authorizer.Authorize(context.Background(), financeReq)
+	decision, err = authorizer.Authorize(s.T().Context(), financeReq)
 
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "hr-admin should be denied for namespace=finance dimension")
@@ -453,7 +453,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 			Resources: []*internalauthz.ResolverResource{&financeResource},
 		},
 	}
-	decision, err = authorizer.Authorize(context.Background(), financeReq)
+	decision, err = authorizer.Authorize(s.T().Context(), financeReq)
 
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "finance-admin should be allowed with namespace=finance dimension")
@@ -754,7 +754,7 @@ func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 		RPC:    "/some.Service/Method",
 		Action: ActionRead,
 	}
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
@@ -850,7 +850,7 @@ func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 				RPC:    path,
 				Action: ActionRead,
 			}
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 
 			s.Require().NoError(err)
 			s.True(decision.Allowed, "admin should access gRPC path: %s", path)

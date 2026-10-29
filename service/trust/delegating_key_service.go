@@ -16,6 +16,13 @@ import (
 	"github.com/opentdf/platform/service/pkg/cache"
 )
 
+var (
+	// ErrKeyLookup identifies failures that occur while resolving key metadata.
+	ErrKeyLookup = errors.New("key lookup failed")
+	// ErrKeyManagerUnavailable identifies failures constructing the manager that owns a resolved key.
+	ErrKeyManagerUnavailable = errors.New("key manager unavailable")
+)
+
 type KeyManagerFactoryOptions struct {
 	Logger *logger.Logger
 	Cache  *cache.Cache
@@ -162,13 +169,13 @@ func (d *DelegatingKeyService) Name() string {
 func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt: unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
+		return nil, fmt.Errorf("%w: unable to find key by ID '%s' within index %s: %w", ErrKeyLookup, keyID, d.index, err)
 	}
 
 	pcfg := keyDetails.ProviderConfig()
 	manager, err := d.getKeyManager(ctx, pcfg)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
+		return nil, fmt.Errorf("%w: unable to get key manager [%s#%s]: %w", ErrKeyManagerUnavailable, pcfg.GetManager(), pcfg.GetName(), err)
 	}
 
 	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)

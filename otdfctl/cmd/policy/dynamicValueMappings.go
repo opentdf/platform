@@ -170,6 +170,9 @@ func policyCreateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	if len(actionFlagValues) == 0 {
 		cli.ExitWithError("At least one Action [--action] is required", nil)
 	}
+	if namespace == "" {
+		cli.ExitWithError("The Namespace reference [--namespace] is required", nil)
+	}
 
 	resolver := &policy.DynamicValueResolver{
 		SubjectExternalSelectorValue: selector,

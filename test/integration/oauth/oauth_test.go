@@ -69,7 +69,7 @@ func (s *OAuthSuite) SetupSuite() {
 	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
 	s.dpopJWK = dpopJWK
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	keycloak, idpEndpoint := setupStandardKeycloak(ctx, s.T())
 	s.keycloakContainer = keycloak
@@ -90,7 +90,7 @@ func (s *CertExchangeSuite) SetupSuite() {
 	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
 	s.dpopJWK = dpopJWK
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	keycloak, idpHTTPSEndpoint := setupCustomKeycloakForCertExchange(ctx, s.T())
 	s.keycloakContainer = keycloak
@@ -125,7 +125,7 @@ func (s *CertExchangeSuite) TestCertExchangeFromKeycloak() {
 	}
 
 	tok, err := oauth.DoCertExchange(
-		context.Background(),
+		s.T().Context(),
 		s.keycloakHTTPSEndpoint,
 		exhcangeInfo,
 		clientCredentials,
@@ -228,7 +228,7 @@ func (s *OAuthSuite) TestGettingAccessTokenWithoutDPoPProofFails() {
 }
 
 func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	clientCredentials := oauth.ClientCredentials{
 		ClientID:   "opentdf-sdk",

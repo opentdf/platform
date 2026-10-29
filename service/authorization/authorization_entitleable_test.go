@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func resetTargetedLookupMocks(t *testing.T) {
@@ -91,6 +92,22 @@ func TestRetrieveAttributeDefinitionsMapsEntitleableResponse(t *testing.T) {
 	assert.Equal(t, "confidential-id", attributeAndValue.GetValue().GetId())
 	assert.Equal(t, valueFQN, attributeAndValue.GetValue().GetFqn())
 	assert.Equal(t, "subject-mapping-id", attributeAndValue.GetValue().GetSubjectMappings()[0].GetId())
+}
+
+func TestRetrieveAttributeDefinitionsRejectsInactiveValue(t *testing.T) {
+	resetTargetedLookupMocks(t)
+	fqn := "https://example.com/attr/classification/value/confidential"
+	getEntitleableAttributesResponse = &attr.GetEntitleableAttributesByFqnsResponse{
+		FqnEntitleableAttributes: map[string]*attr.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+			fqn: {Value: &attr.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+				Fqn: fqn, ValueId: "inactive-id", Active: wrapperspb.Bool(false),
+			}},
+		},
+	}
+	result, err := retrieveAttributeDefinitions(t.Context(), []string{fqn}, &otdf.SDK{Attributes: &myAttributesClient{}})
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestRetrieveAttributeDefinitionsBatchesRequests(t *testing.T) {

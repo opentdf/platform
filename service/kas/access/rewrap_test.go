@@ -5,21 +5,28 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -28,12 +35,17 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -66,8 +78,10 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 }
 
 type fakeKeyIndex struct {
-	keys []trust.KeyDetails
-	err  error
+	keys    []trust.KeyDetails
+	err     error
+	found   trust.KeyDetails
+	findErr error
 }
 
 func (f *fakeKeyIndex) String() string {
@@ -85,6 +99,12 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 }
 
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
+	if f.findErr != nil {
+		return nil, f.findErr
+	}
+	if f.found != nil {
+		return f.found, nil
+	}
 	return nil, errors.New("not implemented")
 }
 
@@ -156,7 +176,8 @@ func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
 		},
 	}
 
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"legacy1", "legacy2"}, kids)
 }
 
@@ -175,7 +196,8 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
 }
 
@@ -186,7 +208,8 @@ func TestListLegacyKeys_Empty(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.Empty(t, kids)
 }
 
@@ -199,7 +222,8 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.Error(t, err)
 	assert.Empty(t, kids)
 }
 
@@ -492,9 +516,13 @@ func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*ka
 }
 
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
+	return makeRewrapBodyWithKey(t, policy, policyBindingAsString, rsaPublicAlt)
+}
+
+func makeRewrapBodyWithKey(t *testing.T, policy []byte, policyBindingAsString bool, clientPublicKey string) []byte {
 	mockBody := &kaspb.UnsignedRewrapRequest{
 		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
-		ClientPublicKey: rsaPublicAlt,
+		ClientPublicKey: clientPublicKey,
 	}
 	bodyData, err := protojson.Marshal(mockBody)
 
@@ -512,6 +540,15 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	srt := makeRewrapBody(t, fauxPolicyBytes(t), false)
 	srt2 := makeRewrapBody(t, fauxPolicyBytes(t), true)
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes(), true)
+	srtWithKey := func(kt ocrypto.KeyType) []byte {
+		kp, err := ocrypto.NewKeyPair(kt)
+		require.NoError(t, err)
+		pem, err := kp.PublicKeyInPemFormat()
+		require.NoError(t, err)
+		return makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, pem)
+	}
+	srtGarbageKey := makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, "not a pem")
+	mlkemEnabled := Preview{MLKEMTDFEnabled: true}
 
 	tests := []struct {
 		name        string
@@ -519,12 +556,20 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		goodDPoP    bool
 		shouldError bool
 		addDPoP     bool
+		preview     Preview
+		badKey      bool // the client public key is rejected up front
 	}{
-		{"good w/ string policy binding", srt, true, false, true},
-		{"good w/ object policy binding", srt2, true, false, true},
-		{"different policy", badPolicySrt, true, true, true},
-		{"no dpop token included", srt, true, false, false},
-		{"wrong dpop token included", srt, false, false, true},
+		{"good w/ string policy binding", srt, true, false, true, Preview{}, false},
+		{"good w/ object policy binding", srt2, true, false, true, Preview{}, false},
+		{"different policy", badPolicySrt, true, true, true, Preview{}, false},
+		{"no dpop token included", srt, true, false, false, Preview{}, false},
+		{"wrong dpop token included", srt, false, false, true, Preview{}, false},
+		{"ec client key", srtWithKey(ocrypto.EC256Key), true, false, true, Preview{}, false},
+		{"mlkem:768 client key", srtWithKey(ocrypto.MLKEM768Key), true, false, true, mlkemEnabled, false},
+		{"mlkem:1024 client key", srtWithKey(ocrypto.MLKEM1024Key), true, false, true, mlkemEnabled, false},
+		{"mlkem:768 client key w/ mlkem disabled", srtWithKey(ocrypto.MLKEM768Key), true, false, true, Preview{}, true},
+		{"mlkem:1024 client key w/ mlkem disabled", srtWithKey(ocrypto.MLKEM1024Key), true, false, true, Preview{}, true},
+		{"garbage client key", srtGarbageKey, true, false, true, Preview{}, true},
 	}
 	// The execution loop
 	for _, tt := range tests {
@@ -552,14 +597,20 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			p := &Provider{
 				Logger: testLogger,
 			}
+			p.Preview = tt.preview
 
-			verified, _, err := p.extractSRTBody(
+			verified, _, _, err := p.extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
 			)
+			if tt.badKey {
+				require.Error(t, err)
+				assert.Nil(t, verified)
+				return
+			}
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
@@ -596,7 +647,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	p := &Provider{
 		Logger: badLogger,
 	}
-	verified, _, err := p.extractSRTBody(
+	verified, _, _, err := p.extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{
@@ -1537,4 +1588,692 @@ func TestVerifySRTSignature(t *testing.T) {
 			}
 		})
 	}
+}
+
+type rewrapAuthorizationV2Stub struct {
+	decision authzV2.Decision
+	err      error
+	multiErr error
+}
+
+func (s rewrapAuthorizationV2Stub) GetDecision(_ context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &authzV2.GetDecisionResponse{
+		Decision: &authzV2.ResourceDecision{
+			EphemeralResourceId: req.GetResource().GetEphemeralId(),
+			Decision:            s.decision,
+		},
+	}, nil
+}
+
+func (s rewrapAuthorizationV2Stub) GetDecisionMultiResource(_ context.Context, req *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
+	if s.multiErr != nil {
+		return nil, s.multiErr
+	}
+	decisions := make([]*authzV2.ResourceDecision, 0, len(req.GetResources()))
+	for _, resource := range req.GetResources() {
+		decisions = append(decisions, &authzV2.ResourceDecision{
+			EphemeralResourceId: resource.GetEphemeralId(),
+			Decision:            s.decision,
+		})
+	}
+	return &authzV2.GetDecisionMultiResourceResponse{ResourceDecisions: decisions}, nil
+}
+
+func (rewrapAuthorizationV2Stub) GetDecisionBulk(context.Context, *authzV2.GetDecisionBulkRequest) (*authzV2.GetDecisionBulkResponse, error) {
+	return nil, errors.New("unexpected GetDecisionBulk call")
+}
+
+func (rewrapAuthorizationV2Stub) GetEntitlements(context.Context, *authzV2.GetEntitlementsRequest) (*authzV2.GetEntitlementsResponse, error) {
+	return nil, errors.New("unexpected GetEntitlements call")
+}
+
+func TestTDF3RewrapEmitsAuditEventForAuthorizationDecision(t *testing.T) {
+	tests := []struct {
+		name            string
+		decision        authzV2.Decision
+		wantAuditResult audit.ActionResult
+		wantReason      string
+	}{
+		{
+			name:            "deny emits failure-result rewrap audit event",
+			decision:        authzV2.Decision_DECISION_DENY,
+			wantAuditResult: audit.ActionResultFailure,
+			wantReason:      rewrapReasonPolicyDenied,
+		},
+		{
+			name:            "permit emits success-result rewrap audit event",
+			decision:        authzV2.Decision_DECISION_PERMIT,
+			wantAuditResult: audit.ActionResultSuccess,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
+				decision: tt.decision,
+			}, func(_ context.Context, event audit.Event) error {
+				events = append(events, event)
+				return nil
+			})
+
+			requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+			kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
+			require.NoError(t, err)
+			kao.WrappedKey = wrappedKey
+
+			_, _, err = provider.tdf3Rewrap(
+				t.Context(),
+				requests,
+				rsaPublic,
+				&entityInfo{Token: "test-token"},
+				&AdditionalRewrapContext{},
+			)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			require.Equal(t, audit.VerbRewrap, events[0].Verb)
+			require.Equal(t, audit.ActionTypeRewrap, events[0].Action.Type)
+			require.Equal(t, tt.wantAuditResult, events[0].Action.Result)
+			if tt.wantReason == "" {
+				require.NotContains(t, events[0].EventMetaData, "failure_reason")
+			} else {
+				require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			}
+			require.Equal(t, true, events[0].EventMetaData["policy_verified"])
+		})
+	}
+}
+
+func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		mutate     func(*Provider, []*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
+		wantReason string
+		wantTamper bool
+	}{
+		{
+			name: "policy binding missing",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding = nil
+			},
+			wantReason: rewrapReasonPolicyBindingMissing,
+			wantTamper: true,
+		},
+		{
+			name: "policy binding malformed",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding.Hash = "%%%"
+			},
+			wantReason: rewrapReasonPolicyBindingMalformed,
+			wantTamper: true,
+		},
+		{
+			name: "policy binding mismatch",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding.Hash = base64.StdEncoding.EncodeToString(make([]byte, sha256.Size))
+			},
+			wantReason: rewrapReasonPolicyBindingMismatch,
+			wantTamper: true,
+		},
+		{
+			name: "policy body invalid",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].Policy.Body = "not-base64"
+			},
+			wantReason: rewrapReasonPolicyBodyInvalid,
+			wantTamper: true,
+		},
+		{
+			name: "dek decryption fails",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().WrappedKey = []byte("not-a-wrapped-key")
+			},
+			wantReason: rewrapReasonDEKDecryptFailed,
+			wantTamper: true,
+		},
+		{
+			name: "unsupported key type",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().KeyType = "unsupported"
+			},
+			wantReason: rewrapReasonUnsupportedKeyType,
+		},
+		{
+			name: "disabled key type",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+				kao.KeyType = "ec-wrapped"
+				kao.Kid = "test-kid"
+			},
+			wantReason: rewrapReasonKeyTypeDisabled,
+		},
+		{
+			name: "invalid EC ephemeral key",
+			mutate: func(provider *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				provider.Preview.ECTDFEnabled = true
+				kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+				kao.KeyType = "ec-wrapped"
+				kao.Kid = "test-kid"
+				kao.EphemeralPublicKey = "not-a-public-key"
+			},
+			wantReason: rewrapReasonInvalidEphemeralKey,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
+				decision: authzV2.Decision_DECISION_PERMIT,
+			}, func(_ context.Context, event audit.Event) error {
+				events = append(events, event)
+				return nil
+			})
+			requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+			kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
+			require.NoError(t, err)
+			kao.WrappedKey = wrappedKey
+			tt.mutate(provider, requests)
+
+			_, _, err = provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)
+			require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			require.Equal(t, tt.wantTamper, events[0].EventMetaData["suspected_tamper"])
+			require.Equal(t, false, events[0].EventMetaData["policy_verified"])
+			require.Equal(t, "123", events[0].EventMetaData["kao_id"])
+			require.NotContains(t, events[0].EventMetaData, "error")
+			require.Empty(t, events[0].Object.Attributes.Attrs)
+			require.Equal(t, "123", events[0].Object.ID)
+			if tt.wantReason == rewrapReasonPolicyBodyInvalid {
+				require.NotContains(t, events[0].EventMetaData, "claimed_policy_uuid")
+			} else {
+				require.Equal(t, fauxPolicy().UUID.String(), events[0].EventMetaData["claimed_policy_uuid"])
+			}
+		})
+	}
+}
+
+func TestTDF3RewrapAuditsEachKAOWithoutOverwritingEarlierFailure(t *testing.T) {
+	var events []audit.Event
+	provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
+		decision: authzV2.Decision_DECISION_PERMIT,
+	}, func(_ context.Context, event audit.Event) error {
+		events = append(events, event)
+		return nil
+	})
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	validKAO := requests[0].GetKeyAccessObjects()[0]
+	wrappedKey, err := base64.StdEncoding.DecodeString(string(validKAO.GetKeyAccessObject().GetWrappedKey()))
+	require.NoError(t, err)
+	validKAO.KeyAccessObject.WrappedKey = wrappedKey
+	validKAO.KeyAccessObjectId = "valid-kao"
+
+	invalidKAO, cloneOK := proto.Clone(validKAO).(*kaspb.UnsignedRewrapRequest_WithKeyAccessObject)
+	require.True(t, cloneOK)
+	invalidKAO.GetKeyAccessObject().PolicyBinding = nil
+	invalidKAO.KeyAccessObjectId = "invalid-kao"
+	requests[0].KeyAccessObjects = append(requests[0].KeyAccessObjects, invalidKAO)
+
+	_, _, err = provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+
+	eventsByKAOID := make(map[string]audit.Event, len(events))
+	for _, event := range events {
+		kaoID, ok := event.EventMetaData["kao_id"].(string)
+		require.True(t, ok)
+		eventsByKAOID[kaoID] = event
+	}
+	require.Contains(t, eventsByKAOID, "valid-kao")
+	require.Contains(t, eventsByKAOID, "invalid-kao")
+	require.Equal(t, audit.ActionResultSuccess, eventsByKAOID["valid-kao"].Action.Result)
+	require.Equal(t, audit.ActionResultFailure, eventsByKAOID["invalid-kao"].Action.Result)
+	require.Equal(t, rewrapReasonPolicyBindingMissing, eventsByKAOID["invalid-kao"].EventMetaData["failure_reason"])
+}
+
+func TestAuditRewrapOutcomesRejectsDuplicateKAOIDs(t *testing.T) {
+	var events []audit.Event
+	provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, func(_ context.Context, event audit.Event) error {
+		events = append(events, event)
+		return nil
+	})
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	request := requests[0]
+	firstKAO := request.GetKeyAccessObjects()[0]
+	wrappedKey, err := base64.StdEncoding.DecodeString(string(firstKAO.GetKeyAccessObject().GetWrappedKey()))
+	require.NoError(t, err)
+	firstKAO.GetKeyAccessObject().WrappedKey = wrappedKey
+
+	duplicateKAO, cloneOK := proto.Clone(firstKAO).(*kaspb.UnsignedRewrapRequest_WithKeyAccessObject)
+	require.True(t, cloneOK)
+	duplicateKAO.GetKeyAccessObject().PolicyBinding = nil
+	request.KeyAccessObjects = append(request.KeyAccessObjects, duplicateKAO)
+
+	policy, results, err := provider.verifyRewrapRequests(t.Context(), request)
+	require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+	provider.auditRewrapOutcomes(
+		t.Context(),
+		requests,
+		map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult{request: results},
+		map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy{request: policy},
+		nil,
+		"",
+	)
+
+	require.Len(t, events, 2)
+	for _, event := range events {
+		require.Equal(t, audit.ActionResultFailure, event.Action.Result)
+		require.Equal(t, rewrapReasonKAOInvalid, event.EventMetaData["failure_reason"])
+		require.Equal(t, false, event.EventMetaData["suspected_tamper"])
+	}
+}
+
+func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing.T) {
+	tests := []struct {
+		name        string
+		kid         string
+		index       *fakeKeyIndex
+		wantResult  audit.ActionResult
+		wantReason  string
+		wantMessage string
+	}{
+		{
+			name:        "registry unavailable for explicit key ID",
+			kid:         "test-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyLookupFailed,
+			wantMessage: "bad request",
+		},
+		{
+			name:        "registry unavailable while listing legacy keys",
+			index:       &fakeKeyIndex{err: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyLookupFailed,
+			wantMessage: "no legacy key IDs found",
+		},
+		{
+			name:        "explicit key ID not found",
+			kid:         "missing-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeNotFound, errors.New("key not found"))},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
+		},
+		{
+			name:        "invalid key ID rejected by registry",
+			kid:         "invalid-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeInvalidArgument, errors.New("invalid key ID"))},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
+		},
+		{
+			name:        "in-process key ID not found",
+			kid:         "missing-kid",
+			index:       &fakeKeyIndex{findErr: security.ErrCertNotFound},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
+		},
+		{
+			name:        "key manager unavailable",
+			kid:         "test-kid",
+			index:       &fakeKeyIndex{found: &fakeKeyDetails{id: "test-kid", algorithm: "rsa:2048"}},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyManagerUnavailable,
+			wantMessage: "bad request",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, nil)
+			provider.Keyring = nil
+			provider.KeyDelegator = trust.NewDelegatingKeyService(tt.index, logger.CreateTestLogger(), nil)
+			request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+			kao := request.GetKeyAccessObjects()[0]
+			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetKeyAccessObject().GetWrappedKey()))
+			require.NoError(t, err)
+			kao.GetKeyAccessObject().WrappedKey = wrappedKey
+			kao.GetKeyAccessObject().Kid = tt.kid
+
+			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
+			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+			result := results[kao.GetKeyAccessObjectId()]
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Contains(t, result.Error.Error(), tt.wantMessage)
+			require.Equal(t, tt.wantResult, result.Audit.Result)
+			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
+			require.False(t, result.Audit.SuspectedTamper)
+			require.True(t, result.Audit.Classified)
+		})
+	}
+}
+
+func TestVerifyRewrapRequestsRejectsMissingKIDForNonRSAKeyTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		keyType string
+		enable  func(*Provider)
+	}{
+		{
+			name:    "EC",
+			keyType: "ec-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.ECTDFEnabled = true
+			},
+		},
+		{
+			name:    "hybrid",
+			keyType: "hybrid-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.HybridTDFEnabled = true
+			},
+		},
+		{
+			name:    "ML-KEM",
+			keyType: "mlkem-wrapped",
+			enable: func(provider *Provider) {
+				provider.Preview.MLKEMTDFEnabled = true
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, nil)
+			tt.enable(provider)
+			request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+			kao := request.GetKeyAccessObjects()[0]
+			kao.GetKeyAccessObject().KeyType = tt.keyType
+			kao.GetKeyAccessObject().Kid = ""
+
+			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
+			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+			result := results[kao.GetKeyAccessObjectId()]
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Contains(t, result.Error.Error(), "key ID is empty")
+			require.Equal(t, audit.ActionResultFailure, result.Audit.Result)
+			require.Equal(t, rewrapReasonKAOInvalid, result.Audit.FailureReason)
+			require.False(t, result.Audit.SuspectedTamper)
+			require.True(t, result.Audit.Classified)
+		})
+	}
+}
+
+func TestTDF3RewrapAuditsAuthorizationErrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		requestCount int
+		authErr      error
+		wantResult   audit.ActionResult
+		wantReason   string
+	}{
+		{
+			name:         "singular internal authorization error",
+			requestCount: 1,
+			authErr:      connect.NewError(connect.CodeUnavailable, errors.New("unavailable")),
+			wantResult:   audit.ActionResultError,
+			wantReason:   rewrapReasonAuthzUnavailable,
+		},
+		{
+			name:         "singular rejected authorization error",
+			requestCount: 1,
+			authErr:      connect.NewError(connect.CodePermissionDenied, errors.New("denied")),
+			wantResult:   audit.ActionResultFailure,
+			wantReason:   rewrapReasonAuthzRejected,
+		},
+		{
+			name:         "multi-resource internal authorization error",
+			requestCount: 2,
+			authErr:      connect.NewError(connect.CodeUnavailable, errors.New("unavailable")),
+			wantResult:   audit.ActionResultError,
+			wantReason:   rewrapReasonAuthzUnavailable,
+		},
+		{
+			name:         "multi-resource rejected authorization error",
+			requestCount: 2,
+			authErr:      connect.NewError(connect.CodePermissionDenied, errors.New("denied")),
+			wantResult:   audit.ActionResultFailure,
+			wantReason:   rewrapReasonAuthzRejected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			stub := rewrapAuthorizationV2Stub{decision: authzV2.Decision_DECISION_PERMIT}
+			if tt.requestCount == 1 {
+				stub.err = tt.authErr
+			} else {
+				stub.multiErr = tt.authErr
+			}
+			provider := newTDF3AuditTestProvider(t, stub, func(_ context.Context, event audit.Event) error {
+				events = append(events, event)
+				return nil
+			})
+
+			requests := make([]*kaspb.UnsignedRewrapRequest_WithPolicyRequest, 0, tt.requestCount)
+			for i := range tt.requestCount {
+				request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+				request.Policy.Id = fmt.Sprintf("policy-%d", i)
+				request.KeyAccessObjects[0].KeyAccessObjectId = fmt.Sprintf("kao-%d", i)
+				kao := request.GetKeyAccessObjects()[0].GetKeyAccessObject()
+				wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
+				require.NoError(t, err)
+				kao.WrappedKey = wrappedKey
+				requests = append(requests, request)
+			}
+
+			_, _, err := provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			require.NoError(t, err)
+			require.Len(t, events, tt.requestCount)
+			for _, event := range events {
+				require.Equal(t, tt.wantResult, event.Action.Result)
+				require.Equal(t, tt.wantReason, event.EventMetaData["failure_reason"])
+				require.Equal(t, true, event.EventMetaData["policy_verified"])
+			}
+		})
+	}
+}
+
+func TestRewrapAuditsRequestLevelFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    func(*testing.T) *kaspb.RewrapRequest
+		wantReason string
+	}{
+		{
+			name: "invalid SRT",
+			request: func(*testing.T) *kaspb.RewrapRequest {
+				return &kaspb.RewrapRequest{SignedRequestToken: "not-a-jwt"}
+			},
+			wantReason: rewrapReasonSRTInvalid,
+		},
+		{
+			name: "invalid client public key",
+			request: func(t *testing.T) *kaspb.RewrapRequest {
+				return &kaspb.RewrapRequest{
+					SignedRequestToken: string(makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, "not-a-public-key")),
+				}
+			},
+			wantReason: rewrapReasonInvalidClientPublicKey,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			baseLogger := slog.New(slog.DiscardHandler)
+			provider := &Provider{Logger: &logger.Logger{
+				Logger: baseLogger,
+				Audit: audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+					events = append(events, event)
+					return nil
+				}))),
+			}}
+
+			_, err := provider.Rewrap(t.Context(), connect.NewRequest(tt.request(t)))
+			require.Error(t, err)
+			require.Len(t, events, 1)
+			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)
+			require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			require.Equal(t, false, events[0].EventMetaData["policy_verified"])
+			require.Empty(t, events[0].Object.ID)
+			require.Empty(t, events[0].Object.Attributes.Attrs)
+		})
+	}
+}
+
+func TestAuditRewrapOutcomesClassifiesEncapsulationFailureAsError(t *testing.T) {
+	var events []audit.Event
+	baseLogger := slog.New(slog.DiscardHandler)
+	provider := &Provider{Logger: &logger.Logger{
+		Logger: baseLogger,
+		Audit: audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+			events = append(events, event)
+			return nil
+		}))),
+	}}
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	request := requests[0]
+	kao := request.GetKeyAccessObjects()[0]
+	policy := &Policy{}
+	decodedPolicy, err := base64.StdEncoding.DecodeString(request.GetPolicy().GetBody())
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(decodedPolicy, policy))
+	results := map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult{
+		request: {
+			kao.GetKeyAccessObjectId(): {
+				ID:    kao.GetKeyAccessObjectId(),
+				Error: err400("bad key for rewrap"),
+				Audit: rewrapAuditOutcome{
+					Result:         audit.ActionResultError,
+					FailureReason:  rewrapReasonEncapsulationFailed,
+					PolicyVerified: true,
+					Classified:     true,
+				},
+			},
+		},
+	}
+
+	provider.auditRewrapOutcomes(t.Context(), requests, results, map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy{request: policy}, nil, string(ocrypto.RSA2048Key))
+	require.Len(t, events, 1)
+	require.Equal(t, audit.ActionResultError, events[0].Action.Result)
+	require.Equal(t, rewrapReasonEncapsulationFailed, events[0].EventMetaData["failure_reason"])
+	require.Equal(t, true, events[0].EventMetaData["policy_verified"])
+}
+
+func newTDF3AuditTestProvider(t *testing.T, authorizationClient rewrapAuthorizationV2Stub, processor audit.ProcessorFunc) *Provider {
+	t.Helper()
+
+	privateKeyPath := filepath.Join(t.TempDir(), "kas-private.pem")
+	require.NoError(t, os.WriteFile(privateKeyPath, []byte(rsaPrivateAlt), 0o600))
+	publicKeyPath := filepath.Join(t.TempDir(), "kas-public.pem")
+	require.NoError(t, os.WriteFile(publicKeyPath, []byte(rsaPublicAlt), 0o600))
+
+	cryptoProvider, err := security.NewStandardCrypto(security.StandardConfig{
+		Keys: []security.KeyPairInfo{{
+			Algorithm:   security.AlgorithmRSA2048,
+			KID:         "test-kid",
+			Private:     privateKeyPath,
+			Certificate: publicKeyPath,
+		}},
+	})
+	require.NoError(t, err)
+	t.Cleanup(cryptoProvider.Close)
+
+	inProcessService := security.NewSecurityProviderAdapter(cryptoProvider, []string{"test-kid"}, []string{"test-kid"})
+	baseLogger := slog.New(slog.DiscardHandler)
+	platformLogger := &logger.Logger{
+		Logger: baseLogger,
+		Audit:  audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(processor)),
+	}
+	keyDelegator := trust.NewDelegatingKeyService(inProcessService, platformLogger, nil)
+	keyDelegator.RegisterKeyManagerCtxWithAlgorithms(inProcessService.Name(), func(context.Context, *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return inProcessService, nil
+	}, security.InProcessSupportedAlgorithms)
+	keyDelegator.SetDefaultMode(inProcessService.Name(), "", nil)
+
+	return &Provider{
+		SDK: &otdf.SDK{
+			AuthorizationV2: authorizationClient,
+		},
+		KeyDelegator: keyDelegator,
+		Logger:       platformLogger,
+		Tracer:       otel.Tracer("rewrap-audit-test"),
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{{
+				Algorithm: security.AlgorithmRSA2048,
+				KID:       "test-kid",
+				Legacy:    true,
+			}},
+		},
+	}
+}
+
+func TestDecodePolicyBinding(t *testing.T) {
+	rawHMAC := bytes.Repeat([]byte{0xab}, sha256.Size)
+
+	tests := []struct {
+		name    string
+		input   string
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name:  "spec-compliant raw HMAC, Base64(HMAC)",
+			input: base64.StdEncoding.EncodeToString(rawHMAC),
+			want:  rawHMAC,
+		},
+		{
+			name:  "legacy hex HMAC, Base64(hex(HMAC))",
+			input: base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(rawHMAC))),
+			want:  rawHMAC,
+		},
+		{
+			name:    "invalid base64",
+			input:   "not!valid!base64",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := decodePolicyBinding(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestDecodePolicyBindingIsTrimmed pins the defect that made raw bindings
+// unusable. base64.DecodedLen over-allocates, so a 44-character binding
+// decodes 32 bytes into a 33-byte buffer; the old code returned that buffer
+// untrimmed and VerifyBinding compares with hmac.Equal, which is
+// length-sensitive. Asserting the length is the regression test -- the bytes
+// were always correct, so comparing contents alone passes against the bug.
+func TestDecodePolicyBindingIsTrimmed(t *testing.T) {
+	rawHMAC := bytes.Repeat([]byte{0xcd}, sha256.Size)
+	encoded := base64.StdEncoding.EncodeToString(rawHMAC)
+
+	require.Equal(t, 33, base64.StdEncoding.DecodedLen(len(encoded)),
+		"precondition: DecodedLen over-allocates for a 32-byte HMAC")
+
+	got, err := decodePolicyBinding(encoded)
+	require.NoError(t, err)
+	assert.Len(t, got, sha256.Size, "must be trimmed to the bytes actually decoded")
+	assert.True(t, hmac.Equal(rawHMAC, got), "an untrimmed buffer fails hmac.Equal")
 }

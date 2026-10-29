@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -29,6 +30,8 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
+
+const defaultTokenExpirationBuffer = 10 * time.Second
 
 const (
 	// Failure while connecting to a service.
@@ -46,6 +49,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrTokenExpirationBufferInvalid  = Error("token expiration buffer must not be negative")
 	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
@@ -113,6 +117,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// Set default options
 	cfg := &config{
+		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
@@ -121,6 +126,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Apply options
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	if cfg.tokenExpirationBuffer < 0 {
+		return nil, ErrTokenExpirationBufferInvalid
 	}
 
 	// Set default logger if none provided
@@ -376,11 +384,11 @@ func buildIDPTokenSourceFromJWK(c *config, key jwk.Key) (auth.AccessTokenSource,
 	case c.oauthAccessTokenSource != nil:
 		return newOAuthAccessTokenSourceFromJWK(c.oauthAccessTokenSource, c.scopes, key), nil
 	case c.certExchange != nil:
-		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key)
+		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key, c.tokenExpirationBuffer)
 	case c.tokenExchange != nil:
-		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key, c.tokenExpirationBuffer)
 	default:
-		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key, c.tokenExpirationBuffer)
 	}
 }
 

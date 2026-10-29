@@ -102,7 +102,7 @@ func TestScaleLoadMixesRequestsAcrossBoundedWorkers(t *testing.T) {
 	started := make(chan string, concurrency)
 	release := make(chan struct{})
 	var calls, active, maximum atomic.Int32
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	type completion struct {
 		result authorizationPerformanceResult
@@ -156,7 +156,7 @@ func TestScaleLoadMixesRequestsAcrossBoundedWorkers(t *testing.T) {
 
 func TestScaleLoadUsesFreshDeadlineAndReportsFailure(t *testing.T) {
 	calls := 0
-	result, err := runAuthorizationScaleLoad(context.Background(), []authorizationScaleCase{loadTestCase("test")}, 2, 1, 4625, 10*time.Millisecond,
+	result, err := runAuthorizationScaleLoad(t.Context(), []authorizationScaleCase{loadTestCase("test")}, 2, 1, 4625, 10*time.Millisecond,
 		func(ctx context.Context, request *authz.GetDecisionMultiResourceRequest) (*authz.GetDecisionMultiResourceResponse, error) {
 			calls++
 			if calls == 1 {

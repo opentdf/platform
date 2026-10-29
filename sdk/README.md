@@ -195,6 +195,12 @@ The SDK supports multiple authentication methods:
 sdk.WithClientCredentials("client-id", "client-secret", []string{"scope1", "scope2"})
 ```
 
+**Early Token Renewal:**
+
+Use `sdk.WithTokenExpirationBuffer(90 * time.Second)` to renew SDK-managed tokens
+on the next request when less than 90 seconds remain. Defaults to 10 seconds.
+Zero disables early renewal; negative values are rejected.
+
 **TLS/mTLS Authentication:**
 ```go
 import "crypto/tls"

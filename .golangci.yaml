@@ -153,6 +153,9 @@ linters:
         rules:
           json: snake
           mapstructure: snake
+    usetesting:
+      context-background: true
+      context-todo: true
   exclusions:
     generated: lax
     presets:
@@ -226,7 +229,6 @@ linters:
       - otdfctl/tui/  # excluded during migration, matching original otdfctl lint config
       - third_party$
       - builtin$
-      - examples$
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -243,4 +245,3 @@ formatters:
       - otdfctl/tui/
       - third_party$
       - builtin$
-      - examples$

@@ -58,11 +58,11 @@ func getAttribute(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.Flags.GetRequiredID("id")
+	identifier := getIDFQNLookupIdentifier(c)
 
-	attr, err := h.GetAttribute(cmd.Context(), id)
+	attr, err := h.GetAttribute(cmd.Context(), identifier)
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed to get attribute (%s)", id)
+		errMsg := fmt.Sprintf("Failed to get attribute (%s)", identifier)
 		cli.ExitWithError(errMsg, err)
 	}
 
@@ -397,12 +397,7 @@ func initAttributesCommands() {
 		"policy/attributes/get",
 		man.WithRun(getAttribute),
 	)
-	getDoc.Flags().StringP(
-		getDoc.GetDocFlag("id").Name,
-		getDoc.GetDocFlag("id").Shorthand,
-		getDoc.GetDocFlag("id").Default,
-		getDoc.GetDocFlag("id").Description,
-	)
+	injectIDFQNLookupFlags(getDoc)
 
 	// List attributes
 	listDoc := man.Docs.GetCommand(

@@ -158,7 +158,7 @@ Feel free to copy the existing (BSD-clear) LICENSE file for most new modules.
 1. Add your module to the `MODS` variable:
 
    ```Makefile
-   MODS=protocol/go sdk . examples lib/foo
+   MODS=protocol/go sdk . lib/foo
    ```
 
 2. _If required_ If your project does not generate a built artifact,

@@ -35,7 +35,7 @@ type AttributeValuesSuite struct {
 
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").ID
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
@@ -462,6 +462,25 @@ func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue() {
 	s.Require().NoError(err)
 	s.NotNil(newlyCreated)
 	s.NotEqual(newlyCreated.GetId(), created.GetId())
+}
+
+// The FQN confirmation names the same value in any casing; a different FQN is
+// still rejected (Test_UnsafeDeleteAttribute_WrongFqn_Fails).
+func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue_UpperCaseFqn_Succeeds() {
+	fixtureAttrID := s.f.GetAttributeKey("example.net/attr/attr1").ID
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, fixtureAttrID, &attributes.CreateAttributeValueRequest{
+		Value: "unsafe_delete_case",
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+
+	resp, err := s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, got, &unsafe.UnsafeDeleteAttributeValueRequest{
+		Id:  created.GetId(),
+		Fqn: strings.ToUpper(got.GetFqn()),
+	})
+	s.Require().NoError(err)
+	s.Equal(created.GetId(), resp.GetId())
 }
 
 func (s *AttributeValuesSuite) Test_UnsafeDeleteAttribute_WrongFqn_Fails() {

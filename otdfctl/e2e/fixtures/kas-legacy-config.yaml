@@ -1,0 +1,24 @@
+services:
+  kas:
+    registered_kas_uri: http://localhost:8080
+    enabled: true
+    eccertid: e1
+    rsacertid: r1
+server:
+  cryptoProvider:
+    type: standard
+    standard:
+      rsa:
+        r1:
+          private_key_path: kas-private.pem
+          public_key_path: kas-cert.pem
+        r2:
+          private_key_path: kas-r2-private.pem
+          public_key_path: kas-r2-cert.pem
+      ec:
+        e1:
+          private_key_path: kas-ec-private.pem
+          public_key_path: kas-ec-cert.pem
+        e2:
+          private_key_path: kas-e2-private.pem
+          public_key_path: kas-e2-cert.pem

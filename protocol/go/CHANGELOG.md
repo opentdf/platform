@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.44.0](https://github.com/opentdf/platform/compare/protocol/go/v0.43.0...protocol/go/v0.44.0) (2026-10-28)
+
+
+### Features
+
+* **authz:** identify entity categories in v2 entitlements ([#4258](https://github.com/opentdf/platform/issues/4258)) ([6f0ed4e](https://github.com/opentdf/platform/commit/6f0ed4e85cc313f2735017c6cf068213a590fb2d))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+
+## [0.43.0](https://github.com/opentdf/platform/compare/protocol/go/v0.42.0...protocol/go/v0.43.0) (2026-10-22)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **policy:** require namespaces for dynamic value mappings ([#4236](https://github.com/opentdf/platform/issues/4236)) ([d83dbef](https://github.com/opentdf/platform/commit/d83dbeff073436539d80d8a252c2c2267490f58c))
+
+## [0.42.0](https://github.com/opentdf/platform/compare/protocol/go/v0.41.0...protocol/go/v0.42.0) (2026-10-14)
+
+
+### Bug Fixes
+
+* **authz:** scope uncached decisions to requested attribute policy ([#4192](https://github.com/opentdf/platform/issues/4192)) ([15aa0cc](https://github.com/opentdf/platform/commit/15aa0cc4d0183871e20438006e89ac7f5b496046))
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /protocol/go ([#3958](https://github.com/opentdf/platform/issues/3958)) ([7270831](https://github.com/opentdf/platform/commit/72708312adc80ed25fffd764afb3ab6109361ca4))
+* **deps:** bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /protocol/go ([#4015](https://github.com/opentdf/platform/issues/4015)) ([6b581f3](https://github.com/opentdf/platform/commit/6b581f31d2d220475169c8fd4b47e5b52d67cb26))
+
 ## [0.41.0](https://github.com/opentdf/platform/compare/protocol/go/v0.40.0...protocol/go/v0.41.0) (2026-08-13)
 
 

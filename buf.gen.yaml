@@ -18,3 +18,8 @@ plugins:
     out: protocol/go
     opt:
       - paths=source_relative
+  - remote: buf.build/connectrpc/go:v2.0.1
+    out: protocol/go
+    opt:
+      - paths=source_relative
+      - package_suffix=connectv2

@@ -8,7 +8,6 @@
 # This is intended to be used as part of a release please to validate the
 # internal go.mod deps are up to date and accurate.
 #
-#  examples -> protocol/go, sdk
 #  lib/crypto -> ∅
 #  lib/fixtures -> ∅
 #  lib/flattening -> ∅
@@ -51,27 +50,19 @@ sdk)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./sdk &&
-    go work use ./service &&
-    go work use ./examples
-  ;;
+    go work use ./service
+;;
 service)
   rm -f go.work go.work.sum &&
     go work init &&
-    go work use ./service &&
-    go work use ./examples
-  ;;
-examples)
-  rm -f go.work go.work.sum &&
-    go work init &&
-    go work use ./examples
+    go work use ./service
   ;;
 otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./otdfctl &&
-    # service and examples are needed for release branch checks
-    go work use ./service &&
-    go work use ./examples
+    # service is needed for release branch checks
+    go work use ./service
   ;;
 *)
   echo "[ERROR] unknown component [${component}]"

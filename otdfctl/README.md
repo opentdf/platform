@@ -19,6 +19,8 @@ The main goals are to:
 
 The CLI is configured via profiles. Use `otdfctl profile create <name> <endpoint>` (and optionally `--set-default`) to define how the CLI should connect to your platform instance.
 
+On Linux, persistent profiles require an available, unlocked Secret Service keyring in the current D-Bus session. Profiles are encrypted files; their encryption keys remain in the keyring. On headless systems without a keyring, skip profile creation and `auth client-credentials`; pass `--host` with `--with-client-creds` or `--with-client-creds-file` to each platform command instead.
+
 Load up the platform (see its [README](https://github.com/opentdf/platform?tab=readme-ov-file#run) for instructions).
 
 ## Development
@@ -141,6 +143,5 @@ Or nested for better organization:
 Alternatively, get the TAP test report from the CI pipeline artifacts.
 2. Upload results to TestRail:
 `TESTRAIL_CLI_RUN_NAME=*optional-testrail-run-name* ./testrail-integration/upload-bats-test-results-to-testrail.sh`
-
 
 

@@ -16,6 +16,8 @@ db:
 services:
   authorization:
     allow_dynamic_value_mappings: true
+    entitlement_policy_cache:
+      enabled: false
   kas:
     registered_kas_uri: http://{{ .hostname }}:{{ .platformPort }}
     key_management: false
@@ -45,6 +47,10 @@ services:
         email: true
         username: true
 server:
+{{- if .httpWriteTimeout }}
+  http:
+    writeTimeout: {{ .httpWriteTimeout }}
+{{- end }}
   public_hostname: {{ .hostname }}
   tls:
     enabled: false

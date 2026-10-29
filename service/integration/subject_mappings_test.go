@@ -37,7 +37,7 @@ type SubjectMappingsSuite struct {
 
 func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_subject_mappings"
 	s.db = fixtures.NewDBInterface(s.ctx, c)
@@ -513,7 +513,7 @@ func (s *SubjectMappingsSuite) Test_GetSubjectMapping_NonExistentId_Fails() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 	listed := listRsp.GetSubjectMappings()
@@ -595,7 +595,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 	time.Sleep(5 * time.Millisecond)
 	thirdID := createMapping("order-test-3@example.com")
 
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
 
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
@@ -800,7 +800,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortOmitted() {
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
 	var limit int32 = 3
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), &subjectmapping.ListSubjectMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: limit,
 		},
@@ -818,7 +818,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
 	}
 
 	// request with one below maximum
-	listRsp, err = s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{
+	listRsp, err = s.db.PolicyClient.ListSubjectMappings(s.T().Context(), &subjectmapping.ListSubjectMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: s.db.LimitMax - 1,
 		},
@@ -828,7 +828,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
 }
 
 func (s *NamespacesSuite) Test_ListSubjectMappings_Limit_TooLarge_Fails() {
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), &subjectmapping.ListSubjectMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: s.db.LimitMax + 1,
 		},
@@ -840,7 +840,7 @@ func (s *NamespacesSuite) Test_ListSubjectMappings_Limit_TooLarge_Fails() {
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Offset_Succeeds() {
 	req := &subjectmapping.ListSubjectMappingsRequest{}
-	totalListRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), req)
+	totalListRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.NotNil(totalListRsp)
 
@@ -853,7 +853,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Offset_Succeeds() {
 		Offset: int32(offset),
 	}
 
-	offetListRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), req)
+	offetListRsp, err := s.db.PolicyClient.ListSubjectMappings(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.NotNil(offetListRsp)
 
@@ -963,6 +963,39 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceFqn_Succeeds(
 		s.NotEqual(netSM.GetId(), sm.GetId())
 	}
 	s.True(foundCom)
+}
+
+func (s *SubjectMappingsSuite) Test_SubjectMappings_NamespaceFqn_IsCaseInsensitive() {
+	comNsID := s.exampleComNsID()
+	comAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	comSCS := s.newSCSInNamespace(comNsID)
+
+	// Create resolves the namespace from an upper-case FQN.
+	sm, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              comAttrValID,
+		Actions:                       []*policy.Action{{Name: "ns_fqn_case_insensitive"}},
+		ExistingSubjectConditionSetId: comSCS.GetId(),
+		NamespaceFqn:                  "https://EXAMPLE.COM",
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.GetId())
+	}()
+	s.Equal(comNsID, sm.GetNamespace().GetId())
+
+	// List filters by a mixed-case FQN.
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceFqn: "https://Example.Com",
+	})
+	s.Require().NoError(err)
+	found := false
+	for _, listed := range listRsp.GetSubjectMappings() {
+		s.Equal(comNsID, listed.GetNamespace().GetId())
+		if listed.GetId() == sm.GetId() {
+			found = true
+		}
+	}
+	s.True(found)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceId_NoResults_Succeeds() {
@@ -1435,7 +1468,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_NonExistentId_Fails() 
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_NoPagination_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 	listed := listRsp.GetSubjectConditionSets()
@@ -1505,7 +1538,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, thirdID)
 	}()
 
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
@@ -1514,7 +1547,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
 	var limit int32 = 3
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), &subjectmapping.ListSubjectConditionSetsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: limit,
 		},
@@ -1531,7 +1564,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
 	}
 
 	// request with one below maximum
-	listRsp, err = s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{
+	listRsp, err = s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), &subjectmapping.ListSubjectConditionSetsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: s.db.LimitMax - 1,
 		},
@@ -1541,7 +1574,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
 }
 
 func (s *NamespacesSuite) Test_ListSubjectConditionSets_Limit_TooLarge_Fails() {
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), &subjectmapping.ListSubjectConditionSetsRequest{
 		Pagination: &policy.PageRequest{
 			Limit: s.db.LimitMax + 1,
 		},
@@ -1553,7 +1586,7 @@ func (s *NamespacesSuite) Test_ListSubjectConditionSets_Limit_TooLarge_Fails() {
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
 	req := &subjectmapping.ListSubjectConditionSetsRequest{}
-	totalListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), req)
+	totalListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.NotNil(totalListRsp)
 
@@ -1566,7 +1599,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
 		Offset: int32(offset),
 	}
 
-	offetListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), req)
+	offetListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.NotNil(offetListRsp)
 
@@ -1630,24 +1663,27 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceFqn_Succ
 		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, netSCS.GetId())
 	}()
 
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
-		NamespaceFqn: "https://example.com",
-	})
-	s.Require().NoError(err)
-	s.NotNil(listRsp)
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{"https://example.com", "https://EXAMPLE.com"} {
+		listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.NotNil(listRsp, fqn)
 
-	listed := listRsp.GetSubjectConditionSets()
-	s.NotEmpty(listed)
+		listed := listRsp.GetSubjectConditionSets()
+		s.NotEmpty(listed, fqn)
 
-	foundCom := false
-	for _, scs := range listed {
-		s.Equal(comNsID, scs.GetNamespace().GetId())
-		if scs.GetId() == comSCS.GetId() {
-			foundCom = true
+		foundCom := false
+		for _, scs := range listed {
+			s.Equal(comNsID, scs.GetNamespace().GetId(), fqn)
+			if scs.GetId() == comSCS.GetId() {
+				foundCom = true
+			}
+			s.NotEqual(netSCS.GetId(), scs.GetId(), fqn)
 		}
-		s.NotEqual(netSCS.GetId(), scs.GetId())
+		s.True(foundCom, fqn)
 	}
-	s.True(foundCom)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceId_ExcludesUnnamespaced() {

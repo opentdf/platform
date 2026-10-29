@@ -381,7 +381,7 @@ func TestSDK_IsHealthy_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	healthy, err := s.IsHealthy(context.Background())
+	healthy, err := s.IsHealthy(t.Context())
 	assert.False(t, healthy)
 	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
 }
@@ -399,7 +399,7 @@ func TestSDK_IsHealthy_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	start := time.Now()
@@ -424,7 +424,7 @@ func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // canceled before the call
 
 	start := time.Now()
@@ -454,7 +454,7 @@ func TestSDK_IsHealthy_Serving(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	healthy, err := s.IsHealthy(ctx)
@@ -478,7 +478,7 @@ func TestSDK_IsHealthy_NotServing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	healthy, err := s.IsHealthy(ctx)
@@ -504,7 +504,7 @@ func TestSDK_IsHealthy_Unknown(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	healthy, err := s.IsHealthy(ctx)
@@ -531,7 +531,7 @@ func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	healthy, err := s.IsHealthy(ctx)

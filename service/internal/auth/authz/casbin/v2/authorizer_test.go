@@ -129,7 +129,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 		},
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.True(decision.Allowed)
 	s.Equal(authz.ModeV2, decision.Mode)
@@ -198,7 +198,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 		},
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), hrReq)
+	decision, err := authorizer.Authorize(s.T().Context(), hrReq)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "hr-admin should be allowed to access HR namespace")
 
@@ -214,7 +214,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 		},
 	}
 
-	decision, err = authorizer.Authorize(context.Background(), financeReq)
+	decision, err = authorizer.Authorize(s.T().Context(), financeReq)
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "hr-admin should NOT be allowed to access Finance namespace")
 }
@@ -251,7 +251,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 		},
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "should be allowed with matching namespace and attribute")
 
@@ -267,7 +267,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 		},
 	}
 
-	decision, err = authorizer.Authorize(context.Background(), wrongAttrReq)
+	decision, err = authorizer.Authorize(s.T().Context(), wrongAttrReq)
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "should NOT be allowed with wrong attribute")
 }
@@ -474,7 +474,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
 		},
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "should be allowed with wildcard attribute")
 }
@@ -507,7 +507,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 		ResourceContext: nil,
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "should be allowed with nil resource context when policy has wildcard")
 }
@@ -531,7 +531,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequ
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:           token,
 		RPC:             "/policy.attributes.AttributesService/GetAttribute",
 		Action:          "read",
@@ -563,7 +563,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored(
 		RPC:   "/policy.attributes.AttributesService/GetAttribute",
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "username with reserved role prefix must not match role subjects")
 }
@@ -786,7 +786,7 @@ p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 				Action: tc.action,
 			}
 
-			decision, err := authorizer.Authorize(context.Background(), req)
+			decision, err := authorizer.Authorize(s.T().Context(), req)
 			s.Require().NoError(err)
 			s.Equal(tc.allowed, decision.Allowed, "expected allowed=%v for %s", tc.allowed, tc.name)
 			s.Equal(authz.ModeV2, decision.Mode)
@@ -813,7 +813,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AllRequestsIncludeUnknownRole() 
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: "read",

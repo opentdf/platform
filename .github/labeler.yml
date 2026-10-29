@@ -26,10 +26,6 @@ comp:authorization:
   - changed-files:
     - any-glob-to-any-file:
       - 'service/authorization/**/*'
-comp:examples:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'examples/**/*'
 comp:lib:fixtures:
   - changed-files:
     - any-glob-to-any-file:

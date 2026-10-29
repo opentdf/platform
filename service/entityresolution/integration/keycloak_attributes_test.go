@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -43,7 +42,7 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 		}
 	}()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	adapter := NewKeycloakTestAdapter()
 

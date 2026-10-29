@@ -1,0 +1,69 @@
+services:
+  kas:
+    registered_kas_uri: http://localhost:8080
+    key_management: false
+    preview:
+      ec_tdf_enabled: true
+      hybrid_tdf_enabled: true
+    keyring:
+      - kid: e2
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r2
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
+      - kid: x1
+        alg: hpqt:xwing
+      - kid: h1
+        alg: hpqt:secp256r1-mlkem768
+      - kid: h2
+        alg: hpqt:secp384r1-mlkem1024
+      - kid: m1
+        alg: mlkem:768
+      - kid: m2
+        alg: mlkem:1024
+server:
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r2
+          alg: rsa:2048
+          private: kas-r2-private.pem
+          cert: kas-r2-cert.pem
+        - kid: e2
+          alg: ec:secp256r1
+          private: kas-e2-private.pem
+          cert: kas-e2-cert.pem
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
+        - kid: x1
+          alg: hpqt:xwing
+          private: kas-xwing-private.pem
+          cert: kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: kas-p256mlkem768-private.pem
+          cert: kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: kas-p384mlkem1024-private.pem
+          cert: kas-p384mlkem1024-public.pem
+        - kid: m1
+          alg: mlkem:768
+          private: kas-mlkem768-private.pem
+          cert: kas-mlkem768-public.pem
+        - kid: m2
+          alg: mlkem:1024
+          private: kas-mlkem1024-private.pem
+          cert: kas-mlkem1024-public.pem

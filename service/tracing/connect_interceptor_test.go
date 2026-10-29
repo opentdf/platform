@@ -33,7 +33,7 @@ func setupOTel(t *testing.T) *sdktrace.TracerProvider {
 	prevTP := otel.GetTracerProvider()
 	prevProp := otel.GetTextMapPropagator()
 	t.Cleanup(func() {
-		_ = tp.Shutdown(context.Background())
+		_ = tp.Shutdown(context.Background()) //nolint:usetesting // t.Context() is already canceled when Cleanup runs
 		otel.SetTracerProvider(prevTP)
 		otel.SetTextMapPropagator(prevProp)
 	})
@@ -86,7 +86,7 @@ func TestTraceContextPropagation_Unary(t *testing.T) {
 		connect.WithInterceptors(clientInt),
 	)
 
-	ctx, span := tp.Tracer("test").Start(context.Background(), "client-call")
+	ctx, span := tp.Tracer("test").Start(t.Context(), "client-call")
 	clientTraceID := span.SpanContext().TraceID()
 
 	_, err = client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
@@ -144,7 +144,7 @@ func TestTraceContextPropagation_ServerStream(t *testing.T) {
 		connect.WithInterceptors(clientInt),
 	)
 
-	ctx, span := tp.Tracer("test").Start(context.Background(), "client-stream-call")
+	ctx, span := tp.Tracer("test").Start(t.Context(), "client-stream-call")
 	clientTraceID := span.SpanContext().TraceID()
 
 	stream, err := client.CallServerStream(ctx, connect.NewRequest(&emptypb.Empty{}))
@@ -172,7 +172,7 @@ func TestTraceContextPropagation_ServerStream(t *testing.T) {
 // an active span. This proves the interceptor respects the propagator config.
 func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
-	defer func() { _ = tp.Shutdown(context.Background()) }()
+	defer func() { _ = tp.Shutdown(t.Context()) }()
 
 	prevTP := otel.GetTracerProvider()
 	prevProp := otel.GetTextMapPropagator()
@@ -215,7 +215,7 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 		connect.WithInterceptors(clientInt),
 	)
 
-	ctx, span := tp.Tracer("test").Start(context.Background(), "client-call")
+	ctx, span := tp.Tracer("test").Start(t.Context(), "client-call")
 	clientTraceID := span.SpanContext().TraceID()
 	require.True(t, clientTraceID.IsValid(), "client must have a valid trace ID for this test")
 

@@ -3,6 +3,7 @@ package tdf
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -101,18 +102,9 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	kasURLPath := c.Flags.GetOptionalString("kas-url-path")
 	wrappingKeyAlgStr := c.Flags.GetOptionalString("wrapping-key-algorithm")
 	targetMode := c.Flags.GetOptionalString("target-mode")
-	var wrappingKeyAlgorithm ocrypto.KeyType
-	switch wrappingKeyAlgStr {
-	case string(ocrypto.RSA2048Key):
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
-	case string(ocrypto.EC256Key):
-		wrappingKeyAlgorithm = ocrypto.EC256Key
-	case string(ocrypto.EC384Key):
-		wrappingKeyAlgorithm = ocrypto.EC384Key
-	case string(ocrypto.EC521Key):
-		wrappingKeyAlgorithm = ocrypto.EC521Key
-	default:
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
+	wrappingKeyAlgorithm, err := ocrypto.ParseKeyType(wrappingKeyAlgStr)
+	if err != nil {
+		cli.ExitWithError("Invalid wrapping key algorithm", err)
 	}
 
 	piped, hasPiped, err := streamio.PipeReader(os.Stdin)
@@ -277,6 +269,12 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("kas-url-path").Default,
 		encryptDoc.GetDocFlag("kas-url-path").Description,
 	)
+	if err := encryptDoc.Flags().MarkDeprecated(
+		encryptDoc.GetDocFlag("kas-url-path").Name,
+		"use platform KAS grants and well-known base-key discovery; this flag will be removed in a future release",
+	); err != nil {
+		panic(fmt.Sprintf("failed to mark kas-url-path flag deprecated: %v", err))
+	}
 	encryptDoc.Flags().String(
 		encryptDoc.GetDocFlag("target-mode").Name,
 		encryptDoc.GetDocFlag("target-mode").Default,

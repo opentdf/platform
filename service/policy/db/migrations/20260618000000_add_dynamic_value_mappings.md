@@ -71,3 +71,21 @@ erDiagram
   enforced.
 - Deleting a definition, subject condition set, namespace, or action cascades to remove the associated
   dynamic value mappings or action links.
+
+## Namespace Enforcement and Legacy Data
+
+Dynamic value mappings always require a namespace at the API and policy database client layers. The
+database column remains nullable for backward compatibility with mappings created before this rule was
+enforced. Operators can audit for those rows with:
+
+```sql
+SELECT id, attribute_definition_id
+FROM dynamic_value_mappings
+WHERE namespace_id IS NULL;
+```
+
+Do not blindly set those rows to the attribute definition's namespace. A legacy mapping may reference
+global actions or an unnamespaced subject condition set, while newly created mappings require the
+mapping, definition, actions, and condition set to share a namespace. Recreate or remap each reported
+mapping and its dependencies into the definition's namespace before adding a database `NOT NULL`
+constraint. No constraint is added by this migration so existing rows remain readable and removable.

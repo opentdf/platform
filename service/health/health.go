@@ -115,10 +115,22 @@ func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_W
 }
 
 func RegisterReadinessCheck(namespace string, service func(context.Context) error) error {
-	if _, ok := serviceHealthChecks[namespace]; ok {
-		return errors.New("readiness check already registered")
+	if existing, ok := serviceHealthChecks[namespace]; ok {
+		serviceHealthChecks[namespace] = func(ctx context.Context) error {
+			if err := existing(ctx); err != nil {
+				return err
+			}
+			return service(ctx)
+		}
+		return nil
 	}
 	serviceHealthChecks[namespace] = service
 
 	return nil
+}
+
+// ResetReadinessChecks removes checks left by a prior server lifecycle. Services
+// register their checks again as they start.
+func ResetReadinessChecks() {
+	serviceHealthChecks = make(map[string]func(context.Context) error)
 }

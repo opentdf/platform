@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -14,13 +15,14 @@ import (
 
 type CertExchangeTokenSource struct {
 	auth.AccessTokenSource
-	logger      *slog.Logger
-	IdpEndpoint string
-	credentials oauth.ClientCredentials
-	tokenMutex  *sync.Mutex
-	info        oauth.CertExchangeInfo
-	token       *oauth.Token
-	key         jwk.Key
+	logger                *slog.Logger
+	IdpEndpoint           string
+	credentials           oauth.ClientCredentials
+	tokenMutex            *sync.Mutex
+	info                  oauth.CertExchangeInfo
+	token                 *oauth.Token
+	key                   jwk.Key
+	tokenExpirationBuffer time.Duration
 }
 
 func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *ocrypto.RsaKeyPair) (auth.AccessTokenSource, error) {
@@ -30,12 +32,13 @@ func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo
 	}
 
 	exchangeSource := CertExchangeTokenSource{
-		logger:      logger,
-		info:        info,
-		IdpEndpoint: idpTokenEndpoint,
-		credentials: credentials,
-		tokenMutex:  &sync.Mutex{},
-		key:         dpopKey,
+		logger:                logger,
+		info:                  info,
+		IdpEndpoint:           idpTokenEndpoint,
+		credentials:           credentials,
+		tokenMutex:            &sync.Mutex{},
+		key:                   dpopKey,
+		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 	}
 
 	return &exchangeSource, nil
@@ -51,12 +54,13 @@ func (c *CertExchangeTokenSource) AccessTokenCredential(ctx context.Context, _ *
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()
 
-	if c.token == nil || c.token.Expired() {
+	if c.token == nil || c.token.ShouldRenew() {
 		tok, err := oauth.DoCertExchange(ctx, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
 			return auth.AccessTokenCredential{}, err
 		}
 
+		tok.ExpirationBuffer = c.tokenExpirationBuffer
 		c.token = tok
 	}
 
@@ -77,13 +81,15 @@ func newCertExchangeTokenSourceFromJWK(
 	credentials oauth.ClientCredentials,
 	idpTokenEndpoint string,
 	key jwk.Key,
+	buffer time.Duration,
 ) (auth.AccessTokenSource, error) {
 	return &CertExchangeTokenSource{
-		logger:      logger,
-		info:        info,
-		IdpEndpoint: idpTokenEndpoint,
-		credentials: credentials,
-		tokenMutex:  &sync.Mutex{},
-		key:         key,
+		logger:                logger,
+		info:                  info,
+		IdpEndpoint:           idpTokenEndpoint,
+		credentials:           credentials,
+		tokenMutex:            &sync.Mutex{},
+		key:                   key,
+		tokenExpirationBuffer: buffer,
 	}, nil
 }

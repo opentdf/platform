@@ -1,9 +1,8 @@
-go 1.25.5
+go 1.26.10
 
-toolchain go1.25.14
+toolchain go1.26.10
 
 use (
-	./examples
 	./lib/fixtures
 	./lib/flattening
 	./lib/identifier

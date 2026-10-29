@@ -49,7 +49,7 @@ func (suite *ResolvedTokenChainContractSuite) RunWithAdapter(t *testing.T, adapt
 
 	require.NoError(t, adapter.SetupTestData(ctx, dataSet))
 	t.Cleanup(func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), resolvedTokenChainCleanupTimeout)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), resolvedTokenChainCleanupTimeout) //nolint:usetesting // t.Context() is already canceled when Cleanup runs
 		defer cancel()
 		require.NoError(t, adapter.TeardownTestData(cleanupCtx))
 	})

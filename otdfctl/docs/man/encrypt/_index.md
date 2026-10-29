@@ -20,6 +20,11 @@ command:
         - ec:secp256r1
         - ec:secp384r1
         - ec:secp521r1
+        - hpqt:xwing
+        - hpqt:secp256r1-mlkem768
+        - hpqt:secp384r1-mlkem1024
+        - mlkem:768
+        - mlkem:1024
       default: rsa:2048  
     - name: mime-type
       description: The MIME type of the input data. If not provided, the MIME type is inferred from the input data.
@@ -31,7 +36,7 @@ command:
         - tdf3
       default: ztdf
     - name: kas-url-path
-      description: URL path to the KAS service at the platform endpoint domain. Leading slash is required if needed.
+      description: DEPRECATED Use platform KAS grants and well-known base-key discovery. URL path to the KAS service at the platform endpoint domain. Leading slash is required if needed.
       default: /kas
     - name: target-mode
       description: The target TDF spec version (e.g., "4.3.0"); intended for legacy compatibility and subject to removal.
@@ -82,6 +87,11 @@ The wrapping-key-algorithm specifies the algorithm to use for the wrapping key. 
 - ec:secp256r1
 - ec:secp384r1
 - ec:secp521r1
+- hpqt:xwing
+- hpqt:secp256r1-mlkem768
+- hpqt:secp384r1-mlkem1024
+- mlkem:768
+- mlkem:1024
 
 Example
 ```shell

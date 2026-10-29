@@ -13,7 +13,7 @@ import (
 type DynamicValueMappingsStepDefinitions struct{}
 
 // iSendARequestToCreateDynamicValueMapping creates one dynamic value mapping per data row via the
-// SDK. Supported columns: attribute_definition_fqn, selector, operator (IN|IN_CONTAINS),
+// SDK. Supported columns: namespace_fqn, attribute_definition_fqn, selector, operator (IN|IN_CONTAINS),
 // standard actions, custom actions, condition_set_name (optional static pre-gate), reference_id.
 func (s *DynamicValueMappingsStepDefinitions) iSendARequestToCreateDynamicValueMapping(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
@@ -36,6 +36,8 @@ func (s *DynamicValueMappingsStepDefinitions) iSendARequestToCreateDynamicValueM
 			}
 			value := strings.TrimSpace(c.Value)
 			switch cellIndexMap[ci] {
+			case "namespace_fqn":
+				req.NamespaceFqn = value
 			case "attribute_definition_fqn":
 				req.AttributeDefinitionFqn = value
 			case "selector":

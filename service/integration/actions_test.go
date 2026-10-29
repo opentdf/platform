@@ -27,7 +27,7 @@ type ActionsSuite struct {
 
 func (s *ActionsSuite) SetupSuite() {
 	slog.Info("setting up db.Actions test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 
 	c.DB.Schema = "test_opentdf_actions"
@@ -94,6 +94,24 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 	s.True(foundCreate)
 	s.True(foundUpdate)
 	s.True(foundDelete)
+}
+
+func (s *ActionsSuite) Test_ListActions_ByNamespaceFqn_IsCaseInsensitive() {
+	lower, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceFqn: s.defaultNamespaceFQN()})
+	s.Require().NoError(err)
+	upper, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceFqn: strings.ToUpper(s.defaultNamespaceFQN())})
+	s.Require().NoError(err)
+
+	ids := func(list []*policy.Action) []string {
+		out := make([]string, 0, len(list))
+		for _, a := range list {
+			out = append(out, a.GetId())
+		}
+		return out
+	}
+	s.NotEmpty(lower.GetActionsStandard())
+	s.ElementsMatch(ids(lower.GetActionsStandard()), ids(upper.GetActionsStandard()))
+	s.ElementsMatch(ids(lower.GetActionsCustom()), ids(upper.GetActionsCustom()))
 }
 
 func (s *ActionsSuite) Test_ListActions_OrdersByCreatedAt_Succeeds() {

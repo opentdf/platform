@@ -3,8 +3,8 @@
 
 .PHONY: all buf-check build clean connect-wrapper-generate docker-build fix fmt fuzz go-lint license lint otdfctl/otdfctl policy-sql-gen proto-generate proto-helper-generate proto-lint sdk/sdk sqlc-check test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service otdfctl tests-bdd
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service otdfctl tests-bdd
 REQUIRED_BUF_VERSION=1.70.0
 REQUIRED_SQLC_VERSION=1.31.1
 
@@ -157,18 +157,15 @@ bench:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f opentdf examples/examples otdfctl/otdfctl
+	rm -f opentdf otdfctl/otdfctl
 
-build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples otdfctl/otdfctl
+build: proto-generate connect-wrapper-generate opentdf sdk/sdk otdfctl/otdfctl
 
 opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go
 
 sdk/sdk: $(shell find sdk)
 	(cd sdk && go build ./...)
-
-examples/examples: $(shell find examples)
-	(cd examples && go build -o examples .)
 
 otdfctl/otdfctl: $(shell find otdfctl)
 	(cd otdfctl && go build -o otdfctl .)

@@ -44,9 +44,9 @@ func getAttributeValue(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.Flags.GetRequiredID("id")
+	identifier := getIDFQNLookupIdentifier(c)
 
-	v, err := h.GetAttributeValue(cmd.Context(), id)
+	v, err := h.GetAttributeValue(cmd.Context(), identifier)
 	if err != nil {
 		cli.ExitWithError("Failed to find attribute value", err)
 	}
@@ -358,12 +358,7 @@ func initAttributeValuesCommands() {
 	getCmd := man.Docs.GetCommand("policy/attributes/values/get",
 		man.WithRun(getAttributeValue),
 	)
-	getCmd.Flags().StringP(
-		getCmd.GetDocFlag("id").Name,
-		getCmd.GetDocFlag("id").Shorthand,
-		getCmd.GetDocFlag("id").Default,
-		getCmd.GetDocFlag("id").Description,
-	)
+	injectIDFQNLookupFlags(getCmd)
 
 	listCmd := man.Docs.GetCommand("policy/attributes/values/list",
 		man.WithRun(listAttributeValue),

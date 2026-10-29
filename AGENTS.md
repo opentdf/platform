@@ -10,14 +10,14 @@ This repo is a Go workspace (`go.work`) containing multiple Go modules, built us
 - `lib/*/`: shared libraries (e.g., `lib/ocrypto`, `lib/identifier`).
 - `protocol/` and `service/`: protobuf sources; generated Go lives under `protocol/go/` and docs under `docs/grpc/` + `docs/openapi/`.
 - `tests-bdd/`: BDD/integration-style tests (Godog) and feature files (`tests-bdd/features/`).
-- `docs/`, `examples/`, `adr/`: documentation, example code, and architecture decisions.
+- `docs/` and `adr/`: documentation and architecture decisions.
 
 ## Build, Test, and Development Commands
 
 Prefer `make` targets at repo root:
 
 - `make toolcheck`: verifies required tooling (Buf, golangci-lint, generators).
-- `make build`: regenerates protos/codegen and builds `opentdf` + `sdk` + `examples`.
+- `make build`: regenerates protos/codegen and builds `opentdf`, `sdk`, and `otdfctl`.
 - `make lint`: runs `buf lint`, `golangci-lint`, and `govulncheck` across modules.
 - `make test`: runs `go test ./... -race` across core modules (does **not** include `tests-bdd/`).
 - `make fuzz`: fuzzes every `FuzzXxx` target across modules. Not part of `make test` or CI; run it deliberately.

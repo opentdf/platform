@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"testing"
@@ -37,7 +36,7 @@ func TestSingleKASSplitterRequiresDefaultKAS(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			splitter := DefaultKeySplitter()
-			res, err := splitter.Split(context.Background(), nil, []byte("0123456789abcdef"), tc.kas)
+			res, err := splitter.Split(t.Context(), nil, []byte("0123456789abcdef"), tc.kas)
 
 			require.ErrorIs(t, err, ErrSplitterRequiresDefaultKAS)
 			assert.Nil(t, res)
@@ -60,7 +59,7 @@ func TestSingleKASSplitterRejectsUnmappableAlgorithm(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			splitter := DefaultKeySplitter()
-			res, err := splitter.Split(context.Background(), nil, []byte("0123456789abcdef"),
+			res, err := splitter.Split(t.Context(), nil, []byte("0123456789abcdef"),
 				&policy.SimpleKasKey{
 					KasUri: "https://kas.example.com",
 					PublicKey: &policy.SimpleKasPublicKey{
@@ -91,7 +90,7 @@ func TestSingleKASSplitterAcceptsKnownAlgorithms(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			splitter := DefaultKeySplitter()
 			dek := []byte("0123456789abcdef")
-			res, err := splitter.Split(context.Background(), nil, dek,
+			res, err := splitter.Split(t.Context(), nil, dek,
 				&policy.SimpleKasKey{
 					KasUri: "https://kas.example.com",
 					PublicKey: &policy.SimpleKasPublicKey{
@@ -421,7 +420,7 @@ func populateKASKeys(r *SplitResult) {
 // shipped splitter produces must satisfy the contract the writer
 // enforces on injected ones, or the default path fails at Finalize.
 func TestDefaultKeySplitterResultValidates(t *testing.T) {
-	res, err := DefaultKeySplitter().Split(context.Background(), nil, []byte("0123456789abcdef"),
+	res, err := DefaultKeySplitter().Split(t.Context(), nil, []byte("0123456789abcdef"),
 		&policy.SimpleKasKey{
 			KasUri: "https://kas.example.com",
 			PublicKey: &policy.SimpleKasPublicKey{

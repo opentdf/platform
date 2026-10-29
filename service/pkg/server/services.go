@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
@@ -38,6 +39,9 @@ var (
 	ServiceEntityResolution ServiceName = "entityresolution"
 	ServiceAuthorization    ServiceName = "authorization"
 )
+
+// Keep the database check below the deployed readiness probe's three-second timeout.
+const databaseReadinessTimeout = 2 * time.Second
 
 // getServiceConfigurations returns fresh service configurations each time it's called.
 // This prevents state sharing between test runs by creating new service instances.
@@ -128,13 +132,19 @@ type startServicesParams struct {
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 	authzResolverRegistry  *authz.ResolverRegistry
+	newDBClient            newServiceDBClientFunc
+	registerReadinessCheck func(string, func(context.Context) error) error
 }
+
+type newServiceDBClientFunc func(context.Context, logging.Config, db.Config, trace.Tracer, string, *embed.FS) (*db.Client, error)
 
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the external
 // and in-process Connect RPC servers plus any extra HTTP handlers.
 func startServices(ctx context.Context, params startServicesParams) error {
+	health.ResetReadinessChecks()
+
 	cfg := params.cfg
 	otdf := params.otdf
 	client := params.client
@@ -142,6 +152,14 @@ func startServices(ctx context.Context, params startServicesParams) error {
 	reg := params.reg
 	cacheManager := params.cacheManager
 	keyManagerCtxFactories := params.keyManagerCtxFactories
+	newDBClient := params.newDBClient
+	if newDBClient == nil {
+		newDBClient = newServiceDBClient
+	}
+	registerReadinessCheck := params.registerReadinessCheck
+	if registerReadinessCheck == nil {
+		registerReadinessCheck = health.RegisterReadinessCheck
+	}
 
 	// Iterate through the registered namespaces
 	for _, nsInfo := range reg.GetNamespaces() {
@@ -180,9 +198,12 @@ func startServices(ctx context.Context, params startServicesParams) error {
 			if svc.IsDBRequired() && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
+				svcDBClient, err = newDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
 					return err
+				}
+				if err := registerReadinessCheck(ns, svcDBClient.ReadinessCheck(databaseReadinessTimeout)); err != nil {
+					return fmt.Errorf("failed to register database readiness check for %s: %w", ns, err)
 				}
 			}
 			if svc.GetVersion() != "" {
@@ -222,7 +243,7 @@ func startServices(ctx context.Context, params startServicesParams) error {
 				DBClient:               svcDBClient,
 				SDK:                    client,
 				WellKnownConfig:        wellknown.RegisterConfiguration,
-				RegisterReadinessCheck: health.RegisterReadinessCheck,
+				RegisterReadinessCheck: registerReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
 				AccessTokenVerifier:    accessTokenVerifier,

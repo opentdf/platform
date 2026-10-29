@@ -1,0 +1,9 @@
+{
+  "paths": [
+    ".github/ignore-checks-workflow-policy-paths.json",
+    ".github/workflows/ci-unit-tests.yaml"
+  ],
+  "prefixes": [
+    ".github/actions/ci-checks/"
+  ]
+}

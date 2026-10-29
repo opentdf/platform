@@ -26,8 +26,8 @@ Feature: Obligations on dynamically entitled existing values
       | drm             | watermark        | read   | https://example.com/attr/team/value/engineering       |
     Then the response should be successful
     And I send a request to create a dynamic value mapping with:
-      | attribute_definition_fqn      | selector                 | operator | standard actions | reference_id |
-      | https://example.com/attr/team | .attributes.department[] | IN       | read             | dvm_team     |
+      | namespace_fqn      | attribute_definition_fqn      | selector                 | operator | standard actions | reference_id |
+      | https://example.com | https://example.com/attr/team | .attributes.department[] | IN       | read             | dvm_team     |
     Then the response should be successful
     And there is a "user_name" subject entity with value "alice" and referenced as "alice"
     And there is a "user_name" subject entity with value "bob" and referenced as "bob"

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/evertras/bubble-table/table"
-	osprofiles "github.com/jrschumacher/go-osprofiles"
+	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
 	"github.com/opentdf/platform/otdfctl/pkg/auth"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/config"

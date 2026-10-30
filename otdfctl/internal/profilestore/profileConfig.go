@@ -97,7 +97,11 @@ func GetStoredProfile[T NamedProfile](profileStore *ProfileStore) (T, error) {
 // Save the current profile data to the store
 func (p *ProfileStore) Save() error {
 	latest := p.object
-	if p.store.Exists() {
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
 		data, err := p.store.Get()
 		if err != nil {
 			return err

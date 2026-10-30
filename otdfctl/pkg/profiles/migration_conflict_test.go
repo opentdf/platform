@@ -62,7 +62,7 @@ func TestMigrateGlobalOnlyConflictBeforeCleanup(t *testing.T) {
 	}
 }
 
-func TestMigrateNestedUnknownConflictBeforeWriting(t *testing.T) {
+func TestMigrateIndexedProfileRejectsNestedDifferencesBeforeWriting(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("filesystem location not asserted on this OS")
 	}
@@ -79,6 +79,14 @@ func TestMigrateNestedUnknownConflictBeforeWriting(t *testing.T) {
 	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); err != nil {
 		t.Fatal(err)
 	}
+	originalDestination, err := migrationFileStore(t, "profile-alpha").Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalGlobal, err := migrationFileStore(t, "global").Get()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, change := range []string{
 		`{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"futureAuth":2,"accessToken":{"futureToken":1}}}`,
 		`{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"futureAuth":1,"accessToken":{"futureToken":2}}}`,
@@ -89,8 +97,14 @@ func TestMigrateNestedUnknownConflictBeforeWriting(t *testing.T) {
 		if err := keyring.Set(config.AppName, "profile-alpha", change); err != nil {
 			t.Fatal(err)
 		}
-		if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrOpaqueConflict) {
-			t.Fatalf("nested unknown conflict not reported: %v", err)
+		if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, osprofiles.ErrProfileNameConflict) {
+			t.Fatalf("indexed profile conflict not reported: %v", err)
+		}
+		if got, err := migrationFileStore(t, "profile-alpha").Get(); err != nil || string(got) != string(originalDestination) {
+			t.Fatalf("destination profile changed on conflict: %s %v", got, err)
+		}
+		if got, err := migrationFileStore(t, "global").Get(); err != nil || string(got) != string(originalGlobal) {
+			t.Fatalf("destination global changed on conflict: %s %v", got, err)
 		}
 		got, err := keyring.Get(config.AppName, "profile-alpha")
 		if err != nil || got != change {
@@ -99,7 +113,7 @@ func TestMigrateNestedUnknownConflictBeforeWriting(t *testing.T) {
 	}
 }
 
-func TestMigrateProfileNamespaceConflictBeforeWriting(t *testing.T) {
+func TestMigrateIndexedProfileConflictBeforeWriting(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("filesystem location not asserted on this OS")
 	}
@@ -137,7 +151,7 @@ func TestMigrateProfileNamespaceConflictBeforeWriting(t *testing.T) {
 	if err := destination.SetExtension("owner", json.RawMessage(`2`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrOpaqueConflict) {
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, osprofiles.ErrProfileNameConflict) {
 		t.Fatalf("profile conflict not reported: %v", err)
 	}
 	got, err := keyring.Get(config.AppName, "profile-alpha")

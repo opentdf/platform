@@ -246,7 +246,11 @@ func (p *Store) remove(profileName string) error {
 
 func (p *Store) save() error {
 	latest := p.object
-	if p.store.Exists() {
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
 		data, err := p.store.Get()
 		if err != nil {
 			return err

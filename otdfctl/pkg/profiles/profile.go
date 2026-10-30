@@ -133,15 +133,8 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 	if err := sourceGlobal.CheckUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {
 		return err
 	}
-	for i, name := range profilesToMigrate {
+	for _, name := range profilesToMigrate {
 		if osprofiles.GetGlobalConfig(toProfiler).ProfileExists(name) {
-			destination, err := osprofiles.GetProfile[*ProfileConfig](toProfiler, name)
-			if err != nil {
-				return err
-			}
-			if err := profileStores[i].CheckUnknownTo(destination); err != nil {
-				return err
-			}
 			// AddProfile cannot register an already indexed name. Reject the
 			// collision now, before any earlier profile has been written.
 			return osprofiles.ErrProfileNameConflict

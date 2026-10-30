@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.4.0...lib/identifier/v0.5.0) (2026-10-30)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.3.0...lib/identifier/v0.4.0) (2026-04-21)
 
 

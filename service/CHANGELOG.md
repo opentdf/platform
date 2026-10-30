@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.30.0](https://github.com/opentdf/platform/compare/service/v0.29.0...service/v0.30.0) (2026-10-30)
+
+
+### Features
+
+* **authz:** identify entity categories in v2 entitlements ([#4258](https://github.com/opentdf/platform/issues/4258)) ([6f0ed4e](https://github.com/opentdf/platform/commit/6f0ed4e85cc313f2735017c6cf068213a590fb2d))
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.42.0 to 0.44.0 in /service ([#4262](https://github.com/opentdf/platform/issues/4262)) ([adc0310](https://github.com/opentdf/platform/commit/adc0310a8a8fde649d8feb8c42dd899dbe743f72))
+* **kas:** classify invalid rewrap key IDs ([#4245](https://github.com/opentdf/platform/issues/4245)) ([f4d27f7](https://github.com/opentdf/platform/commit/f4d27f778af8c0f5f741eebda938d16ee4baa029))
+* **policy:** require namespaces for dynamic value mappings ([#4236](https://github.com/opentdf/platform/issues/4236)) ([d83dbef](https://github.com/opentdf/platform/commit/d83dbeff073436539d80d8a252c2c2267490f58c))
+
 ## [0.29.0](https://github.com/opentdf/platform/compare/service/v0.28.0...service/v0.29.0) (2026-10-15)
 
 

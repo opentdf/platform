@@ -95,6 +95,16 @@ func buildProfileConfig(configName string, opts ...profileConfigVariadicFunc) (p
 // New creates a new Profile with the specified configuration options.
 // The configName is required and must be unique to the application.
 func New(configName string, opts ...profileConfigVariadicFunc) (*Profiler, error) {
+	return loadProfiler(configName, false, opts...)
+}
+
+// Open reads a profiler without creating or version-saving global records.
+// Drivers may create their storage directory, but no configuration is written.
+func Open(configName string, opts ...profileConfigVariadicFunc) (*Profiler, error) {
+	return loadProfiler(configName, true, opts...)
+}
+
+func loadProfiler(configName string, readOnly bool, opts ...profileConfigVariadicFunc) (*Profiler, error) {
 	var err error
 
 	config, newStore, err := buildProfileConfig(configName, opts...)
@@ -106,8 +116,12 @@ func New(configName string, opts ...profileConfigVariadicFunc) (*Profiler, error
 		config: config,
 	}
 
-	// Load global configuration
-	p.globalStore, err = global.LoadGlobalConfig(configName, newStore, config.driverOpts...)
+	// Load global configuration, optionally deferring initialization for preflight.
+	if readOnly {
+		p.globalStore, err = global.ReadGlobalConfig(configName, newStore, config.driverOpts...)
+	} else {
+		p.globalStore, err = global.LoadGlobalConfig(configName, newStore, config.driverOpts...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +216,19 @@ func GetCurrentProfile(p *Profiler) (*ProfileStore, error) {
 		return nil, ErrMissingCurrentProfile
 	}
 	return p.currentProfileStore, nil
+}
+
+// HasProfileStore checks physical presence independently of the global index.
+// It propagates lookup errors rather than treating an unreadable record as absent.
+func HasProfileStore(p *Profiler, profileName string) (bool, error) {
+	if err := validateProfileName(profileName); err != nil {
+		return false, err
+	}
+	s, err := newStoreFactory(p.config.driver)(p.config.configName, getStoreKey(profileName))
+	if err != nil {
+		return false, err
+	}
+	return store.ExistsForCreate(s)
 }
 
 // GetProfile returns the profile store for the specified profile name

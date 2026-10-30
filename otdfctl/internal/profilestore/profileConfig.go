@@ -165,6 +165,17 @@ func (p *ProfileStore) SetExtension(namespace string, payload json.RawMessage) e
 	if err != nil {
 		return err
 	}
+	// Decode the latest typed core too: duplicate literal/escaped object keys
+	// merge struct members in encoding/json but collapse in a RawMessage map.
+	// Never use p.Profile here; its cached core may be stale.
+	core := reflect.New(reflect.TypeOf(p.Profile))
+	if err := json.Unmarshal(data, core.Interface()); err != nil {
+		return err
+	}
+	latest, err = store.MergeCore(latest, core.Elem().Interface())
+	if err != nil {
+		return err
+	}
 	object, err := store.PutExtension(latest, namespace, payload)
 	if err != nil {
 		return err

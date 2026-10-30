@@ -42,6 +42,23 @@ type Config struct {
 // LoadGlobalConfig loads the global configuration from the store for the given name of the configuration being stored.
 // (i.e. if storing a config for example_app, then the configName should be "example_app")
 func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
+	p, err := ReadGlobalConfig(configName, newStore, driverOpts...)
+	if err != nil {
+		return nil, err
+	}
+	if p.object == nil || p.config.ProfilesVersion != PROFILES_VERSION_LATEST {
+		// Version migration currently consists only of updating the version.
+		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
+		if err := p.save(); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+// ReadGlobalConfig reads without creating or version-saving a global record.
+// Migration uses it to finish validation before initializing its destination.
+func ReadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
 	underlyingStore, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
 	if err != nil {
 		return nil, err
@@ -56,11 +73,13 @@ func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, drive
 		},
 	}
 
-	if !p.store.Exists() {
-		// set the version of the profiles to the latest version
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
 		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-		err = p.save()
-		return p, err
+		return p, nil
 	}
 
 	data, err := p.store.Get()
@@ -75,19 +94,7 @@ func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, drive
 		return nil, err
 	}
 
-	// check the version of the profiles
-	if p.config.ProfilesVersion != PROFILES_VERSION_LATEST {
-		// handle migration of the profiles
-		// currently, there is no migration needed
-		// so we just set the version to the latest version
-		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-		err = p.save()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return p, err
+	return p, nil
 }
 
 func HasGlobalStore(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (bool, error) {

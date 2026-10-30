@@ -71,4 +71,28 @@ invoke driver migration. Nil, zero-value or cleaned-up profilers return
 `profiles.ErrInvalidProfiler`. Named-profile round trips retain the existing
 filesystem/keyring requirement; the memory driver limitation is unchanged.
 
+## Driver migration
+
+`profiles.Migrate` validates source data and destination conflicts before creating
+or upgrading destination configuration records. Physical profile records absent
+from the destination inventory are collisions, not permission to update them.
+Lookup failures abort preflight. Migration does not implicitly select the first
+profile: an empty source default stays empty in a fresh destination and leaves
+an existing destination default unchanged. An explicitly selected source default
+is transferred with its profile. The filesystem driver may still create its
+directory and perform a temporary write-permission probe during inspection.
+
+Migration requires a persistent destination when there is data to transfer:
+`ProfileDriverMemory` returns `profiles.ErrMigrationDestinationNotPersistent`
+rather than deleting a persistent source into a memory store discarded on return.
+Global-only memory use through a retained profiler remains supported. Opaque JSON
+conflicts ignore object-key order and string escaping, but preserve array order
+and exact number representations (including large integers and `1` versus `1.0`).
+
+Preflight and create-only registration are not a multi-record transaction or an
+atomic cross-process conflict check. Storage failures after writing begins can
+leave partial destination records; source cleanup starts only after all data has
+been copied. Maintaining owners must still decide acceptable concurrency and
+memory-driver limitations.
+
 `extensions.Read*` returns `(zero, false, nil)` for an absent namespace, and `(zero, true, extensions.ErrExtensionDecode)` for invalid typed data. The example requires `fmt` and imports of `github.com/opentdf/platform/otdfctl/pkg/profiles` and `github.com/opentdf/platform/otdfctl/pkg/profiles/extensions`; its version check is consumer-owned, not a platform-wide version policy. JSON null is present and can be explicitly replaced with a typed value. Registration conflicts and invalid namespace names fail at construction; unregistered scope or wrong type fails before storage access. Typed writes replace stored payloads as supplied, even when the previous payload contains unknown fields or cannot be decoded into the registered shape. Encoding failures return a sanitized `extensions.ErrExtensionEncode` without exposing custom marshaler errors. The extender must handle payload compatibility, unknown-field retention, validation, and versioning explicitly. Core operations and migration preserve opaque unknown data; explicit typed namespace replacements do not promise that preservation. A freshly created profiler reloads changes from other filesystem/keyring invocations. The existing in-memory driver creates a separate store for each profile load, so this named-profile API requires filesystem or keyring; global-only memory use remains supported within one profiler invocation.

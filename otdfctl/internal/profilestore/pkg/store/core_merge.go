@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 )
 
@@ -51,18 +52,8 @@ func mergeStructFieldsOwned(target, fields map[string]json.RawMessage, typ refle
 		}
 		return nil
 	}
-	for i := range typ.NumField() {
-		field := typ.Field(i)
-		name, included := coreFieldName(field)
-		if !included {
-			continue
-		}
-		if name == "" {
-			if err := mergeStructFieldsOwned(target, fields, field.Type, names); err != nil {
-				return err
-			}
-			continue
-		}
+	for _, field := range coreFields(typ) {
+		name, _ := coreFieldName(field)
 		value, present := fields[name]
 		for key, old := range target {
 			if coreFieldOwner(key, names) != name {
@@ -154,18 +145,8 @@ func mergeUnknownStructFieldsOwned(source, destination map[string]json.RawMessag
 	if typ == nil {
 		return nil
 	}
-	for i := range typ.NumField() {
-		field := typ.Field(i)
-		name, included := coreFieldName(field)
-		if !included {
-			continue
-		}
-		if name == "" {
-			if err := mergeUnknownStructFieldsOwned(source, destination, field.Type, path, names); err != nil {
-				return err
-			}
-			continue
-		}
+	for _, field := range coreFields(typ) {
+		name, _ := coreFieldName(field)
 		if embeddedStruct(field.Type) == nil {
 			continue
 		}
@@ -215,6 +196,21 @@ func mergeUnknownObjectFields(source, destination map[string]json.RawMessage, ty
 }
 
 func sameJSON(a, b json.RawMessage) bool {
-	var compactA, compactB bytes.Buffer
-	return json.Compact(&compactA, a) == nil && json.Compact(&compactB, b) == nil && bytes.Equal(compactA.Bytes(), compactB.Bytes())
+	decode := func(raw json.RawMessage) (any, bool) {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+		var value any
+		if err := decoder.Decode(&value); err != nil {
+			return nil, false
+		}
+		// A single value is required: Decode alone also accepts trailing JSON.
+		var trailing any
+		if err := decoder.Decode(&trailing); err != io.EOF {
+			return nil, false
+		}
+		return value, true
+	}
+	valueA, okA := decode(a)
+	valueB, okB := decode(b)
+	return okA && okB && reflect.DeepEqual(valueA, valueB)
 }

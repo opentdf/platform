@@ -19,25 +19,16 @@ func noopServerInterceptor() connectv2.ServerInterceptor {
 	return func(next connectv2.ServerFunc) connectv2.ServerFunc { return next }
 }
 
-func TestWithConnectServerInterceptors(t *testing.T) {
-	first := ConnectServerInterceptor{Name: "first", V1: noopInterceptor(), V2: noopServerInterceptor()}
-	second := ConnectServerInterceptor{Name: "second", V2: noopServerInterceptor()}
-
-	cfg := WithConnectServerInterceptors(first)(StartConfig{})
-	cfg = WithConnectServerInterceptors(second)(cfg)
-	cfg = WithIPCServerInterceptors(first)(cfg)
-
-	require.Len(t, cfg.extraConnectServerInterceptors, 2)
-	assert.Equal(t, "first", cfg.extraConnectServerInterceptors[0].Name)
-	assert.Equal(t, "second", cfg.extraConnectServerInterceptors[1].Name)
-	require.Len(t, cfg.extraIPCServerInterceptors, 1)
+// noopExtra returns a pass-through interceptor in both connect-go forms.
+func noopExtra(name string) ConnectServerInterceptor {
+	return ConnectServerInterceptor{Name: name, V1: noopInterceptor(), V2: noopServerInterceptor()}
 }
 
-func TestValidateExternalInterceptorFactoryAcceptsServerFactory(t *testing.T) {
+func TestValidateExternalInterceptorFactoryAcceptsFactory(t *testing.T) {
 	err := validateExternalInterceptorFactory(InterceptorFactory{
-		Name: "v2",
-		ServerFactory: func(InterceptorParams) (connectv2.ServerInterceptor, error) {
-			return noopServerInterceptor(), nil
+		Name: "both",
+		Factory: func(InterceptorParams) (ConnectServerInterceptor, error) {
+			return noopExtra(""), nil
 		},
 	})
 
@@ -45,11 +36,10 @@ func TestValidateExternalInterceptorFactoryAcceptsServerFactory(t *testing.T) {
 }
 
 func TestBuildExternalInterceptor(t *testing.T) {
-	t.Run("both forms", func(t *testing.T) {
+	t.Run("both forms named after the factory", func(t *testing.T) {
 		extra, err := buildExternalInterceptor(InterceptorFactory{
-			Name:          "both",
-			Factory:       func(InterceptorParams) (connect.Interceptor, error) { return noopInterceptor(), nil },
-			ServerFactory: func(InterceptorParams) (connectv2.ServerInterceptor, error) { return noopServerInterceptor(), nil },
+			Name:    "both",
+			Factory: func(InterceptorParams) (ConnectServerInterceptor, error) { return noopExtra("other"), nil },
 		}, InterceptorParams{})
 
 		require.NoError(t, err)
@@ -60,8 +50,10 @@ func TestBuildExternalInterceptor(t *testing.T) {
 
 	t.Run("factory error", func(t *testing.T) {
 		_, err := buildExternalInterceptor(InterceptorFactory{
-			Name:          "broken",
-			ServerFactory: func(InterceptorParams) (connectv2.ServerInterceptor, error) { return nil, errors.New("boom") },
+			Name: "broken",
+			Factory: func(InterceptorParams) (ConnectServerInterceptor, error) {
+				return ConnectServerInterceptor{}, errors.New("boom")
+			},
 		}, InterceptorParams{})
 
 		require.ErrorContains(t, err, `"broken"`)

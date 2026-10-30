@@ -65,15 +65,9 @@ type Config struct {
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 
-	// Programmatic interceptors injected at startup (not loaded from config).
-	// The connect-go v1 interceptors cover only services registered with a v1
-	// handler; registering a v2 service fails while any are set.
-	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
-	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
-	// ExtraConnectServerInterceptors and ExtraIPCServerInterceptors carry both
-	// connect-go forms of each interceptor and run after the v1-only extras.
-	ExtraConnectServerInterceptors []ExtraInterceptor `mapstructure:"-" json:"-"`
-	ExtraIPCServerInterceptors     []ExtraInterceptor `mapstructure:"-" json:"-"`
+	// Programmatic interceptors injected at startup (not loaded from config)
+	ExtraConnectInterceptors []ExtraInterceptor `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []ExtraInterceptor `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -314,10 +308,10 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	ipcInts := connectRPCInterceptors{
 		requestIP:   realip.ConnectTrustedRequestIPUnaryInterceptor(sdkAudit.RequestIPHeaderKey.String()),
 		requestIPV2: realip.ConnectTrustedRequestIPInterceptorV2(sdkAudit.RequestIPHeaderKey.String()),
-		extras:      append(v1OnlyExtras("WithIPCInterceptors", config.ExtraIPCInterceptors), config.ExtraIPCServerInterceptors...),
+		extras:      config.ExtraIPCInterceptors,
 	}
 	externalInts := connectRPCInterceptors{
-		extras: append(v1OnlyExtras("WithConnectInterceptors", config.ExtraConnectInterceptors), config.ExtraConnectServerInterceptors...),
+		extras: config.ExtraConnectInterceptors,
 	}
 	if config.Auth.Enabled && authN != nil {
 		ipcInts.auth = []connect.Interceptor{authN.IPCUnaryServerInterceptor()}
@@ -630,15 +624,6 @@ func newConnectRPC(c Config, ints connectRPCInterceptors, logger *logger.Logger)
 	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
 	rpc.AddExtraInterceptors(ints.extras...)
 	return rpc, nil
-}
-
-// v1OnlyExtras wraps interceptors from an option that predates connect-go v2.
-func v1OnlyExtras(option string, interceptors []connect.Interceptor) []ExtraInterceptor {
-	extras := make([]ExtraInterceptor, 0, len(interceptors))
-	for i, interceptor := range interceptors {
-		extras = append(extras, ExtraInterceptor{Name: fmt.Sprintf("%s[%d]", option, i), V1: interceptor})
-	}
-	return extras
 }
 
 // externalConnectRequestGates returns the request gates for the external Connect

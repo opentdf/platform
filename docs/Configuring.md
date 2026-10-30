@@ -282,13 +282,13 @@ Platform services run on connect-go v2, and services an application registers ca
 
 | Option | Description |
 | --- | --- |
-| `WithConnectServerInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to all external RPCs. |
-| `WithIPCServerInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
-| `WithExternalInterceptorFactories(factories ...server.InterceptorFactory)` | Builds external interceptors after the SDK is created. `Factory` returns the v1 form and `ServerFactory` the v2 form. |
+| `WithConnectInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to all external RPCs. |
+| `WithIPCInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+| `WithExternalInterceptorFactories(factories ...server.InterceptorFactory)` | Builds external interceptors after the SDK is created. `Factory` returns both forms, and the factory's `Name` names the interceptor. |
 
 All options are variadic and additive: calling them multiple times accumulates interceptors in order.
 
-The platform fails to start when an interceptor has no form for the connect-go version of a registered service, so an interceptor never silently skips a service. An interceptor without a v1 form is fine when every service runs on v2. `WithConnectInterceptors` and `WithIPCInterceptors` take only the v1 form; they are deprecated and stop the platform from starting now that platform services run on v2.
+The platform fails to start when an interceptor has no form for the connect-go version of a registered service, so an interceptor never silently skips a service. An interceptor without a v1 form is fine when every service runs on v2.
 
 ```go
 import (
@@ -298,7 +298,7 @@ import (
 err := server.Start(
     server.WithConfigFile("opentdf.yaml"),
     // Add a logging interceptor to all external RPCs
-    server.WithConnectServerInterceptors(server.ConnectServerInterceptor{
+    server.WithConnectInterceptors(server.ConnectServerInterceptor{
         Name: "logging",
         V1:   loggingInterceptor,       // connect.Interceptor
         V2:   loggingServerInterceptor, // connectv2.ServerInterceptor

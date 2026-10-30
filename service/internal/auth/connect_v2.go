@@ -73,6 +73,8 @@ func (a Authentication) ConnectAuthZInterceptorV2() connectv2.ServerInterceptor 
 				return next(handlerCtx, spec, stream)
 			}
 
+			// connect-go v2 runs interceptors before it reads the body, so
+			// receive the request here for the resolver.
 			msg, err := newRequestMessage(spec)
 			if err != nil {
 				log.WarnContext(ctx, "authz resolver request type unavailable",

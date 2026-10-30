@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/tests-bdd
 
-go 1.26.0
+go 1.26.10
 
 require (
 	connectrpc.com/connect v1.20.0
@@ -14,7 +14,7 @@ require (
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/protocol/go v0.42.0
 	github.com/opentdf/platform/sdk v0.35.0
-	github.com/opentdf/platform/service v0.28.0
+	github.com/opentdf/platform/service v0.29.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0

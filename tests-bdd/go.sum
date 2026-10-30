@@ -487,8 +487,8 @@ github.com/opentdf/platform/protocol/go v0.42.0 h1:TQIkSAdDnqkUCwjmTXU9p8RtNq1QV
 github.com/opentdf/platform/protocol/go v0.42.0/go.mod h1:lvv23DfDAoPjhYoBXoyGnmCiOZALy9OLMuZ2xAmfX9s=
 github.com/opentdf/platform/sdk v0.35.0 h1:HAVelo7eKkxTouV/ZlAok8RJVg6O+PjCU2AixFXGqlw=
 github.com/opentdf/platform/sdk v0.35.0/go.mod h1:P3/X2ScjCVlScFsSZ/TYTYihj75q5Oz58acoz+JwLAA=
-github.com/opentdf/platform/service v0.28.0 h1:24Dzpx5GqRqOaGAKKVTcUdnHDP9Ud7DHs3aGNvpoQAI=
-github.com/opentdf/platform/service v0.28.0/go.mod h1:TEblDxuOFkoZ0wN/Kfr3cechXTSM0zq+WLxPGCJWgRA=
+github.com/opentdf/platform/service v0.29.0 h1:T0ij7WFg7+z+iTjSexiWpApkb0Rp8wIsP53UTpTd5lw=
+github.com/opentdf/platform/service v0.29.0/go.mod h1:iTsbJ3OZy2IrJdpBRHzmUZeUY33KdvSYY3rOl5sM57Y=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/package-url/packageurl-go v0.1.1 h1:KTRE0bK3sKbFKAk3yy63DpeskU7Cvs/x/Da5l+RtzyU=

@@ -1780,8 +1780,18 @@ func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
 			kao.WrappedKey = wrappedKey
 			tt.mutate(provider, requests)
 
-			_, _, err = provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			_, results, err := provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
 			require.NoError(t, err)
+			if tt.wantTamper {
+				result := results[requests[0].GetPolicy().GetId()]["123"]
+				require.Error(t, result.Error)
+				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+				require.Nil(t, result.DEK)
+				require.Empty(t, result.Encapped)
+				if tt.wantReason != rewrapReasonPolicyBindingMissing {
+					require.Contains(t, result.Error.Error(), "desc = bad request")
+				}
+			}
 			require.Len(t, events, 1)
 			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)
 			require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])

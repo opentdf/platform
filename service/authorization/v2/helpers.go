@@ -53,14 +53,35 @@ func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...an
 	logs = append(logs, slog.Any("error", err))
 	if errors.Is(err, access.ErrFQNNotFound) {
 		l.ErrorContext(ctx, "FQN not found", logs...)
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, &evaluationError{cause: err})
 	}
 	if errors.Is(err, access.ErrDefinitionNotFound) {
 		l.ErrorContext(ctx, "definition not found", logs...)
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, &evaluationError{cause: err})
 	}
 	l.ErrorContext(ctx, "unexpected error", logs...)
 
 	// Ensure error response is safe and does not leak internal information
-	return connect.NewError(connect.CodeInternal, ErrResponseSafeInternalError)
+	code := connect.CodeInternal
+	dependencyCode := connect.CodeOf(err)
+	if dependencyCode == connect.CodePermissionDenied || dependencyCode == connect.CodeUnauthenticated || dependencyCode == connect.CodeInvalidArgument {
+		return connect.NewError(dependencyCode, &evaluationError{cause: err})
+	}
+	switch {
+	case errors.Is(err, context.Canceled):
+		code = connect.CodeCanceled
+	case errors.Is(err, context.DeadlineExceeded):
+		code = connect.CodeDeadlineExceeded
+	default:
+		if dependencyCode == connect.CodeUnavailable || dependencyCode == connect.CodeDeadlineExceeded || dependencyCode == connect.CodeCanceled || dependencyCode == connect.CodeResourceExhausted {
+			code = dependencyCode
+		}
+	}
+	return connect.NewError(code, &evaluationError{cause: err})
 }
+
+// Dependency details stay available to local callers but never go on the wire.
+type evaluationError struct{ cause error }
+
+func (e *evaluationError) Error() string { return ErrResponseSafeInternalError.Error() }
+func (e *evaluationError) Unwrap() error { return e.cause }

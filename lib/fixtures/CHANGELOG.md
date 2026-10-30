@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.6.0...lib/fixtures/v0.7.0) (2026-10-30)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+* **deps:** bump golang.org/x/net from 0.38.0 to 0.55.0 in /lib/fixtures ([#3710](https://github.com/opentdf/platform/issues/3710)) ([71dce0d](https://github.com/opentdf/platform/commit/71dce0d7fd054a819c5775126e916f412a0a5470))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.5.0...lib/fixtures/v0.6.0) (2026-07-21)
 
 

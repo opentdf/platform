@@ -83,6 +83,28 @@ func detectMimeType(in io.Reader, fileExt string) (string, io.Reader, error) {
 	return detected, io.MultiReader(bytes.NewReader(head), in), nil
 }
 
+// encryptInput resolves the payload: the named file when one is given,
+// otherwise stdin. It returns streamio.ErrNoInput when neither carries one.
+//
+// stdin is only consulted when there is no file argument. Checking it first
+// meant blocking on any stdin that was not a terminal: a pipe whose writer
+// never closes it — `ssh host otdfctl encrypt f`, Ansible, some CI runners —
+// never reports EOF, so encrypt hung before reading the file it was given.
+// This matches decrypt and inspect, which prefer the file via OpenSeekable.
+func encryptInput(filePath string, stdin *os.File) (io.Reader, func(), error) {
+	if filePath != "" {
+		return streamio.OpenFile(filePath)
+	}
+	piped, ok, err := streamio.PipeReader(stdin)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	if !ok {
+		return nil, func() {}, streamio.ErrNoInput
+	}
+	return piped, func() {}, nil
+}
+
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
 	h := common.NewHandler(c)
@@ -107,28 +129,6 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cli.ExitWithError("Invalid wrapping key algorithm", err)
 	}
 
-	piped, hasPiped, err := streamio.PipeReader(os.Stdin)
-	if err != nil {
-		cli.ExitWithError("failed to scan bytes from stdin", err)
-	}
-
-	inputCount := 0
-	if filePath != "" {
-		inputCount++
-	}
-	if hasPiped {
-		inputCount++
-	}
-
-	cliExit := func(s string) {
-		cli.ExitWithError("Must provide "+s+" of the following to encrypt: [file argument, stdin input]", nil)
-	}
-	if inputCount == 0 {
-		cliExit("ONE")
-	} else if inputCount > 1 {
-		cliExit("ONLY ONE")
-	}
-
 	inputName := "stdin"
 	if filePath != "" {
 		inputName = filePath
@@ -136,12 +136,12 @@ func encryptRun(cmd *cobra.Command, args []string) {
 
 	// Whichever source it is, it goes to the SDK as-is rather than through a
 	// temporary file, since CreateTDF takes a plain io.Reader.
-	in, cleanup := piped, func() {}
-	if filePath != "" {
-		in, cleanup, err = streamio.OpenFile(filePath)
-		if err != nil {
-			cli.ExitWithError("Failed to read "+inputName+":", err)
-		}
+	in, cleanup, err := encryptInput(filePath, os.Stdin)
+	switch {
+	case errors.Is(err, streamio.ErrNoInput):
+		cli.ExitWithError("Must provide ONE of the following to encrypt: [file argument, stdin input]", nil)
+	case err != nil:
+		cli.ExitWithError("Failed to read "+inputName+":", err)
 	}
 	// cli.ExitWithError calls os.Exit, which skips deferred functions, so every
 	// exit below goes through fail() instead of relying on this.

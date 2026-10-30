@@ -113,6 +113,18 @@ func (f *fileStore) Exists() bool {
 	return err == nil
 }
 
+// ExistsWithError checks presence without retrieving an encryption key.
+func (f *fileStore) ExistsWithError() (bool, error) {
+	_, err := os.Stat(f.filePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Get retrieves and decrypts data from the file
 func (f *fileStore) Get() ([]byte, error) {
 	key, err := f.getEncryptionKey()

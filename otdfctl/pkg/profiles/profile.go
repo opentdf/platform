@@ -21,19 +21,7 @@ const (
 	ProfileDriverDefault                  = ProfileDriverFileSystem
 )
 
-func newFileStoreProfiler() (*osprofiles.Profiler, error) {
-	platform, err := osplatform.NewPlatform(config.ServicePublisher, config.AppName, runtime.GOOS)
-	if err != nil {
-		return nil, errors.Join(ErrCreatingPlatform, err)
-	}
-	profiler, err := osprofiles.New(config.AppName, osprofiles.WithFileStore(platform.UserAppConfigDirectory()))
-	if err != nil {
-		return nil, errors.Join(ErrCreatingNewProfile, err)
-	}
-	return profiler, nil
-}
-
-func NewProfiler(store string) (*osprofiles.Profiler, error) {
+func NewProfiler(store string) (*Profiler, error) {
 	driverType, err := ToProfileDriver(store)
 	if err != nil {
 		return nil, err
@@ -58,14 +46,31 @@ func ToProfileDriver(driverType string) (ProfileDriver, error) {
 	}
 }
 
-func CreateProfiler(driverType ProfileDriver) (*osprofiles.Profiler, error) {
+func CreateProfiler(driverType ProfileDriver) (*Profiler, error) {
+	return createProfiler(driverType, false)
+}
+
+func createProfiler(driverType ProfileDriver, readOnly bool) (*Profiler, error) {
+	// Keep initialization and preflight using the same driver options.
+	newProfiler := osprofiles.New
+	if readOnly {
+		newProfiler = osprofiles.Open
+	}
 	switch driverType {
 	case ProfileDriverMemory:
-		return osprofiles.New(config.AppName, osprofiles.WithInMemoryStore())
+		return newProfiler(config.AppName, osprofiles.WithInMemoryStore())
 	case ProfileDriverKeyring:
-		return osprofiles.New(config.AppName, osprofiles.WithKeyringStore())
+		return newProfiler(config.AppName, osprofiles.WithKeyringStore())
 	case ProfileDriverFileSystem:
-		return newFileStoreProfiler()
+		platform, err := osplatform.NewPlatform(config.ServicePublisher, config.AppName, runtime.GOOS)
+		if err != nil {
+			return nil, errors.Join(ErrCreatingPlatform, err)
+		}
+		profiler, err := newProfiler(config.AppName, osprofiles.WithFileStore(platform.UserAppConfigDirectory()))
+		if err != nil {
+			return nil, errors.Join(ErrCreatingNewProfile, err)
+		}
+		return profiler, nil
 	case ProfileDriverUnknown:
 		fallthrough
 	default:
@@ -74,22 +79,80 @@ func CreateProfiler(driverType ProfileDriver) (*osprofiles.Profiler, error) {
 }
 
 func Migrate(to ProfileDriver, from ProfileDriver) error {
-	fromProfiler, err := CreateProfiler(from)
-	if err != nil {
-		return err
+	switch to {
+	case ProfileDriverFileSystem, ProfileDriverKeyring, ProfileDriverMemory:
+	case ProfileDriverUnknown:
+		fallthrough
+	default:
+		return ErrUnknownProfileDriverType
 	}
 
-	toProfiler, err := CreateProfiler(to)
+	fromProfiler, err := createProfiler(from, true)
 	if err != nil {
 		return err
 	}
 
 	profilesToMigrate := osprofiles.ListProfiles(fromProfiler)
-	if len(profilesToMigrate) == 0 {
+	// Preserve the previous no-op for an empty store when both drivers are identical.
+	if to == from && len(profilesToMigrate) == 0 {
+		return nil
+	}
+	sourceGlobal := osprofiles.GetGlobalConfig(fromProfiler)
+	globalExtensions, err := sourceGlobal.Extensions()
+	if err != nil {
+		return err
+	}
+	if len(profilesToMigrate) == 0 && len(globalExtensions) == 0 && len(sourceGlobal.UnknownFields()) == 0 {
 		return nil
 	}
 
-	defaultProfileBeingMigrated := osprofiles.GetGlobalConfig(fromProfiler).GetDefaultProfile()
+	// Migrate returns only an error, so an in-memory destination would be
+	// discarded on return before the source is deleted.
+	if to == ProfileDriverMemory {
+		return ErrMigrationDestinationNotPersistent
+	}
+
+	defaultProfileBeingMigrated := sourceGlobal.GetDefaultProfile()
+	// Read and validate every source entry before writing to the destination.
+	profileStores := make([]*osprofiles.ProfileStore, 0, len(profilesToMigrate))
+	for _, name := range profilesToMigrate {
+		profileStore, err := osprofiles.GetProfile[*ProfileConfig](fromProfiler, name)
+		if err != nil {
+			return err
+		}
+		// Check aliases within the source even when the destination has no profile.
+		if err := profileStore.CheckUnknownTo(profileStore); err != nil {
+			return err
+		}
+		profileStores = append(profileStores, profileStore)
+	}
+	toProfiler, err := createProfiler(to, true)
+	if err != nil {
+		return err
+	}
+	if err := sourceGlobal.CheckUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {
+		return err
+	}
+	for _, name := range profilesToMigrate {
+		if osprofiles.GetGlobalConfig(toProfiler).ProfileExists(name) {
+			// AddProfile cannot register an already indexed name. Reject the
+			// collision now, before any earlier profile has been written.
+			return osprofiles.ErrProfileNameConflict
+		}
+		exists, err := osprofiles.HasProfileStore(toProfiler, name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return osprofiles.ErrProfileNameConflict
+		}
+	}
+
+	// Initialization/version writes are safe only after all preflight checks.
+	toProfiler, err = CreateProfiler(to)
+	if err != nil {
+		return err
+	}
 
 	slog.Debug("migrating profiles",
 		slog.Any("count", len(profilesToMigrate)),
@@ -97,11 +160,8 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		slog.Any("to", string(to)),
 	)
 
-	for _, profileName := range profilesToMigrate {
-		store, err := osprofiles.GetProfile[*ProfileConfig](fromProfiler, profileName)
-		if err != nil {
-			return err
-		}
+	for i, profileName := range profilesToMigrate {
+		store := profileStores[i]
 
 		p, ok := store.Profile.(*ProfileConfig)
 		if !ok || p == nil {
@@ -110,14 +170,43 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 
 		setDefault := profileName == defaultProfileBeingMigrated
 
-		if err := toProfiler.AddProfile(p, setDefault); err != nil {
+		// Create-only registration repeats the presence check to avoid merging
+		// into an orphan observed after preflight. Drivers still provide no CAS.
+		destination, err := osprofiles.RegisterProfile(toProfiler, p)
+		if err != nil {
 			return err
+		}
+		if err := store.CopyUnknownTo(destination); err != nil {
+			return err
+		}
+		values, err := store.Extensions()
+		if err != nil {
+			return err
+		}
+		for namespace, payload := range values {
+			if err := destination.SetExtension(namespace, payload); err != nil {
+				return err
+			}
+		}
+		if setDefault {
+			if err := osprofiles.SetDefaultProfile(toProfiler, profileName); err != nil {
+				return err
+			}
 		}
 
 		slog.Debug("migrated profile",
 			slog.String("profile", profileName),
 			slog.Bool("set_default", setDefault),
 		)
+	}
+
+	if err := sourceGlobal.CopyUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {
+		return err
+	}
+	for namespace, payload := range globalExtensions {
+		if err := osprofiles.GetGlobalConfig(toProfiler).SetExtension(namespace, payload); err != nil {
+			return err
+		}
 	}
 
 	slog.Debug("removing profiles",

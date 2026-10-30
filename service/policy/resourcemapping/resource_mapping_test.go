@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/logger"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -69,10 +69,10 @@ func Test_CreateResourceMapping_NamespacedPolicyRequiresNamespace(t *testing.T) 
 		config: &policyconfig.Config{NamespacedPolicy: true},
 	}
 
-	_, err := service.CreateResourceMapping(t.Context(), connect.NewRequest(&resourcemapping.CreateResourceMappingRequest{
+	_, err := service.CreateResourceMapping(t.Context(), &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: validUUID,
 		Terms:            []string{"term1"},
-	}))
+	})
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

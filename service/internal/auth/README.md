@@ -7,6 +7,8 @@ This package handles authentication (authn) and authorization (authz) for the Op
 ```
 auth/
 ├── authn.go           # Authentication middleware and token validation
+├── connect_gate.go    # Connect request gate that authenticates before body decoding
+├── connect_v2.go      # connect-go v2 authentication, authorization, and IPC interceptors
 ├── config.go          # Configuration types
 ├── discovery.go       # OIDC discovery
 └── authz/             # Authorization interfaces and implementations
@@ -16,6 +18,28 @@ auth/
         ├── v1/        # Legacy path + action authorization
         └── v2/        # RPC + dimensions authorization
 ```
+
+## Connect Request Flow
+
+The platform serves services registered with a connect-go v1 handler and services registered on a connect-go v2 server. Both authenticate from the request headers before the body is read.
+
+External requests to connect-go v1 services pass through these stages:
+
+1. The HTTP router stores the request's HTTP method in the context (`ContextWithHTTPMethod`).
+2. `ConnectAuthNRequestGate` authenticates the request from its headers, including DPoP proof validation, before Connect reads, decompresses, or unmarshals the body. Unauthenticated requests are rejected without decoding the body.
+3. `ConnectAuthNInterceptor` sets `DPoP-Nonce` response headers when nonces are required. It authenticates only when the gate did not run, such as for handlers built outside the platform server.
+4. `ConnectAuthZInterceptor` authorizes the request. Unary authorization may read the decoded message through resource resolvers.
+
+Requests rejected by the gate never reach the interceptor chain, so tracing interceptors record no span for them.
+
+External requests to connect-go v2 services pass through these stages:
+
+1. `ConnectAuthNInterceptorV2` authenticates the request from its headers. connect-go v2 runs server interceptors before it reads the body, so no gate is needed, and the interceptor reads the HTTP method from the call. It sets `DPoP-Nonce` and DPoP challenge headers on the response.
+2. `ConnectAuthZInterceptorV2` authorizes the request. For a unary procedure with a resource resolver it receives the request message first, runs the resolver, and passes the same message to the handler. Every other request is authorized before the body is read.
+
+Rejections from the v2 interceptors pass through the tracing interceptor, so they are recorded, and gRPC clients receive the DPoP challenge headers.
+
+The in-process (IPC) server uses neither gate nor external authentication; `IPCUnaryServerInterceptor` and `IPCServerInterceptorV2` handle its requests.
 
 ## Authz v1
 

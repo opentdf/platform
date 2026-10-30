@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	dvm "github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
-	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping/dynamicvaluemappingconnect"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping/dynamicvaluemappingconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -39,19 +39,19 @@ func OnConfigUpdate(svc *DynamicValueMappingService) serviceregistry.OnConfigUpd
 	}
 }
 
-func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[dynamicvaluemappingconnect.DynamicValueMappingServiceHandler] {
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[dynamicvaluemappingconnectv2.DynamicValueMappingServiceHandler] {
 	svc := new(DynamicValueMappingService)
 	onUpdateConfigHook := OnConfigUpdate(svc)
 
-	return &serviceregistry.Service[dynamicvaluemappingconnect.DynamicValueMappingServiceHandler]{
+	return &serviceregistry.Service[dynamicvaluemappingconnectv2.DynamicValueMappingServiceHandler]{
 		Close: svc.Close,
-		ServiceOptions: serviceregistry.ServiceOptions[dynamicvaluemappingconnect.DynamicValueMappingServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &dvm.DynamicValueMappingService_ServiceDesc,
-			ConnectRPCFunc: dynamicvaluemappingconnect.NewDynamicValueMappingServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (dynamicvaluemappingconnect.DynamicValueMappingServiceHandler, serviceregistry.HandlerServer) {
+		ServiceOptions: serviceregistry.ServiceOptions[dynamicvaluemappingconnectv2.DynamicValueMappingServiceHandler]{
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &dvm.DynamicValueMappingService_ServiceDesc,
+			ConnectRPCRegisterFunc: dynamicvaluemappingconnectv2.RegisterDynamicValueMappingServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (dynamicvaluemappingconnectv2.DynamicValueMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -75,12 +75,12 @@ func (s *DynamicValueMappingService) Close() {
 }
 
 func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Context,
-	req *connect.Request[dvm.CreateDynamicValueMappingRequest],
-) (*connect.Response[dvm.CreateDynamicValueMappingResponse], error) {
+	req *dvm.CreateDynamicValueMappingRequest,
+) (*dvm.CreateDynamicValueMappingResponse, error) {
 	rsp := &dvm.CreateDynamicValueMappingResponse{}
 	s.logger.DebugContext(ctx, "creating dynamic value mapping")
-	if req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespaceRequired)
+	if req.GetNamespaceId() == "" && req.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespaceRequired.Error()).WithCause(errNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{
@@ -90,7 +90,7 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 
 	// Creation may involve action or SubjectConditionSet creation, so use a transaction.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		mapping, err := txClient.CreateDynamicValueMapping(ctx, req.Msg)
+		mapping, err := txClient.CreateDynamicValueMapping(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -103,41 +103,41 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamic_value_mapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamic_value_mapping", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s DynamicValueMappingService) ListDynamicValueMappings(ctx context.Context,
-	req *connect.Request[dvm.ListDynamicValueMappingsRequest],
-) (*connect.Response[dvm.ListDynamicValueMappingsResponse], error) {
+	req *dvm.ListDynamicValueMappingsRequest,
+) (*dvm.ListDynamicValueMappingsResponse, error) {
 	s.logger.DebugContext(ctx, "listing dynamic value mappings")
 
-	rsp, err := s.dbClient.ListDynamicValueMappings(ctx, req.Msg)
+	rsp, err := s.dbClient.ListDynamicValueMappings(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s DynamicValueMappingService) GetDynamicValueMapping(ctx context.Context,
-	req *connect.Request[dvm.GetDynamicValueMappingRequest],
-) (*connect.Response[dvm.GetDynamicValueMappingResponse], error) {
-	s.logger.DebugContext(ctx, "getting dynamic value mapping", slog.String("id", req.Msg.GetId()))
+	req *dvm.GetDynamicValueMappingRequest,
+) (*dvm.GetDynamicValueMappingResponse, error) {
+	s.logger.DebugContext(ctx, "getting dynamic value mapping", slog.String("id", req.GetId()))
 
-	mapping, err := s.dbClient.GetDynamicValueMapping(ctx, req.Msg.GetId())
+	mapping, err := s.dbClient.GetDynamicValueMapping(ctx, req.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
-	return connect.NewResponse(&dvm.GetDynamicValueMappingResponse{DynamicValueMapping: mapping}), nil
+	return &dvm.GetDynamicValueMappingResponse{DynamicValueMapping: mapping}, nil
 }
 
 func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Context,
-	req *connect.Request[dvm.UpdateDynamicValueMappingRequest],
-) (*connect.Response[dvm.UpdateDynamicValueMappingResponse], error) {
+	req *dvm.UpdateDynamicValueMappingRequest,
+) (*dvm.UpdateDynamicValueMappingResponse, error) {
 	rsp := &dvm.UpdateDynamicValueMappingResponse{}
-	id := req.Msg.GetId()
+	id := req.GetId()
 	s.logger.DebugContext(ctx, "updating dynamic value mapping", slog.String("id", id))
 
 	auditParams := audit.PolicyEventParams{
@@ -153,7 +153,7 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 			return err
 		}
 
-		updated, err := txClient.UpdateDynamicValueMapping(ctx, req.Msg)
+		updated, err := txClient.UpdateDynamicValueMapping(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -166,18 +166,18 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamic_value_mapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamic_value_mapping", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s DynamicValueMappingService) DeleteDynamicValueMapping(ctx context.Context,
-	req *connect.Request[dvm.DeleteDynamicValueMappingRequest],
-) (*connect.Response[dvm.DeleteDynamicValueMappingResponse], error) {
+	req *dvm.DeleteDynamicValueMappingRequest,
+) (*dvm.DeleteDynamicValueMappingResponse, error) {
 	rsp := &dvm.DeleteDynamicValueMappingResponse{}
-	id := req.Msg.GetId()
+	id := req.GetId()
 	s.logger.DebugContext(ctx, "deleting dynamic value mapping", slog.String("id", id))
 
 	auditParams := audit.PolicyEventParams{
@@ -194,5 +194,5 @@ func (s DynamicValueMappingService) DeleteDynamicValueMapping(ctx context.Contex
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	rsp.DynamicValueMapping = deleted
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }

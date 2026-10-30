@@ -2,14 +2,13 @@ package keymanagement
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	keyMgmtProto "github.com/opentdf/platform/protocol/go/policy/keymanagement"
-	keyMgmtConnect "github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnect"
+	keyMgmtConnect "github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -52,11 +51,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	return &serviceregistry.Service[keyMgmtConnect.KeyManagementServiceHandler]{
 		Close: ksvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[keyMgmtConnect.KeyManagementServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &keyMgmtProto.KeyManagementService_ServiceDesc,
-			ConnectRPCFunc: keyMgmtConnect.NewKeyManagementServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &keyMgmtProto.KeyManagementService_ServiceDesc,
+			ConnectRPCRegisterFunc: keyMgmtConnect.RegisterKeyManagementServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (keyMgmtConnect.KeyManagementServiceHandler, serviceregistry.HandlerServer) {
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -97,18 +96,18 @@ func (ksvc *Service) Close() {
 	ksvc.dbClient.Close()
 }
 
-func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.CreateProviderConfigRequest]) (*connect.Response[keyMgmtProto.CreateProviderConfigResponse], error) {
+func (ksvc Service) CreateProviderConfig(ctx context.Context, req *keyMgmtProto.CreateProviderConfigRequest) (*keyMgmtProto.CreateProviderConfigResponse, error) {
 	rsp := &keyMgmtProto.CreateProviderConfigResponse{}
 
 	ksvc.logger.DebugContext(ctx, "creating Provider Config",
-		slog.String("name", req.Msg.GetName()),
+		slog.String("name", req.GetName()),
 		slog.String("manager",
-			req.Msg.GetManager()))
+			req.GetManager()))
 
 	// Validate that manager is provided and registered
-	manager := req.Msg.GetManager()
+	manager := req.GetManager()
 	if manager == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("manager field is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "manager field is required")
 	}
 	if !ksvc.isManagerRegistered(manager) {
 		ksvc.logger.WarnContext(ctx, "create provider: manager type is not registered",
@@ -122,7 +121,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 	}
 
 	err := ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		pc, err := txClient.CreateProviderConfig(ctx, req.Msg)
+		pc, err := txClient.CreateProviderConfig(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -140,46 +139,46 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 	})
 	if err != nil {
 		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("key_management_service", req.Msg.GetName()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("key_management_service", req.GetName()))
 	}
 	ksvc.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.GetProviderConfigRequest]) (*connect.Response[keyMgmtProto.GetProviderConfigResponse], error) {
+func (ksvc Service) GetProviderConfig(ctx context.Context, req *keyMgmtProto.GetProviderConfigRequest) (*keyMgmtProto.GetProviderConfigResponse, error) {
 	rsp := &keyMgmtProto.GetProviderConfigResponse{}
 
 	ksvc.logger.DebugContext(ctx, "getting Provider Config")
 
-	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg)
+	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.String()))
 	}
 
 	rsp.ProviderConfig = pc
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (ksvc Service) ListProviderConfigs(ctx context.Context, req *connect.Request[keyMgmtProto.ListProviderConfigsRequest]) (*connect.Response[keyMgmtProto.ListProviderConfigsResponse], error) {
+func (ksvc Service) ListProviderConfigs(ctx context.Context, req *keyMgmtProto.ListProviderConfigsRequest) (*keyMgmtProto.ListProviderConfigsResponse, error) {
 	ksvc.logger.DebugContext(ctx, "listing Provider Configs")
 
-	resp, err := ksvc.dbClient.ListProviderConfigs(ctx, req.Msg.GetPagination())
+	resp, err := ksvc.dbClient.ListProviderConfigs(ctx, req.GetPagination())
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.String()))
 	}
 
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
-func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.UpdateProviderConfigRequest]) (*connect.Response[keyMgmtProto.UpdateProviderConfigResponse], error) {
+func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *keyMgmtProto.UpdateProviderConfigRequest) (*keyMgmtProto.UpdateProviderConfigResponse, error) {
 	rsp := &keyMgmtProto.UpdateProviderConfigResponse{}
-	providerConfigID := req.Msg.GetId()
+	providerConfigID := req.GetId()
 
-	ksvc.logger.DebugContext(ctx, "updating Provider Config", slog.String("id", req.Msg.GetId()))
+	ksvc.logger.DebugContext(ctx, "updating Provider Config", slog.String("id", req.GetId()))
 
 	// Validate manager type if provided
-	manager := req.Msg.GetManager()
+	manager := req.GetManager()
 	if manager != "" && !ksvc.isManagerRegistered(manager) {
 		ksvc.logger.WarnContext(ctx, "update provider: manager type is not registered", slog.String("manager", manager))
 	}
@@ -201,7 +200,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	}
 
 	err = ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		pc, err := txClient.UpdateProviderConfig(ctx, req.Msg)
+		pc, err := txClient.UpdateProviderConfig(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -226,27 +225,27 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	})
 	if err != nil {
 		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("key_management_service", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("key_management_service", req.GetId()))
 	}
 	ksvc.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.DeleteProviderConfigRequest]) (*connect.Response[keyMgmtProto.DeleteProviderConfigResponse], error) {
+func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *keyMgmtProto.DeleteProviderConfigRequest) (*keyMgmtProto.DeleteProviderConfigResponse, error) {
 	rsp := &keyMgmtProto.DeleteProviderConfigResponse{}
 
-	ksvc.logger.DebugContext(ctx, "deleting Provider Config", slog.String("id", req.Msg.GetId()))
+	ksvc.logger.DebugContext(ctx, "deleting Provider Config", slog.String("id", req.GetId()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
 
-	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())
+	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.GetId())
 	if err != nil {
 		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("key_management_service", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("key_management_service", req.GetId()))
 	}
 
 	auditParams.ObjectID = pc.GetId()
@@ -260,7 +259,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 
 	rsp.ProviderConfig = pc
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 // isManagerRegistered checks if a manager name is available in the trust key manager factories

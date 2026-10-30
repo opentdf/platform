@@ -4,8 +4,12 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"math"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectgzip"
+	"connectrpc.com/connect/v2/connecthttp"
 )
 
 const (
@@ -40,6 +44,16 @@ func readLimitHandlerOptions(maxBytes int) []connect.HandlerOption {
 	}
 }
 
+// readAllowance returns how many bytes a bounded reader passes through: one past
+// limit, enough for Connect to detect an oversized message, or limit itself when
+// adding one would overflow.
+func readAllowance(limit int64) int64 {
+	if limit < math.MaxInt64 {
+		return limit + 1
+	}
+	return limit
+}
+
 // boundedGzipDecompressor stops producing output once a message exceeds limit.
 // Connect reads the rest of an oversized message to report its size, so the
 // decompressor itself ends decompression at the limit.
@@ -53,7 +67,7 @@ type boundedGzipDecompressor struct {
 // Read passes through at most limit+1 bytes, enough for Connect to detect an
 // oversized message, then fails so Connect stops decompressing.
 func (d *boundedGzipDecompressor) Read(p []byte) (int, error) {
-	remaining := d.limit + 1 - d.read
+	remaining := readAllowance(d.limit) - d.read
 	if remaining <= 0 {
 		return 0, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("decompressed message exceeds %d bytes", d.limit))
 	}
@@ -69,4 +83,58 @@ func (d *boundedGzipDecompressor) Read(p []byte) (int, error) {
 func (d *boundedGzipDecompressor) Reset(r io.Reader) error {
 	d.read = 0
 	return d.Reader.Reset(r)
+}
+
+// ReadLimitMountOptions caps each request message of a connect-go v2 mount at
+// maxBytes, both as read from the wire and after gzip decompression.
+// Non-positive values use the default. Options applied later replace these, so
+// a mount that raises the limit must use ReadLimitMountOptions again with the
+// larger value to keep gzip bounded.
+func ReadLimitMountOptions(maxBytes int) []connecthttp.Option {
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxRecvMsgSizeBytes
+	}
+	return []connecthttp.Option{
+		connecthttp.WithReadMaxBytes(maxBytes),
+		connecthttp.WithCompressors(boundedGzipCompressor{Compressor: connectgzip.New(), limit: int64(maxBytes)}),
+	}
+}
+
+// boundedGzipCompressor is gzip for connect-go v2 with decompression stopped
+// once a message exceeds limit. connect-go v2 also reads the rest of an
+// oversized message to report its size.
+type boundedGzipCompressor struct {
+	*connectgzip.Compressor
+
+	limit int64
+}
+
+func (c boundedGzipCompressor) Decompress(src io.Reader) (io.ReadCloser, error) {
+	reader, err := c.Compressor.Decompress(src)
+	if err != nil {
+		return nil, err
+	}
+	return &boundedReadCloser{ReadCloser: reader, limit: c.limit}, nil
+}
+
+// boundedReadCloser passes through at most limit+1 bytes, enough for Connect to
+// detect an oversized message, then fails.
+type boundedReadCloser struct {
+	io.ReadCloser
+
+	limit int64
+	read  int64
+}
+
+func (r *boundedReadCloser) Read(p []byte) (int, error) {
+	remaining := readAllowance(r.limit) - r.read
+	if remaining <= 0 {
+		return 0, connectv2.Errorf(connectv2.CodeResourceExhausted, "decompressed message exceeds %d bytes", r.limit)
+	}
+	if int64(len(p)) > remaining {
+		p = p[:remaining]
+	}
+	n, err := r.ReadCloser.Read(p)
+	r.read += int64(n)
+	return n, err
 }

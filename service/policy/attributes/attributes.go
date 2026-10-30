@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -44,19 +44,19 @@ func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
 	}
 }
 
-func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnectv2.AttributesServiceHandler] {
 	as := new(AttributesService)
 	onUpdateConfigHook := OnConfigUpdate(as)
 
-	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
+	return &serviceregistry.Service[attributesconnectv2.AttributesServiceHandler]{
 		Close: as.Close,
-		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
+		ServiceOptions: serviceregistry.ServiceOptions[attributesconnectv2.AttributesServiceHandler]{
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &attributes.AttributesService_ServiceDesc,
+			ConnectRPCRegisterFunc: attributesconnectv2.RegisterAttributesServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnectv2.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -80,9 +80,9 @@ func (s *AttributesService) Close() {
 }
 
 func (s *AttributesService) CreateAttribute(ctx context.Context,
-	req *connect.Request[attributes.CreateAttributeRequest],
-) (*connect.Response[attributes.CreateAttributeResponse], error) {
-	s.logger.DebugContext(ctx, "creating new attribute definition", slog.String("name", req.Msg.GetName()))
+	req *attributes.CreateAttributeRequest,
+) (*attributes.CreateAttributeResponse, error) {
+	s.logger.DebugContext(ctx, "creating new attribute definition", slog.String("name", req.GetName()))
 	rsp := &attributes.CreateAttributeResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -91,12 +91,12 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		item, err := txClient.CreateAttribute(ctx, req.Msg)
+		item, err := txClient.CreateAttribute(ctx, req)
 		if err != nil {
 			return err
 		}
 
-		s.logger.DebugContext(ctx, "created new attribute definition", slog.String("name", req.Msg.GetName()))
+		s.logger.DebugContext(ctx, "created new attribute definition", slog.String("name", req.GetName()))
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
@@ -105,33 +105,33 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
-	req *connect.Request[attributes.ListAttributesRequest],
-) (*connect.Response[attributes.ListAttributesResponse], error) {
+	req *attributes.ListAttributesRequest,
+) (*attributes.ListAttributesResponse, error) {
 	ctx, span := s.Start(ctx, "ListAttributes")
 	defer span.End()
 
-	state := req.Msg.GetState().String()
+	state := req.GetState().String()
 	s.logger.DebugContext(ctx, "listing attribute definitions", slog.String("state", state))
 
-	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
+	rsp, err := s.dbClient.ListAttributes(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) GetAttribute(ctx context.Context,
-	req *connect.Request[attributes.GetAttributeRequest],
-) (*connect.Response[attributes.GetAttributeResponse], error) {
+	req *attributes.GetAttributeRequest,
+) (*attributes.GetAttributeResponse, error) {
 	ctx, span := s.Start(ctx, "GetAttribute")
 	defer span.End()
 
@@ -139,10 +139,10 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 
 	var identifier any
 
-	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
-		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	if req.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.GetId() //nolint:staticcheck // Id can still be used until removed
 	} else {
-		identifier = req.Msg.GetIdentifier()
+		identifier = req.GetIdentifier()
 	}
 
 	item, err := s.dbClient.GetAttribute(ctx, identifier)
@@ -151,63 +151,63 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	return connect.NewResponse(rsp), err
+	return rsp, err
 }
 
 func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
-	req *connect.Request[attributes.GetAttributeValuesByFqnsRequest],
-) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
+	req *attributes.GetAttributeValuesByFqnsRequest,
+) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	ctx, span := s.Start(ctx, "GetAttributeValuesByFqns")
 	defer span.End()
 
 	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 
-	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Msg)
+	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.GetFqns())))
 	}
 	rsp.FqnAttributeValues = fqnsToAttributes
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) GetKeyMappingsByFqns(ctx context.Context,
-	req *connect.Request[attributes.GetKeyMappingsByFqnsRequest],
-) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	req *attributes.GetKeyMappingsByFqnsRequest,
+) (*attributes.GetKeyMappingsByFqnsResponse, error) {
 	ctx, span := s.Start(ctx, "GetKeyMappingsByFqns")
 	defer span.End()
 
 	rsp := &attributes.GetKeyMappingsByFqnsResponse{}
 
-	mappings, err := s.dbClient.GetKeyMappingsByFqns(ctx, req.Msg)
+	mappings, err := s.dbClient.GetKeyMappingsByFqns(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.GetFqns())))
 	}
 	rsp.FqnKeyMappings = mappings
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) GetEntitleableAttributesByFqns(ctx context.Context,
-	req *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest],
-) (*connect.Response[attributes.GetEntitleableAttributesByFqnsResponse], error) {
+	req *attributes.GetEntitleableAttributesByFqnsRequest,
+) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
 	ctx, span := s.Start(ctx, "GetEntitleableAttributesByFqns")
 	defer span.End()
 
-	rsp, err := s.dbClient.GetEntitleableAttributesByFqns(ctx, req.Msg)
+	rsp, err := s.dbClient.GetEntitleableAttributesByFqns(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.GetFqns())))
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
-	req *connect.Request[attributes.UpdateAttributeRequest],
-) (*connect.Response[attributes.UpdateAttributeResponse], error) {
+	req *attributes.UpdateAttributeRequest,
+) (*attributes.UpdateAttributeResponse, error) {
 	rsp := &attributes.UpdateAttributeResponse{}
 
-	attributeID := req.Msg.GetId()
+	attributeID := req.GetId()
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypeAttributeDefinition,
@@ -220,10 +220,10 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	updated, err := s.dbClient.UpdateAttribute(ctx, attributeID, req.Msg)
+	updated, err := s.dbClient.UpdateAttribute(ctx, attributeID, req)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("attribute", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
 	}
 
 	auditParams.Original = original
@@ -234,15 +234,15 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		Id: attributeID,
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 func (s *AttributesService) DeactivateAttribute(ctx context.Context,
-	req *connect.Request[attributes.DeactivateAttributeRequest],
-) (*connect.Response[attributes.DeactivateAttributeResponse], error) {
+	req *attributes.DeactivateAttributeRequest,
+) (*attributes.DeactivateAttributeResponse, error) {
 	rsp := &attributes.DeactivateAttributeResponse{}
 
-	attributeID := req.Msg.GetId()
+	attributeID := req.GetId()
 	auditParams := audit.PolicyEventParams{
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ActionType: audit.ActionTypeUpdate,
@@ -268,14 +268,14 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 ///
 /// Attribute Values
 ///
 
-func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *connect.Request[attributes.CreateAttributeValueRequest]) (*connect.Response[attributes.CreateAttributeValueResponse], error) {
+func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
 	rsp := &attributes.CreateAttributeValueResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -292,7 +292,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
+		item, err := txClient.CreateAttributeValue(ctx, req.GetAttributeId(), req)
 		if err != nil {
 			return err
 		}
@@ -305,13 +305,13 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		if len(req.Msg.GetSubjectMappings()) > 0 {
+		if len(req.GetSubjectMappings()) > 0 {
 			s.logger.LogPolicyCRUDFailure(ctx, subjectMappingAuditParams)
 		}
-		if len(req.Msg.GetObligationTriggers()) > 0 {
+		if len(req.GetObligationTriggers()) > 0 {
 			s.logger.LogPolicyCRUDFailure(ctx, obligationTriggerAuditParams)
 		}
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	for _, mapping := range rsp.GetValue().GetSubjectMappings() {
@@ -329,22 +329,22 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		}
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) ListAttributeValues(_ context.Context, _ *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, ErrDeprecatedListAttributeValues)
+func (s *AttributesService) ListAttributeValues(_ context.Context, _ *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, ErrDeprecatedListAttributeValues.Error()).WithCause(ErrDeprecatedListAttributeValues)
 }
 
-func (s *AttributesService) GetAttributeValue(ctx context.Context, req *connect.Request[attributes.GetAttributeValueRequest]) (*connect.Response[attributes.GetAttributeValueResponse], error) {
+func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error) {
 	rsp := &attributes.GetAttributeValueResponse{}
 
 	var identifier any
 
-	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
-		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	if req.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.GetId() //nolint:staticcheck // Id can still be used until removed
 	} else {
-		identifier = req.Msg.GetIdentifier()
+		identifier = req.GetIdentifier()
 	}
 
 	item, err := s.dbClient.GetAttributeValue(ctx, identifier)
@@ -354,13 +354,13 @@ func (s *AttributesService) GetAttributeValue(ctx context.Context, req *connect.
 
 	rsp.Value = item
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *connect.Request[attributes.UpdateAttributeValueRequest]) (*connect.Response[attributes.UpdateAttributeValueResponse], error) {
+func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateAttributeValueRequest) (*attributes.UpdateAttributeValueResponse, error) {
 	rsp := &attributes.UpdateAttributeValueResponse{}
 
-	attributeID := req.Msg.GetId()
+	attributeID := req.GetId()
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypeAttributeValue,
@@ -373,10 +373,10 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	updated, err := s.dbClient.UpdateAttributeValue(ctx, req.Msg)
+	updated, err := s.dbClient.UpdateAttributeValue(ctx, req)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("value", req.String()))
 	}
 
 	auditParams.Original = original
@@ -387,13 +387,13 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		Id: attributeID,
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *connect.Request[attributes.DeactivateAttributeValueRequest]) (*connect.Response[attributes.DeactivateAttributeValueResponse], error) {
+func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
 	rsp := &attributes.DeactivateAttributeValueResponse{}
 
-	attributeID := req.Msg.GetId()
+	attributeID := req.GetId()
 	auditParams := audit.PolicyEventParams{
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ActionType: audit.ActionTypeDelete,
@@ -418,14 +418,14 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 
 	rsp.Value = updated
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
+func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return nil, connect.NewError(connect.CodeUnimplemented, "this compatibility stub will be removed entirely in the following release")
 }
 
-func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	rsp := &attributes.RemoveKeyAccessServerFromAttributeResponse{} //nolint:staticcheck // Deprecated response retained for compatibility endpoint.
 
 	auditParams := audit.PolicyEventParams{
@@ -433,27 +433,27 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
 	}
 
-	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
+	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.GetAttributeKeyAccessServer())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_kas", req.Msg.GetAttributeKeyAccessServer().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_kas", req.GetAttributeKeyAccessServer().String()))
 	}
 
 	auditParams.ObjectID = attributeKas.GetAttributeId()
-	auditParams.Original = req.Msg.GetAttributeKeyAccessServer()
+	auditParams.Original = req.GetAttributeKeyAccessServer()
 	auditParams.Updated = attributeKas
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.AttributeKeyAccessServer = attributeKas
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
+func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return nil, connect.NewError(connect.CodeUnimplemented, "this compatibility stub will be removed entirely in the following release")
 }
 
-func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	rsp := &attributes.RemoveKeyAccessServerFromValueResponse{} //nolint:staticcheck // Deprecated response retained for compatibility endpoint.
 
 	auditParams := audit.PolicyEventParams{
@@ -461,33 +461,33 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
 	}
 
-	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
+	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.GetValueKeyAccessServer())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_value_kas", req.Msg.GetValueKeyAccessServer().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_value_kas", req.GetValueKeyAccessServer().String()))
 	}
 
 	auditParams.ObjectID = valueKas.GetValueId()
-	auditParams.Original = req.Msg.GetValueKeyAccessServer()
+	auditParams.Original = req.GetValueKeyAccessServer()
 	auditParams.Updated = valueKas
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.ValueKeyAccessServer = valueKas
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {
+func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *attributes.AssignPublicKeyToAttributeRequest) (*attributes.AssignPublicKeyToAttributeResponse, error) {
 	rsp := &attributes.AssignPublicKeyToAttributeResponse{}
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
 
-	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.Msg.GetAttributeKey())
+	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.GetAttributeKey())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute_key", r.Msg.GetAttributeKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute_key", r.GetAttributeKey().String()))
 	}
 
 	auditParams.ObjectID = ak.GetAttributeId()
@@ -496,41 +496,41 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 
 	rsp.AttributeKey = ak
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error) {
+func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r *attributes.RemovePublicKeyFromAttributeRequest) (*attributes.RemovePublicKeyFromAttributeResponse, error) {
 	rsp := &attributes.RemovePublicKeyFromAttributeResponse{}
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
 
-	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.Msg.GetAttributeKey())
+	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.GetAttributeKey())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attribute_key", r.Msg.GetAttributeKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attribute_key", r.GetAttributeKey().String()))
 	}
 
 	auditParams.ObjectID = ak.GetAttributeId()
-	auditParams.Original = r.Msg.GetAttributeKey()
+	auditParams.Original = r.GetAttributeKey()
 	auditParams.Updated = ak
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error) {
+func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *attributes.AssignPublicKeyToValueRequest) (*attributes.AssignPublicKeyToValueResponse, error) {
 	rsp := &attributes.AssignPublicKeyToValueResponse{}
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
 
-	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.Msg.GetValueKey())
+	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.GetValueKey())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value_key", r.Msg.GetValueKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value_key", r.GetValueKey().String()))
 	}
 
 	auditParams.ObjectID = vk.GetValueId()
@@ -539,26 +539,26 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 
 	rsp.ValueKey = vk
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error) {
+func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *attributes.RemovePublicKeyFromValueRequest) (*attributes.RemovePublicKeyFromValueResponse, error) {
 	rsp := &attributes.RemovePublicKeyFromValueResponse{}
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
 
-	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.Msg.GetValueKey())
+	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.GetValueKey())
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("value_key", r.Msg.GetValueKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("value_key", r.GetValueKey().String()))
 	}
 
 	auditParams.ObjectID = vk.GetValueId()
-	auditParams.Original = r.Msg.GetValueKey()
+	auditParams.Original = r.GetValueKey()
 	auditParams.Updated = vk
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }

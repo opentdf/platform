@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -1948,7 +1949,7 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
 			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
 			result := results[kao.GetKeyAccessObjectId()]
-			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Equal(t, connectv2.CodeInvalidArgument, connectv2.CodeOf(result.Error))
 			require.Contains(t, result.Error.Error(), tt.wantMessage)
 			require.Equal(t, tt.wantResult, result.Audit.Result)
 			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
@@ -1999,7 +2000,7 @@ func TestVerifyRewrapRequestsRejectsMissingKIDForNonRSAKeyTypes(t *testing.T) {
 			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
 			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
 			result := results[kao.GetKeyAccessObjectId()]
-			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Equal(t, connectv2.CodeInvalidArgument, connectv2.CodeOf(result.Error))
 			require.Contains(t, result.Error.Error(), "key ID is empty")
 			require.Equal(t, audit.ActionResultFailure, result.Audit.Result)
 			require.Equal(t, rewrapReasonKAOInvalid, result.Audit.FailureReason)
@@ -2121,7 +2122,7 @@ func TestRewrapAuditsRequestLevelFailures(t *testing.T) {
 				}))),
 			}}
 
-			_, err := provider.Rewrap(t.Context(), connect.NewRequest(tt.request(t)))
+			_, err := provider.Rewrap(t.Context(), tt.request(t))
 			require.Error(t, err)
 			require.Len(t, events, 1)
 			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)

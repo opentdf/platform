@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/logger"
@@ -36,9 +36,9 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_NamespacedPolicy
 		config: &policyconfig.Config{NamespacedPolicy: true},
 	}
 
-	_, err := service.CreateRegisteredResource(s.T().Context(), connect.NewRequest(&registeredresources.CreateRegisteredResourceRequest{
+	_, err := service.CreateRegisteredResource(s.T().Context(), &registeredresources.CreateRegisteredResourceRequest{
 		Name: validName,
-	}))
+	})
 
 	s.Require().Error(err)
 	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))

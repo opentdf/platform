@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
@@ -23,6 +25,7 @@ import (
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/auth/authz"
+	"github.com/opentdf/platform/service/internal/connectcompat"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/internal/server/realip"
@@ -63,8 +66,8 @@ type Config struct {
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 
 	// Programmatic interceptors injected at startup (not loaded from config)
-	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
-	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
+	ExtraConnectInterceptors []ExtraInterceptor `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []ExtraInterceptor `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -229,9 +232,20 @@ func (c CORSConfig) EffectiveExposedHeaders() []string {
 }
 
 type ConnectRPC struct {
-	Mux               *http.ServeMux
-	Interceptors      []connect.HandlerOption
+	Mux *http.ServeMux
+	// Interceptors are the handler options for services registered with a
+	// connect-go v1 handler.
+	Interceptors []connect.HandlerOption
+	// ServerInterceptors wrap every service registered on a connect-go v2 server.
+	ServerInterceptors []connectv2.ServerInterceptor
+	// MountOptions apply to every connect-go v2 service; options a service
+	// supplies follow them.
+	MountOptions      []connecthttp.Option
 	ServiceReflection []string
+
+	// missingV1 and missingV2 name extra interceptors without a form for that
+	// connect-go version.
+	missingV1, missingV2 []string
 }
 
 type OpenTDFServer struct {
@@ -291,32 +305,51 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
 
-	var ipcAuthInts []connect.Interceptor
-	var connectAuthInts []connect.Interceptor
+	ipcInts := connectRPCInterceptors{
+		requestIP:   realip.ConnectTrustedRequestIPUnaryInterceptor(sdkAudit.RequestIPHeaderKey.String()),
+		requestIPV2: realip.ConnectTrustedRequestIPInterceptorV2(sdkAudit.RequestIPHeaderKey.String()),
+		extras:      config.ExtraIPCInterceptors,
+	}
+	externalInts := connectRPCInterceptors{
+		extras: config.ExtraConnectInterceptors,
+	}
 	if config.Auth.Enabled && authN != nil {
-		ipcAuthInts = []connect.Interceptor{authN.IPCUnaryServerInterceptor()}
-		connectAuthInts = []connect.Interceptor{
+		ipcInts.auth = []connect.Interceptor{authN.IPCUnaryServerInterceptor()}
+		ipcInts.authV2 = []connectv2.ServerInterceptor{authN.IPCServerInterceptorV2()}
+		externalInts.auth = []connect.Interceptor{
 			authN.ConnectAuthNInterceptor(),
 			authN.ConnectAuthZInterceptor(),
 		}
+		externalInts.authV2 = []connectv2.ServerInterceptor{
+			authN.ConnectAuthNInterceptorV2(),
+			authN.ConnectAuthZInterceptorV2(),
+		}
 	}
 
-	ipcRequestIPInterceptor := realip.ConnectTrustedRequestIPUnaryInterceptor(sdkAudit.RequestIPHeaderKey.String())
-	connectRPCIpc, err := newConnectRPC(config, ipcAuthInts, config.ExtraIPCInterceptors, ipcRequestIPInterceptor, logger)
+	connectRPCIpc, err := newConnectRPC(config, ipcInts, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
+	// connect-go v2 defaults to a 4 MiB read limit; in-process calls keep the
+	// unlimited reads they have on v1.
+	connectRPCIpc.MountOptions = []connecthttp.Option{connecthttp.WithReadMaxBytes(0)}
 
-	requestIPInterceptor, err := realip.ConnectRealIPUnaryInterceptor(config.HTTPServerConfig.TrustedProxies)
+	externalInts.requestIP, err = realip.ConnectRealIPUnaryInterceptor(config.HTTPServerConfig.TrustedProxies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure trusted proxies: %w", err)
 	}
-	connectRPC, err := newConnectRPC(config, connectAuthInts, config.ExtraConnectInterceptors, requestIPInterceptor, logger)
+	externalInts.requestIPV2, err = realip.ConnectRealIPInterceptorV2(config.HTTPServerConfig.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure trusted proxies: %w", err)
+	}
+	connectRPC, err := newConnectRPC(config, externalInts, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
 	// Prepend so options a service appends when registering its handler take precedence.
 	connectRPC.Interceptors = append(externalConnectHandlerOptions(config), connectRPC.Interceptors...)
+	connectRPC.Interceptors = append(externalConnectRequestGates(config, authN), connectRPC.Interceptors...)
+	connectRPC.MountOptions = ReadLimitMountOptions(config.GRPC.MaxRecvMsgSizeBytes)
 
 	httpMux := http.NewServeMux()
 
@@ -460,7 +493,9 @@ func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// contentType := r.Header.Get("Content-Type")
 		if (r.Method == http.MethodPost || r.Method == http.MethodGet || r.Method == http.MethodOptions) && rpcPathRegex.MatchString(r.URL.Path) {
-			connectRPC.ServeHTTP(w, r)
+			// Request gates cannot read the HTTP method from Connect, so record it
+			// for DPoP method binding in the authentication gate.
+			connectRPC.ServeHTTP(w, r.WithContext(auth.ContextWithHTTPMethod(r.Context(), r.Method)))
 		} else {
 			httpHandler.ServeHTTP(w, r)
 		}
@@ -538,7 +573,17 @@ func writePprofFormError(w http.ResponseWriter, err error) {
 	http.Error(w, "invalid pprof form body", http.StatusBadRequest)
 }
 
-func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, requestIPInterceptor connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
+// connectRPCInterceptors are the per-server interceptors newConnectRPC
+// installs in both connect-go forms.
+type connectRPCInterceptors struct {
+	auth        []connect.Interceptor
+	authV2      []connectv2.ServerInterceptor
+	requestIP   connect.Interceptor
+	requestIPV2 connectv2.ServerInterceptor
+	extras      []ExtraInterceptor
+}
+
+func newConnectRPC(c Config, ints connectRPCInterceptors, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	// OTel tracing and metrics for incoming Connect requests, before all other interceptors
@@ -547,12 +592,20 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 		return nil, fmt.Errorf("failed to create server trace interceptor: %w", err)
 	}
 	interceptors = append(interceptors, connect.WithInterceptors(serverTraceInt))
+	serverTraceIntV2, err := tracing.ConnectServerTraceInterceptorV2()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create server trace interceptor: %w", err)
+	}
+	// connectcompat runs next so every error below it reaches clients the way
+	// connect-go v1 sent it.
+	serverInterceptors := []connectv2.ServerInterceptor{serverTraceIntV2, connectcompat.ServerInterceptor()}
 
 	if c.Auth.Enabled {
-		if len(authInts) == 0 {
+		if len(ints.auth) == 0 || len(ints.authV2) == 0 {
 			return nil, errors.New("authentication enabled but no interceptors provided")
 		}
-		interceptors = append(interceptors, connect.WithInterceptors(authInts...))
+		interceptors = append(interceptors, connect.WithInterceptors(ints.auth...))
+		serverInterceptors = append(serverInterceptors, ints.authV2...)
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
@@ -560,17 +613,28 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 	// Add protovalidate interceptor
 	validationInterceptor := validate.NewInterceptor()
 
-	interceptors = append(interceptors, connect.WithInterceptors(requestIPInterceptor, validationInterceptor, audit.ContextServerInterceptor()))
+	interceptors = append(interceptors, connect.WithInterceptors(ints.requestIP, validationInterceptor, audit.ContextServerInterceptor()))
+	serverInterceptors = append(serverInterceptors, ints.requestIPV2, validateServerInterceptor(), audit.ContextServerInterceptorV2())
 
-	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
-	if len(ints) > 0 {
-		interceptors = append(interceptors, connect.WithInterceptors(ints...))
+	rpc := &ConnectRPC{
+		Interceptors:       interceptors,
+		ServerInterceptors: serverInterceptors,
+		Mux:                http.NewServeMux(),
 	}
+	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
+	rpc.AddExtraInterceptors(ints.extras...)
+	return rpc, nil
+}
 
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
+// externalConnectRequestGates returns the request gates for the external Connect
+// server. The authentication gate rejects unauthenticated requests from their
+// headers before Connect reads, decompresses, or unmarshals the request body.
+// The in-process server keeps its own IPC interceptor.
+func externalConnectRequestGates(c Config, authN *auth.Authentication) []connect.HandlerOption {
+	if !c.Auth.Enabled || authN == nil {
+		return nil
+	}
+	return []connect.HandlerOption{connect.WithRequestGate(authN.ConnectAuthNRequestGate())}
 }
 
 func (s OpenTDFServer) Start() error {

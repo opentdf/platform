@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -260,13 +261,13 @@ func startServices(ctx context.Context, params startServicesParams) error {
 			}
 
 			// Register Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+			if err := registerConnectRPCHandler(ctx, svc, otdf.ConnectRPC, logger); err != nil {
+				return err
 			}
 
 			// Register In Process Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+			if err := registerConnectRPCHandler(ctx, svc, otdf.ConnectRPCInProcess.ConnectRPC, logger); err != nil {
+				return err
 			}
 
 			// Register Extra Handlers
@@ -362,4 +363,20 @@ func determineStatusOfMigration(client *db.Client) string {
 		reason = "migrations are disabled"
 	}
 	return reason
+}
+
+// registerConnectRPCHandler mounts svc on connectRPC. A registration that
+// cannot be mounted or that would run without an extra interceptor stops
+// startup; a service without a Connect handler is logged and skipped.
+func registerConnectRPCHandler(ctx context.Context, svc serviceregistry.IService, connectRPC *server.ConnectRPC, logger *logging.Logger) error {
+	err := svc.RegisterConnectRPCServiceHandler(ctx, connectRPC)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, serviceregistry.ErrInvalidConnectRPCRegistration), errors.Is(err, serviceregistry.ErrMissingInterceptorForm):
+		return fmt.Errorf("register connect-rpc handler for %s: %w", svc.GetNamespace(), err)
+	default:
+		logger.Info("service did not register a connect-rpc handler", slog.String("namespace", svc.GetNamespace()))
+		return nil
+	}
 }

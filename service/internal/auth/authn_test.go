@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -1708,6 +1709,52 @@ func (s *AuthSuite) Test_RoleRequestForConnectProcedure() {
 	}
 }
 
+func (s *AuthSuite) Test_MuxHandler_RejectedAccessToken_LogsOnceAndPointsClientToServerLog() {
+	auth, logs := s.newAuthWithCapturedLogs()
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer "+s.wrongAudienceToken())
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	body := rec.Body.String()
+	s.True(strings.HasPrefix(body, "unauthenticated"), "existing clients still see the unauthenticated prefix")
+	s.Contains(body, "server log", "the deployer is told where the reason is")
+	s.NotContains(body, "aud", "the failed check is not disclosed to the caller")
+
+	records := warnRecords(s.T(), logs)
+	s.Require().Len(records, 1, "one WARN record per rejected request")
+	s.Equal("access token audience mismatch", records[0][slog.MessageKey])
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_RejectedAccessToken_LogsOnceAndPointsClientToServerLog() {
+	auth, logs := s.newAuthWithCapturedLogs()
+	interceptor := auth.ConnectAuthNInterceptor()
+	next := func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:   connect.NewRequest(&kas.RewrapRequest{}),
+		procedure: dpopChallengeRoute,
+	}
+	req.Header().Set("Authorization", "Bearer "+s.wrongAudienceToken())
+
+	_, err := interceptor.WrapUnary(next)(s.T().Context(), req)
+
+	var connectErr *connect.Error
+	s.Require().ErrorAs(err, &connectErr)
+	s.Equal(connect.CodeUnauthenticated, connectErr.Code())
+	s.True(strings.HasPrefix(connectErr.Message(), "unauthenticated"), "existing clients still see the unauthenticated prefix")
+	s.Contains(connectErr.Message(), "server log", "the deployer is told where the reason is")
+	s.NotContains(connectErr.Message(), "aud", "the failed check is not disclosed to the caller")
+
+	records := warnRecords(s.T(), logs)
+	s.Require().Len(records, 1, "one WARN record per rejected request")
+	s.Equal("access token audience mismatch", records[0][slog.MessageKey])
+}
+
 // dpopChallengeRoute is a non-public route used by the DPoP challenge handler tests.
 // checkToken is stubbed in those tests, so the exact procedure value is irrelevant.
 const dpopChallengeRoute = "/dpop.test/Challenge"
@@ -1748,6 +1795,43 @@ func (s *AuthSuite) connectAuthError(auth *Authentication, retErr error) *connec
 	var connectErr *connect.Error
 	s.Require().ErrorAs(err, &connectErr)
 	return connectErr
+}
+
+// newAuthWithCapturedLogs builds an authenticator against the suite's IdP whose
+// log output, including the token verifier's, is captured.
+func (s *AuthSuite) newAuthWithCapturedLogs() (*Authentication, *bytes.Buffer) {
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+
+	var logs bytes.Buffer
+	auth, err := NewAuthenticator(
+		s.T().Context(),
+		Config{AuthNConfig: AuthNConfig{
+			Issuer:    s.server.URL,
+			Audience:  "test",
+			DPoPSkew:  time.Hour,
+			TokenSkew: time.Minute,
+			Policy:    policyCfg,
+		}},
+		&logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))},
+		func(_ string, _ any) error { return nil },
+	)
+	s.Require().NoError(err)
+
+	logs.Reset()
+	return auth, &logs
+}
+
+// wrongAudienceToken returns a token signed by the suite's IdP whose aud does
+// not include the platform's configured audience.
+func (s *AuthSuite) wrongAudienceToken() string {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.IssuerKey, s.server.URL))
+	s.Require().NoError(tok.Set(jwt.AudienceKey, "some-other-api"))
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+	return string(signed)
 }
 
 func Test_GetClientIDFromToken(t *testing.T) {

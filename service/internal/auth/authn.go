@@ -86,6 +86,11 @@ const (
 	ActionDelete                        = "delete"
 	ActionUnsafe                        = "unsafe"
 	ActionOther                         = "other"
+
+	// accessTokenRejectedMessage is returned to callers whose access token fails
+	// verification. It does not say which check failed; the token verifier logs
+	// the reason and remediation for the deployer.
+	accessTokenRejectedMessage = "unauthenticated: access token rejected; the platform server log contains the reason and how to fix it"
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
@@ -539,6 +544,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 					slog.Any("dpop", dp),
 				)
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
+				return
+			}
+			// The token verifier has already logged rejected tokens with remediation.
+			var rejectedErr *accessTokenRejectedError
+			if errors.As(err, &rejectedErr) {
+				http.Error(w, accessTokenRejectedMessage, http.StatusUnauthorized)
 				return
 			}
 			log.WarnContext(
@@ -1002,6 +1013,10 @@ func (a Authentication) authenticateConnect(ctx context.Context, procedure, http
 			}
 			connectErr.Meta().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
 			return nil, connectErr
+		}
+		var rejectedErr *accessTokenRejectedError
+		if errors.As(err, &rejectedErr) {
+			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New(accessTokenRejectedMessage))
 		}
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}

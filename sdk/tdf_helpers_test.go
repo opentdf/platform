@@ -123,24 +123,39 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 	policyJSON := `{"uuid":"test","body":{"dataAttributes":[{"attribute":"test"}],"dissem":[]}}`
 
-	// The wire format is base64(hex(hmac)), and KAS decodes in that order. The
+	// The default form is base64(hex(hmac)), and KAS decodes in that order. The
 	// hex layer is easy to drop in a rewrite: every property below still holds
-	// without it, but every KAS would reject the result. Pin it to a vector.
+	// without it, but every released KAS would reject the result. Pin it to a
+	// vector.
 	t.Run("known answer", func(t *testing.T) {
 		fixedKey := make([]byte, kKeySize)
 		for i := range fixedKey {
 			fixedKey[i] = byte(i)
 		}
 
-		binding := createPolicyBinding(fixedKey, string(ocrypto.Base64Encode([]byte(`{"uuid":"test"}`))))
+		binding := createPolicyBinding(fixedKey, string(ocrypto.Base64Encode([]byte(`{"uuid":"test"}`))), false)
 
 		assert.Equal(t,
 			"YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA==",
 			binding.Hash)
 	})
 
+	// The spec's form is Base64(HMAC), without the hex layer. Same key and
+	// policy as the vector above, so both decode to the same 32-byte HMAC.
+	t.Run("known answer, hexless", func(t *testing.T) {
+		fixedKey := make([]byte, kKeySize)
+		for i := range fixedKey {
+			fixedKey[i] = byte(i)
+		}
+
+		binding := createPolicyBinding(fixedKey, string(ocrypto.Base64Encode([]byte(`{"uuid":"test"}`))), true)
+
+		assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
+		assert.Equal(t, "wc43nUyrFtbactuerWTXy0ypvayrjAaF/5Lj90qiwS0=", binding.Hash)
+	})
+
 	t.Run("binds with HS256 over base64 policy", func(t *testing.T) {
-		binding := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(policyJSON))))
+		binding := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(policyJSON))), false)
 
 		assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
 		require.NotEmpty(t, binding.Hash)
@@ -149,8 +164,8 @@ func TestCreatePolicyBinding(t *testing.T) {
 	})
 
 	t.Run("different policies bind differently", func(t *testing.T) {
-		b1 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test1"}`))))
-		b2 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test2"}`))))
+		b1 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test1"}`))), false)
+		b2 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test2"}`))), false)
 		assert.NotEqual(t, b1.Hash, b2.Hash)
 	})
 
@@ -161,8 +176,33 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 		policy := string(ocrypto.Base64Encode([]byte(policyJSON)))
 		assert.NotEqual(t,
-			createPolicyBinding(symKey, policy).Hash,
-			createPolicyBinding(otherKey, policy).Hash,
+			createPolicyBinding(symKey, policy, false).Hash,
+			createPolicyBinding(otherKey, policy, false).Hash,
 		)
 	})
+}
+
+func TestLegacyPolicyBindingHash(t *testing.T) {
+	const (
+		// The two encodings of one HMAC; see TestCreatePolicyBinding.
+		raw    = "wc43nUyrFtbactuerWTXy0ypvayrjAaF/5Lj90qiwS0="
+		legacy = "YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA=="
+	)
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "hexless binding is re-encoded", in: raw, want: legacy},
+		{name: "legacy binding passes through", in: legacy, want: legacy},
+		{name: "invalid base64 passes through", in: "not!base64", want: "not!base64"},
+		{name: "other lengths pass through", in: "AAAAAAAAAAAAAAAAAAAAAA==", want: "AAAAAAAAAAAAAAAAAAAAAA=="},
+		{name: "empty passes through", in: "", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, legacyPolicyBindingHash(tt.in))
+		})
+	}
 }

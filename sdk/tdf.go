@@ -54,28 +54,21 @@ const (
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
 
-	// maxPayloadSegments caps the segment count a declared input size may imply.
-	// The archive writer counts segments with an int, so the count has to fit one
-	// on every platform the SDK builds for. A payload that needs more segments than
+	// maxPayloadSegments caps the segment count a known input size may imply, and
+	// is the exclusive bound on every segment index WriteSegment accepts. The
+	// archive writer counts segments with an int, so the count has to fit one on
+	// every platform the SDK builds for. A payload that needs more segments than
 	// this — 4 PiB at the default segment size — is beyond what CreateTDF can write
 	// anyway, and is better refused than silently mis-sized.
 	//
-	// This bounds only a payload whose length resolves, declared through
-	// [WithInputSize] or recovered from a seekable reader. A stream that can be
-	// measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
-	// giving it one.
+	// It is smaller than [ocrypto.MaxSeals], so it is the limit CreateTDF hits
+	// first. A payload whose length resolves is refused up front; a stream that can
+	// be measured neither way is read until its segment index reaches this bound
+	// and fails with [ErrChunkedSegmentIndexExhausted]. CreateTDF seals each index
+	// once, so it never reaches [ErrAESGCMExhausted]; only a ChunkedWriter caller
+	// retrying failed writes can. DSPX-4905 tracks an up-front ceiling for streams
+	// of unknown length, which today fail only after writing MaxInt32 segments.
 	maxPayloadSegments = math.MaxInt32
-
-	// maxAESGCMSegmentsPerDEK is the most payload segment encryptions a writer
-	// attempts under one DEK before failing with ErrAESGCMExhausted.
-	//
-	// Segment IVs are random 96 bits, so k encryptions collide with probability
-	// about k^2 / 2^97. NIST SP 800-38D §8 caps that at 2^-32, so k must stay at
-	// or below about 2^32.5. This uses 2^32 - 1: invocation 0 under the key is
-	// set aside for key access metadata, leaving 2^32 - 1 for the payload, which
-	// is also the limit of a 32-bit invocation counter. Attempts are counted, not
-	// successes, because a failed write has still used an IV.
-	maxAESGCMSegmentsPerDEK uint64 = 1<<32 - 1
 )
 
 // Loads and reads ZTDF files
@@ -368,16 +361,15 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 			}
 			return zipstream.NewSegmentTDFWriter(declaredSegments, archiveOpts...)
 		},
-		cipherFactory: defaultSegmentCipherFactory,
 		clock:         systemClock{},
 		dek:           dek,
+		sealerFactory: tdfConfig.sealerFactory,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other
 		// cannot be verified by any reader. TDFConfig sets its two the same way.
 		excludeVersion: tdfConfig.excludeVersionFromManifest,
 		keyAccess:      staticKeyAccess{kaos: kaos, policy: base64Policy},
-		maxEncryptions: tdfConfig.maxSegmentEncryptions,
 		segmentSize:    tdfConfig.defaultSegmentSize,
 		useHex:         tdfConfig.useHex,
 	})
@@ -662,26 +654,45 @@ func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
 	}
 }
 
+// encryptMetadata seals key access object metadata under a split share.
+//
+// The sealer is built for this one encryption and discarded, so the header is
+// a fresh random fixed field and counter 0 (on the random-IV fallback, a fully
+// random IV). In a single-split TDF the share is the DEK itself, which the
+// payload sealer also counts under; on the counter path the two are kept apart
+// only by their independently drawn fixed fields (a 2^-64 chance of collision
+// per metadata seal), not by sharing a counter. Each GetManifest call re-seals
+// the metadata, so k builds collide with probability about k^2 / 2^65.
 func encryptMetadata(symKey []byte, metaData string) (string, error) {
-	gcm, err := ocrypto.NewAESGcm(symKey)
+	sealer, err := ocrypto.NewAESGcmSealer(symKey)
 	if err != nil {
-		return "", fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		return "", fmt.Errorf("ocrypto.NewAESGcmSealer failed: %w", err)
 	}
 
-	emb, err := gcm.Encrypt([]byte(metaData))
+	header, ciphertext, err := sealer.Seal([]byte(metaData))
 	if err != nil {
-		return "", fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
+		return "", fmt.Errorf("encrypt key access metadata: %w", err)
 	}
+	return encodeEncryptedMetadata(header, ciphertext)
+}
 
-	iv := emb[:ocrypto.GcmStandardNonceSize]
-	metadata := EncryptedMetadata{
+// encodeEncryptedMetadata renders a sealed metadata blob as the manifest's
+// base64(JSON) EncryptedMetadata.
+//
+// Cipher is header||ciphertext and Iv is the header, so Iv == Cipher[:12].
+// Our reader ignores Iv and passes the whole Cipher blob to Decrypt; other
+// readers may rely on Iv.
+func encodeEncryptedMetadata(header, ciphertext []byte) (string, error) {
+	emb := make([]byte, 0, len(header)+len(ciphertext))
+	emb = append(emb, header...)
+	emb = append(emb, ciphertext...)
+
+	metadataJSON, err := json.Marshal(EncryptedMetadata{
 		Cipher: string(ocrypto.Base64Encode(emb)),
-		Iv:     string(ocrypto.Base64Encode(iv)),
-	}
-
-	metadataJSON, err := json.Marshal(metadata)
+		Iv:     string(ocrypto.Base64Encode(header)),
+	})
 	if err != nil {
-		return "", fmt.Errorf(" json.Marshal failed:%w", err)
+		return "", fmt.Errorf("json.Marshal failed: %w", err)
 	}
 	return string(ocrypto.Base64Encode(metadataJSON)), nil
 }

@@ -18,10 +18,10 @@ import (
 	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
 
-// The injection seams below — the clock, the segment cipher, the archive
+// The injection seams below — the clock, the segment sealer, the archive
 // writer and the entropy source — are unexported on purpose. Each exists so
-// in-package tests can pin non-deterministic behavior; none is reachable from
-// outside. For archiveWriterFactory it is the signature that closes the seam,
+// in-package tests can pin non-deterministic behavior or inject failures and
+// limits; none is reachable from outside. For archiveWriterFactory it is the signature that closes the seam,
 // not the return type's implementability: a struct declared anywhere with the
 // right method set satisfies zipstream.SegmentWriter, but no code outside this
 // package can spell `func(clock) zipstream.SegmentWriter` — clock is
@@ -52,30 +52,43 @@ type fixedClock struct {
 // Now returns the pinned time.
 func (c fixedClock) Now() time.Time { return c.T }
 
-// segmentCipher encrypts a single payload segment. Implementations must be
-// safe for concurrent use by segment writers.
+// segmentSealer encrypts under a single key. Implementations must be safe for
+// concurrent use by segment writers.
 //
-// The output must be AEAD in the shape the TDF reader expects: a fresh nonce
-// per call, and a ciphertext ending in a 16-byte authentication tag.
-// WriteSegment concatenates nonce+ciphertext and hands the result to
-// segmentIntegrity, which under SegmentGMAC reads the tag straight off the
-// tail; a cipher that omits the tag or returns a repeated nonce produces a
-// manifest that verifies against nothing.
-type segmentCipher interface {
-	// EncryptInPlace returns (ciphertext, nonce, error). Despite the name --
-	// inherited from ocrypto.AesGcm -- nothing is encrypted in place: the
-	// implementation must allocate its output and must neither retain nor
-	// modify data, which WriteSegment passes through from its caller.
-	EncryptInPlace(data []byte) ([]byte, []byte, error)
+// The output must be AEAD in the shape the TDF reader expects: a 12-byte
+// header, which is the IV, and a ciphertext ending in a 16-byte
+// authentication tag. WriteSegment prepends the header to the ciphertext on
+// the wire but hands segmentIntegrity the ciphertext alone, which under
+// SegmentGMAC reads the tag straight off the tail; an implementation that
+// omits the tag produces a manifest that verifies against nothing.
+//
+// Every call must produce a header never produced before under that key.
+// Nothing downstream checks: the segment still decrypts, because the reader
+// takes whatever header the writer prepended.
+//
+// Once the key's encryption budget is spent, Seal must return an error
+// wrapping ocrypto.ErrSealerExhausted; WriteSegment maps only that error to
+// ErrAESGCMExhausted and reports any other as a generic encryption failure.
+type segmentSealer interface {
+	// Seal must allocate its output and must neither retain nor modify data,
+	// which WriteSegment passes through from its caller.
+	Seal(data []byte) (header, ciphertext []byte, err error)
 }
 
-// segmentCipherFactory builds a segmentCipher from the writer-generated DEK.
-// Tests inject deterministic ciphers for reproducible fixtures.
-type segmentCipherFactory func(dek []byte) (segmentCipher, error)
+// segmentSealerFactory builds a segmentSealer from the writer-generated DEK.
+// Tests inject sealers to observe or perturb sealing: limiting, failing,
+// blocking and recording ones.
+type segmentSealerFactory func(dek []byte) (segmentSealer, error)
 
-// defaultSegmentCipherFactory wraps ocrypto.NewAESGcm (AES-256-GCM).
-func defaultSegmentCipherFactory(dek []byte) (segmentCipher, error) {
-	return ocrypto.NewAESGcm(dek)
+// defaultSegmentSealerFactory wraps ocrypto.NewAESGcmSealer (AES-256-GCM with
+// a per-key IV counter).
+func defaultSegmentSealerFactory(dek []byte) (segmentSealer, error) {
+	sealer, err := ocrypto.NewAESGcmSealer(dek)
+	if err != nil {
+		// Return a bare nil: a nil *AesGcmSealer would make a non-nil interface.
+		return nil, err
+	}
+	return sealer, nil
 }
 
 // archiveWriterFactory builds a zipstream.SegmentWriter for a new TDF. It
@@ -171,6 +184,20 @@ var (
 	// ErrChunkedSegmentAlreadyWritten is returned when WriteSegment
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
+
+	// ErrChunkedSegmentIndexExhausted is returned when WriteSegment
+	// receives an index at or past [maxPayloadSegments], the most
+	// segments the archive can address.
+	//
+	// Distinct from ErrChunkedInvalidSegmentIndex on purpose: a
+	// negative index is a bug in the caller, while this is a capacity
+	// limit the caller can act on, and the remedy is named in the
+	// message. The key's own encryption limit is separate and is
+	// reported as [ErrAESGCMExhausted].
+	//
+	// Nothing was written and the writer is not fenced; the index
+	// never entered the segment table.
+	ErrChunkedSegmentIndexExhausted = errors.New("chunked: segment index exceeds what the archive can address; use a larger segment size")
 
 	// ErrChunkedWriteInFlight is returned by Finalize when a
 	// WriteSegment has reserved an index but the archive has not yet
@@ -352,9 +379,9 @@ type chunkedWriterConfig struct {
 	// TDF. Defaults to defaultArchiveWriterFactory.
 	archiveFactory archiveWriterFactory
 
-	// cipherFactory builds the segment cipher from the DEK. Defaults
-	// to defaultSegmentCipherFactory (AES-256-GCM).
-	cipherFactory segmentCipherFactory
+	// sealerFactory builds the segment sealer from the DEK. Defaults
+	// to defaultSegmentSealerFactory (AES-256-GCM).
+	sealerFactory segmentSealerFactory
 
 	// clock supplies the current time to the writer and the
 	// underlying zipstream. Defaults to systemClock. Tests inject
@@ -383,11 +410,6 @@ type chunkedWriterConfig struct {
 	// keyAccess resolves the manifest policy and key access objects.
 	// Defaults to a splitterKeyAccess over splitter.
 	keyAccess keyAccessResolver
-
-	// maxEncryptions caps the segment encryptions attempted under the
-	// DEK. Zero means maxAESGCMSegmentsPerDEK; tests set a small value
-	// to reach the cap without encrypting billions of segments.
-	maxEncryptions uint64
 
 	// rand is the entropy source used to generate the DEK. Defaults
 	// to crypto/rand.Reader.
@@ -480,8 +502,9 @@ type chunkedWriter struct {
 	// archiveWriter handles the underlying ZIP archive creation.
 	archiveWriter zipstream.SegmentWriter
 
-	// block is the segment cipher built from the DEK.
-	block segmentCipher
+	// sealer seals payload segments under the DEK. It is shared by every
+	// WriteSegment call, so all segments draw from one IV counter.
+	sealer segmentSealer
 
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
 	dek []byte
@@ -489,14 +512,6 @@ type chunkedWriter struct {
 	// excludeVersion omits schemaVersion from the manifest unless a
 	// Finalize option overrides it.
 	excludeVersion bool
-
-	// encryptions counts the segment encryptions attempted under dek,
-	// including ones that later failed. Guarded by mu.
-	encryptions uint64
-
-	// maxEncryptions is the most segment encryptions this writer will
-	// attempt; see maxAESGCMSegmentsPerDEK.
-	maxEncryptions uint64
 
 	// unusable is non-nil once the archive has been left in a state no
 	// later call can recover from: its Finalize failed partway through
@@ -566,14 +581,14 @@ type chunkedWriter struct {
 // No SDK value is needed. The key splitter (WithChunkedKeySplitter)
 // and the attribute and KAS defaults (WithChunkedInitialAttributes,
 // WithChunkedDefaultKAS) are supplied through options; the clock,
-// cipher, archive-writer and entropy seams are unexported test seams
+// sealer, archive-writer and entropy seams are unexported test seams
 // and are not reachable from outside this package.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
 	cfg := chunkedWriterConfig{
 		archiveFactory: defaultArchiveWriterFactory,
-		cipherFactory:  defaultSegmentCipherFactory,
+		sealerFactory:  defaultSegmentSealerFactory,
 		clock:          systemClock{},
 		rand:           rand.Reader,
 		splitter:       DefaultKeySplitter(),
@@ -599,29 +614,24 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 			return nil, fmt.Errorf("generate DEK: %w", err)
 		}
 	}
-	block, err := cfg.cipherFactory(dek)
+	stream, err := cfg.sealerFactory(dek)
 	if err != nil {
-		return nil, fmt.Errorf("build segment cipher: %w", err)
+		return nil, fmt.Errorf("build segment sealer: %w", err)
 	}
 	keyAccess := cfg.keyAccess
 	if keyAccess == nil {
 		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
-	maxEncryptions := cfg.maxEncryptions
-	if maxEncryptions == 0 {
-		maxEncryptions = maxAESGCMSegmentsPerDEK
-	}
 	return &chunkedWriter{
 		archiveWriter:     cfg.archiveFactory(cfg.clock),
-		block:             block,
 		dek:               dek,
 		excludeVersion:    cfg.excludeVersion,
-		maxEncryptions:    maxEncryptions,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
 		keyAccess:         keyAccess,
 		segments:          make(map[int]*segmentSlot),
 		segmentSize:       cfg.segmentSize,
+		sealer:            stream,
 		useHex:            cfg.useHex,
 	}, nil
 }
@@ -767,18 +777,14 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		w.mu.Unlock()
 		return nil, ErrChunkedInvalidSegmentIndex
 	}
+	if int64(index) >= maxPayloadSegments {
+		w.mu.Unlock()
+		return nil, fmt.Errorf("%w: segment %d, limit is %d", ErrChunkedSegmentIndexExhausted, index, maxPayloadSegments)
+	}
 	if _, ok := w.segments[index]; ok {
 		w.mu.Unlock()
 		return nil, ErrChunkedSegmentAlreadyWritten
 	}
-	// Every attempt below encrypts under a fresh random IV, so it is counted
-	// here, before encrypting, and is not given back if the write fails.
-	if w.encryptions >= w.maxEncryptions {
-		w.mu.Unlock()
-		return nil, fmt.Errorf("%w: segment %d: %d segment encryptions already attempted, limit is %d",
-			ErrAESGCMExhausted, index, w.encryptions, w.maxEncryptions)
-	}
-	w.encryptions++
 	// Reserve the index so a concurrent write to the same one is
 	// rejected, but leave the slot unwritten: the segment does not
 	// count as written until its bytes are in the archive.
@@ -850,28 +856,37 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		release(cleanupErr)
 	}()
 
-	ciphertext, nonce, err := w.block.EncryptInPlace(data)
+	// Every call takes the next counter value, so a retry of a failed index is
+	// sealed under a fresh IV and never repeats one -- whatever this function's
+	// error handling does. It is not free: the value is spent whether or not
+	// the archive goes on to accept the segment. The sealer's counter is the
+	// key's only encryption budget, on the RBG fallback as well, and running
+	// it out is reported as ErrAESGCMExhausted.
+	header, ciphertext, err := w.sealer.Seal(data)
+	if errors.Is(err, ocrypto.ErrSealerExhausted) {
+		return nil, fmt.Errorf("%w: segment %d: %w", ErrAESGCMExhausted, index, err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}
 	// SegmentGMAC reads the trailing AEAD tag, so hashing ciphertext alone is
-	// equivalent to hashing nonce||ciphertext -- which is why there is no
+	// equivalent to hashing header||ciphertext -- which is why there is no
 	// concatenation here. An algorithm that MACs the whole segment (HS256)
-	// would need the nonce prepended back.
+	// would need the header prepended back.
 	sig, err := segmentIntegrity(ciphertext, w.dek, SegmentGMAC, w.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)
 	}
 	hash := string(ocrypto.Base64Encode([]byte(sig)))
-	encryptedSize := int64(len(nonce) + len(ciphertext))
+	encryptedSize := int64(len(header) + len(ciphertext))
 
-	crc := crc32.Update(crc32.ChecksumIEEE(nonce), crc32.IEEETable, ciphertext)
+	crc := crc32.Update(crc32.ChecksumIEEE(header), crc32.IEEETable, ciphertext)
 	// Deliberately outside w.mu. Finalize's ErrChunkedWriteInFlight exists
 	// because this call is unsynchronized against it; holding w.mu here would
 	// close that window by serializing every segment write, which is the one
 	// thing this writer exists not to do.
 	archiveWriteAttempted = true
-	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc)
+	zipHeader, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc)
 	if err != nil {
 		return nil, fmt.Errorf("write segment %d to archive: %w", index, err)
 	}
@@ -894,11 +909,14 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	committed = true
 	w.mu.Unlock()
 
+	// Two distinct prefixes: zipHeader is the segment's ZIP local file header,
+	// emitted only for segment 0, and header is the segment's 12-byte AES-GCM IV,
+	// which every segment carries.
 	var reader io.Reader
-	if len(header) == 0 {
-		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(ciphertext))
+	if len(zipHeader) == 0 {
+		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(ciphertext))
 	} else {
-		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(ciphertext))
+		reader = io.MultiReader(bytes.NewReader(zipHeader), bytes.NewReader(header), bytes.NewReader(ciphertext))
 	}
 	// Reported from the locals rather than from seg, which is shared with
 	// concurrent readers of w.segments once the lock is released.

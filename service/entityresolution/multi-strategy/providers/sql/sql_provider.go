@@ -11,6 +11,9 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
+// providerTypeSQL is the registry name for this entity-resolution provider.
+const providerTypeSQL = "sql"
+
 func normalizeDriverName(driver string) string {
 	driver = strings.ToLower(strings.TrimSpace(driver))
 	switch driver {
@@ -104,7 +107,7 @@ func (p *Provider) Name() string {
 
 // Type returns the provider type
 func (p *Provider) Type() string {
-	return "sql"
+	return providerTypeSQL
 }
 
 // ResolveEntity executes SQL query to resolve entity information
@@ -199,7 +202,7 @@ func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStra
 	}
 
 	// Add metadata
-	result.Metadata["provider_type"] = "sql"
+	result.Metadata["provider_type"] = providerTypeSQL
 	result.Metadata["provider_name"] = p.name
 	result.Metadata["query"] = strategy.Query
 	result.Metadata["column_count"] = len(columns)

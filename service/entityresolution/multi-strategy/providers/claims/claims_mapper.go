@@ -19,7 +19,7 @@ var _ types.Mapper = (*Mapper)(nil)
 // NewMapper creates a new Claims mapper
 func NewMapper() *Mapper {
 	return &Mapper{
-		providerType: "claims",
+		providerType: providerTypeClaims,
 	}
 }
 
@@ -115,10 +115,10 @@ func (m *Mapper) GetSupportedTransformations() []string {
 
 // ApplyTransformation applies Claims-specific transformations
 func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
-	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "claims")
+	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, providerTypeClaims)
 }
 
 // isTransformationSupported checks if a transformation is supported by Claims mapper
 func (m *Mapper) isTransformationSupported(transformationName string) bool {
-	return transformation.IsSupportedByProvider(transformationName, "claims")
+	return transformation.IsSupportedByProvider(transformationName, providerTypeClaims)
 }

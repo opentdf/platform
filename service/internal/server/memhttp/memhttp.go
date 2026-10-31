@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
+	//nolint:staticcheck // h2c is deprecated in favour of http.Server.Protocols, but that requires a Go 1.24+ server rework tracked separately
 	"golang.org/x/net/http2/h2c"
 )
 
@@ -41,6 +42,7 @@ func New(handler http.Handler, opts ...Option) *Server {
 
 	http2Server := &http2.Server{}
 
+	//nolint:staticcheck // h2c.NewHandler is deprecated in favour of http.Server.Protocols; migration tracked separately
 	handler = h2c.NewHandler(handler, http2Server)
 
 	server := &http.Server{

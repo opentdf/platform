@@ -136,9 +136,20 @@ func CompressedECPublicKey(mode ECCMode, pubKey ecdsa.PublicKey) ([]byte, error)
 		return nil, fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
 
-	compressedKey := elliptic.MarshalCompressed(curve, pubKey.X, pubKey.Y)
+	uncompressed, err := pubKey.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode EC public key: %w", err)
+	}
+	if pubKey.Curve != curve {
+		return nil, errors.New("public key is not on the supplied curve")
+	}
 
-	return compressedKey, nil
+	// SEC 1 compressed points contain the parity of Y followed by X.
+	const evenPrefix = 2
+	compressed := make([]byte, 1+(len(uncompressed)-1)/2)
+	compressed[0] = evenPrefix | (uncompressed[len(uncompressed)-1] & 1)
+	copy(compressed[1:], uncompressed[1:len(compressed)])
+	return compressed, nil
 }
 
 // ConvertToECDHPublicKey convert the ec public key to ECDH public key
@@ -311,18 +322,17 @@ func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.Priv
 
 // UncompressECPubKey create EC public key from compressed form
 func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
-	// Converting ephemeralPublicKey byte array to *big.Int
 	x, y := elliptic.UnmarshalCompressed(curve, compressedPubKey)
 	if x == nil {
 		return nil, errors.New("failed to unmarshal compressed public key")
 	}
-	// Creating ecdsa.PublicKey from *big.Int
-	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
-		Curve: curve,
-		X:     x,
-		Y:     y,
-	}
-	return ephemeralECDSAPublicKey, nil
+	// SEC 1 uncompressed points contain a 0x04 prefix and fixed-width X and Y.
+	coordinateSize := len(compressedPubKey) - 1
+	uncompressed := make([]byte, 1+2*coordinateSize)
+	uncompressed[0] = 4
+	x.FillBytes(uncompressed[1 : 1+coordinateSize])
+	y.FillBytes(uncompressed[1+coordinateSize:])
+	return ecdsa.ParseUncompressedPublicKey(curve, uncompressed)
 }
 
 // ECPrivateKeyInPemFormat Returns private key in pem format.

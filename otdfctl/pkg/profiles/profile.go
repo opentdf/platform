@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"strings"
 
-	osprofiles "github.com/jrschumacher/go-osprofiles"
-	osplatform "github.com/jrschumacher/go-osprofiles/pkg/platform"
+	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
+	osplatform "github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/platform"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
 )
 

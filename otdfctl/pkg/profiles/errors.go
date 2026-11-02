@@ -11,4 +11,8 @@ var (
 	ErrUnknownProfileDriverType = errors.New("error unknown profile driver type")
 	ErrCleaningUpProfiles       = errors.New("error occurred when cleaning up profiles")
 	ErrProfileConfigEmpty       = errors.New("error profile configuration cannot be empty")
+	// ErrProfileEndpointInvalid deliberately carries no URL or underlying parse error.
+	ErrProfileEndpointInvalid = errors.New("error profile endpoint is invalid")
+	// ErrMigrationDestinationNotPersistent prevents cleanup into a discarded memory store.
+	ErrMigrationDestinationNotPersistent = errors.New("migration requires a persistent destination")
 )

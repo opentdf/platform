@@ -3,6 +3,7 @@ package profilestore
 import "errors"
 
 var (
+	ErrInvalidProfiler            = errors.New("error: profiler is uninitialized or closed")
 	ErrProfileNameConflict        = errors.New("error: profile name already exists in storage")
 	ErrMissingCurrentProfile      = errors.New("error: current profile not set")
 	ErrMissingDefaultProfile      = errors.New("error: default profile not set")

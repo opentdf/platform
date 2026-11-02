@@ -60,13 +60,11 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 		cli.ExitWithError("Error creating profiler", err)
 	}
 
-	defaultProfileName := osprofiles.GetGlobalConfig(profiler).GetDefaultProfile()
-	if len(defaultProfileName) == 0 {
-		c.ExitWithWarning(fmt.Sprintf("No default profile set. Use `%s profile create <profile> <endpoint>` to create a default profile.", config.AppName))
-	}
-
 	if profileName == "" {
-		profileName = defaultProfileName
+		profileName = osprofiles.GetGlobalConfig(profiler).GetDefaultProfile()
+		if profileName == "" {
+			c.ExitWithWarning(fmt.Sprintf("No default profile set. Use `%s profile create <profile> <endpoint>` to create a default profile.", config.AppName))
+		}
 	}
 
 	slog.Debug("using profile", slog.String("profile", profileName))

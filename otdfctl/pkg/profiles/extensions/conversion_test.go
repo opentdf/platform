@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
+	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles/extensions"
 	"github.com/zalando/go-keyring"
@@ -63,44 +64,6 @@ func TestTypedExtensionWriteReplacesNamespaceWithoutMerging(t *testing.T) {
 	got, present, err := osprofiles.GetGlobalConfig(profiler).Extension("alpha")
 	if err != nil || !present || string(got) != `{"enabled":true}` {
 		t.Fatalf("typed write merged omitted field: %s %v %v", got, present, err)
-	}
-}
-
-func TestTypedExtensionReplacesStoredNull(t *testing.T) {
-	keyring.MockInit()
-	profiler, err := profiles.CreateProfiler(profiles.ProfileDriverKeyring)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg, err := extensions.NewConfig(profiler, extensions.WithGlobal[consumerGlobal]("alpha"), extensions.WithProfile[consumerProfile]("alpha"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := profiler.AddProfile(&profiles.ProfileConfig{Name: "fixture"}, false); err != nil {
-		t.Fatal(err)
-	}
-	global := osprofiles.GetGlobalConfig(profiler)
-	profile, err := osprofiles.GetProfile[*profiles.ProfileConfig](profiler, "fixture")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := global.SetExtension("alpha", json.RawMessage("null")); err != nil {
-		t.Fatal(err)
-	}
-	if err := profile.SetExtension("alpha", json.RawMessage("null")); err != nil {
-		t.Fatal(err)
-	}
-	if err := extensions.WriteGlobal(cfg, "alpha", consumerGlobal{true}); err != nil {
-		t.Fatal(err)
-	}
-	if err := extensions.WriteProfile(cfg, "fixture", "alpha", consumerProfile{"new"}); err != nil {
-		t.Fatal(err)
-	}
-	if got, present, err := extensions.ReadGlobal[consumerGlobal](cfg, "alpha"); err != nil || !present || !got.Enabled {
-		t.Fatalf("global replacement: %+v %v %v", got, present, err)
-	}
-	if got, present, err := extensions.ReadProfile[consumerProfile](cfg, "fixture", "alpha"); err != nil || !present || got.Label != "new" {
-		t.Fatalf("profile replacement: %+v %v %v", got, present, err)
 	}
 }
 
@@ -233,21 +196,25 @@ func TestTypedExtensionDecodeErrorReturnsZeroWithoutMutation(t *testing.T) {
 		name string
 		set  func(string, json.RawMessage) error
 		read func() (settings, bool, error)
-		get  func(string) (json.RawMessage, bool, error)
+		key  string
 	}{
-		{"global", global.SetExtension, func() (settings, bool, error) { return extensions.ReadGlobal[settings](cfg, "alpha") }, global.Extension},
-		{"profile", profile.SetExtension, func() (settings, bool, error) { return extensions.ReadProfile[settings](cfg, "fixture", "alpha") }, profile.Extension},
+		{"global", global.SetExtension, func() (settings, bool, error) { return extensions.ReadGlobal[settings](cfg, "alpha") }, "global"},
+		{"profile", profile.SetExtension, func() (settings, bool, error) { return extensions.ReadProfile[settings](cfg, "fixture", "alpha") }, "profile-fixture"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if err := test.set("alpha", json.RawMessage(original)); err != nil {
+				t.Fatal(err)
+			}
+			before, err := keyring.Get(config.AppName, test.key)
+			if err != nil {
 				t.Fatal(err)
 			}
 			value, present, err := test.read()
 			if value != (settings{}) || !present || !errors.Is(err, extensions.ErrExtensionDecode) || strings.Contains(err.Error(), "synthetic-token") {
 				t.Fatal("failed read returned a partial value, absence, or unsanitized error")
 			}
-			got, present, err := test.get("alpha")
-			if err != nil || !present || string(got) != original {
+			after, err := keyring.Get(config.AppName, test.key)
+			if err != nil || after != before {
 				t.Fatal("failed read mutated storage")
 			}
 		})

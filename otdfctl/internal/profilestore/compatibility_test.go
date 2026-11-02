@@ -146,6 +146,7 @@ func TestPinnedOriginalFileFixtureExtensionSave(t *testing.T) {
 	if !ok || !updated.TLSNoVerify {
 		t.Fatal("core update missing")
 	}
+	assertOriginalProfile(t, updated)
 	assertExtension(t, alpha.Extension, "future", `{"x":2}`)
 	assertExtension(t, GetGlobalConfig(p).Extension, "future", `{"x":1}`)
 }

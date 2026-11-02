@@ -31,7 +31,7 @@ func TestProfileExtensionPreservesLatestCoreAcrossEscapedDuplicateKeys(t *testin
 			}
 			// Both spellings decode to authCredentials. encoding/json merges
 			// their typed struct fields, while a RawMessage map keeps only the last.
-			const latest = `{"profile":"alpha","endpoint":"https://latest.invalid","authCredentials":{"clientId":"latest-id"},"\u0061uthCredentials":{"clientSecret":"latest-secret","futureAuth":true},"futureTop":42,"extensions":{"other":false}}`
+			const latest = `{"profile":"alpha","endpoint":"https://latest.invalid","authCredentials":{"clientId":"latest-id"},"\u0061uthCredentials":{"clientSecret":"latest-secret"},"extensions":{"other":false}}`
 			if err := profile.store.Set(json.RawMessage(latest)); err != nil {
 				t.Fatal(err)
 			}
@@ -48,15 +48,6 @@ func TestProfileExtensionPreservesLatestCoreAcrossEscapedDuplicateKeys(t *testin
 			}
 			if core.Endpoint != "https://latest.invalid" || core.AuthCredentials.ClientID != "latest-id" || core.AuthCredentials.ClientSecret != "latest-secret" {
 				t.Fatalf("extension write lost or replaced latest core: %+v", core)
-			}
-			var fields struct {
-				FutureTop int `json:"futureTop"`
-				Auth      struct {
-					Future bool `json:"futureAuth"`
-				} `json:"authCredentials"`
-			}
-			if err := json.Unmarshal(data, &fields); err != nil || fields.FutureTop != 42 || !fields.Auth.Future {
-				t.Fatalf("extension write lost opaque data: %s %v", data, err)
 			}
 			assertExtension(t, profile.Extension, "other", `false`)
 			assertExtension(t, profile.Extension, "owner", `1`)

@@ -123,39 +123,6 @@ func (p *ProfileStore) Extension(namespace string) (json.RawMessage, bool, error
 	return store.Extension(p.object, namespace)
 }
 
-// UnknownFields returns opaque top-level fields other than extensions.
-func (p *ProfileStore) UnknownFields() map[string]json.RawMessage {
-	return store.UnknownFields(p.object, p.Profile)
-}
-
-// CheckUnknownTo reports opaque fields or namespaces that migration would overwrite.
-func (p *ProfileStore) CheckUnknownTo(destination *ProfileStore) error {
-	return store.CheckOpaqueConflicts(p.object, destination.object, p.Profile)
-}
-
-// CopyUnknownTo transfers opaque top-level members without changing core fields.
-func (p *ProfileStore) CopyUnknownTo(destination *ProfileStore) error {
-	if err := p.CheckUnknownTo(destination); err != nil {
-		return err
-	}
-	unknown := p.UnknownFields()
-	object, err := store.MergeUnknownNested(p.object, destination.object, p.Profile)
-	if err != nil {
-		return err
-	}
-	if len(unknown) == 0 && reflect.DeepEqual(object, destination.object) {
-		return nil
-	}
-	for key, value := range unknown {
-		object[key] = value
-	}
-	if err := destination.store.Set(object); err != nil {
-		return err
-	}
-	destination.object = object
-	return nil
-}
-
 // SetExtension replaces one namespace in the latest persisted profile.
 func (p *ProfileStore) SetExtension(namespace string, payload json.RawMessage) error {
 	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {

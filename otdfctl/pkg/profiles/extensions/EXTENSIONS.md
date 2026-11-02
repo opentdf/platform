@@ -38,7 +38,7 @@ return extensions.WriteProfile(ext, "alice", "my-app", profile)
 
 ## Extension contract
 
-`extensions.Read*` returns `(zero, false, nil)` for an absent namespace, and `(zero, true, extensions.ErrExtensionDecode)` for invalid typed data. The example requires `fmt` and imports of `github.com/opentdf/platform/otdfctl/pkg/profiles` and `github.com/opentdf/platform/otdfctl/pkg/profiles/extensions`; its version check is consumer-owned, not a platform-wide version policy. JSON null is present and can be explicitly replaced with a typed value. Registration conflicts and invalid namespace names fail at construction; unregistered scope or wrong type fails before storage access. Typed writes replace stored payloads as supplied, even when the previous payload contains unknown fields or cannot be decoded into the registered shape. Encoding failures return a sanitized `extensions.ErrExtensionEncode` without exposing custom marshaler errors. The extender must handle payload compatibility, unknown-field retention, validation, and versioning explicitly. Core operations and migration preserve opaque unknown data; explicit typed namespace replacements do not promise that preservation. A freshly created profiler reloads changes from other filesystem/keyring invocations. The existing in-memory driver creates a separate store for each profile load, so this named-profile API requires filesystem or keyring; global-only memory use remains supported within one profiler invocation.
+`extensions.Read*` returns `(zero, false, nil)` for an absent namespace, and `(zero, true, extensions.ErrExtensionDecode)` for invalid typed data. The example requires `fmt` and imports of `github.com/opentdf/platform/otdfctl/pkg/profiles` and `github.com/opentdf/platform/otdfctl/pkg/profiles/extensions`; its version check is consumer-owned, not a platform-wide version policy. JSON null is present and can be explicitly replaced with a typed value. Registration conflicts and invalid namespace names fail at construction; unregistered scope or wrong type fails before storage access. Typed writes replace stored payloads as supplied, even when the previous payload contains unknown fields or cannot be decoded into the registered shape. Encoding failures return a sanitized `extensions.ErrExtensionEncode` without exposing custom marshaler errors. The extender must handle payload compatibility, unknown-field retention, validation, and versioning explicitly. Core saves and migration preserve opaque payloads inside the `extensions` envelope, including unregistered namespaces. Explicit typed writes replace only their namespace. Arbitrary unknown fields outside that envelope, including nested core fields, are not an extension mechanism and are not preserved by core saves or migration; core fields retain their established JSON serialization behavior. A freshly created profiler reloads changes from other filesystem/keyring invocations. The existing in-memory driver creates a separate store for each profile load, so this named-profile API requires filesystem or keyring; global-only memory use remains supported within one profiler invocation.
 
 ## Profile access support
 
@@ -62,7 +62,7 @@ names, registered duplicates and unregistered stored-record collisions. Supplied
 authentication is retained. Call `profiles.SetDefault(profiler, name)` only when
 explicit default selection is intended; the name must already be registered.
 Missing names and failed writes leave the cached default unchanged. These APIs
-use the existing engine's opaque-field and extension-preserving persistence.
+preserve the latest stored extension envelope when saving core configuration.
 Legacy `profiler.AddProfile` and `profiles.NewOtdfctlProfileStore` still implicitly
 choose the first default when it is empty.
 
@@ -99,9 +99,11 @@ directory and perform a temporary write-permission probe during inspection.
 Migration requires a persistent destination when there is data to transfer:
 `ProfileDriverMemory` returns `profiles.ErrMigrationDestinationNotPersistent`
 rather than deleting a persistent source into a memory store discarded on return.
-Global-only memory use through a retained profiler remains supported. Opaque JSON
-conflicts ignore object-key order and string escaping, but preserve array order
-and exact number representations (including large integers and `1` versus `1.0`).
+Global-only memory use through a retained profiler remains supported. A global
+namespace already present at the destination is reusable only when its raw JSON
+payload bytes match the source; migration conservatively rejects other overlaps
+without interpreting consumer schemas. Unrelated destination namespaces remain
+intact. Indexed or orphan destination profile names are always collisions.
 
 Preflight and create-only registration are not a multi-record transaction or an
 atomic cross-process conflict check. Storage failures after writing begins can

@@ -6,7 +6,10 @@ import (
 	"fmt"
 )
 
-var ErrInvalidExtensions = errors.New("invalid extensions")
+var (
+	ErrInvalidExtensions = errors.New("invalid extensions")
+	ErrExtensionConflict = errors.New("conflicting global extension namespace")
+)
 
 // DecodeObject validates a stored JSON object and its optional namespaced payloads.
 // Raw values are never decoded into consumer types by the storage engine.

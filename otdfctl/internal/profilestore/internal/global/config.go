@@ -1,6 +1,7 @@
 package global
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
@@ -116,36 +117,22 @@ func (p *Store) Extension(namespace string) (json.RawMessage, bool, error) {
 	return store.Extension(p.object, namespace)
 }
 
-// UnknownFields returns opaque top-level fields other than extensions.
-func (p *Store) UnknownFields() map[string]json.RawMessage {
-	return store.UnknownFields(p.object, p.config)
-}
-
-// CheckUnknownTo reports opaque fields or namespaces that migration would overwrite.
-func (p *Store) CheckUnknownTo(destination *Store) error {
-	return store.CheckOpaqueConflicts(p.object, destination.object, p.config)
-}
-
-// CopyUnknownTo transfers opaque top-level fields without changing core fields.
-func (p *Store) CopyUnknownTo(destination *Store) error {
-	if err := p.CheckUnknownTo(destination); err != nil {
+// CheckExtensionsTo rejects migration over a different destination payload in
+// the same namespace. Payloads are opaque: only identical bytes are reusable.
+func (p *Store) CheckExtensionsTo(destination *Store) error {
+	source, err := p.Extensions()
+	if err != nil {
 		return err
 	}
-	unknown := p.UnknownFields()
-	if len(unknown) == 0 {
-		return nil
-	}
-	object := make(map[string]json.RawMessage, len(destination.object))
-	for key, value := range destination.object {
-		object[key] = value
-	}
-	for key, value := range unknown {
-		object[key] = value
-	}
-	if err := destination.store.Set(object); err != nil {
+	target, err := destination.Extensions()
+	if err != nil {
 		return err
 	}
-	destination.object = object
+	for namespace, payload := range source {
+		if existing, ok := target[namespace]; ok && !bytes.Equal(payload, existing) {
+			return store.ErrExtensionConflict
+		}
+	}
 	return nil
 }
 

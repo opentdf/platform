@@ -41,11 +41,11 @@ func TestCoreSavePresenceFailureDoesNotOverwriteLatest(t *testing.T) {
 				}
 				target := profile
 				save := loaded.Save
-				latest := []byte(`{"profile":"alpha","endpoint":"https://old.invalid","future":true,"extensions":{"newer":{"keep":true}}}`)
+				latest := []byte(`{"profile":"alpha","endpoint":"https://old.invalid","extensions":{"newer":{"keep":true}}}`)
 				if scope == "global" {
 					target = global
 					save = func() error { return GetGlobalConfig(p).SetDefaultProfile("alpha") }
-					latest = []byte(`{"version":"1.0","profiles":["alpha"],"defaultProfile":"","future":true,"extensions":{"newer":{"keep":true}}}`)
+					latest = []byte(`{"version":"1.0","profiles":["alpha"],"defaultProfile":"","extensions":{"newer":{"keep":true}}}`)
 				}
 				// Another completed write occurs after loading the stale handle.
 				target.data = bytes.Clone(latest)
@@ -72,8 +72,8 @@ func TestCoreSavePresenceFailureDoesNotOverwriteLatest(t *testing.T) {
 				if err := save(); err != nil {
 					t.Fatal(err)
 				}
-				if !bytes.Contains(target.data, []byte(`"future":true`)) || !bytes.Contains(target.data, []byte(`"newer":{"keep":true}`)) {
-					t.Fatalf("retry lost newer opaque data: %s", target.data)
+				if !bytes.Contains(target.data, []byte(`"newer":{"keep":true}`)) {
+					t.Fatalf("retry lost newer extension data: %s", target.data)
 				}
 			})
 		}

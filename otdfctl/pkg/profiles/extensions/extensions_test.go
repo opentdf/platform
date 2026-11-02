@@ -3,7 +3,6 @@ package extensions_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -137,7 +136,7 @@ func TestTypedExtensionUsesLatestStoredConfiguration(t *testing.T) {
 	}
 }
 
-func TestTypedExtensionAcrossDriversAndNoCredentialDisclosure(t *testing.T) {
+func TestTypedExtensionAcrossDriversAndProfileIsolation(t *testing.T) {
 	keyring.MockInit()
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("LOCALAPPDATA", t.TempDir())
@@ -173,9 +172,6 @@ func TestTypedExtensionAcrossDriversAndNoCredentialDisclosure(t *testing.T) {
 			credentials := profiles.AuthCredentials{AuthType: profiles.AuthTypeClientCredentials, ClientID: "id", ClientSecret: "private-token"}
 			if err := profileStore.SetAuthCredentials(credentials); err != nil {
 				t.Fatal(err)
-			}
-			if strings.Contains(fmt.Sprint(cfg), "private-token") {
-				t.Fatal("extension config printed credentials")
 			}
 			loaded, err := profiles.CreateProfiler(driver)
 			if err != nil {

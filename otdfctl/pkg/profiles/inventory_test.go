@@ -102,10 +102,10 @@ func TestProfileFacadeRegistrationAndExplicitDefault(t *testing.T) {
 	}
 }
 
-func TestProfileFacadeOpaquePersistenceAndNoImplicitDefault(t *testing.T) {
+func TestProfileFacadeExtensionPersistenceAndNoImplicitDefault(t *testing.T) {
 	keyring.MockInit()
-	const global = `{"version":"1.0","profiles":["existing"],"defaultProfile":"","futureGlobal":{"keep":1},"extensions":{"other":{"global":true}}}`
-	const profile = `{"profile":"existing","endpoint":"https://old.invalid","futureProfile":[1,2],"authCredentials":{"futureAuth":42},"extensions":{"other":{"profile":true}}}`
+	const global = `{"version":"1.0","profiles":["existing"],"defaultProfile":"","extensions":{"other":{"global":true}}}`
+	const profile = `{"profile":"existing","endpoint":"https://old.invalid","extensions":{"other":{"profile":true}}}`
 	if err := keyring.Set(config.AppName, "global", global); err != nil {
 		t.Fatal(err)
 	}
@@ -152,10 +152,7 @@ func TestProfileFacadeOpaquePersistenceAndNoImplicitDefault(t *testing.T) {
 	if err := profiles.SetDefault(p, "new"); err != nil {
 		t.Fatal(err)
 	}
-	for key, expected := range map[string]map[string]json.RawMessage{
-		"global":           {"futureGlobal": json.RawMessage(`{"keep":1}`)},
-		"profile-existing": {"futureProfile": json.RawMessage(`[1,2]`)},
-	} {
+	for _, key := range []string{"global", "profile-existing"} {
 		raw, err := keyring.Get(config.AppName, key)
 		if err != nil {
 			t.Fatal(err)
@@ -164,23 +161,12 @@ func TestProfileFacadeOpaquePersistenceAndNoImplicitDefault(t *testing.T) {
 		if err := json.Unmarshal([]byte(raw), &object); err != nil {
 			t.Fatal(err)
 		}
-		for field, want := range expected {
-			if string(object[field]) != string(want) {
-				t.Fatalf("lost %s in %s", field, raw)
-			}
-		}
 		var namespaces map[string]json.RawMessage
 		if err := json.Unmarshal(object["extensions"], &namespaces); err != nil {
 			t.Fatal(err)
 		}
 		if string(namespaces["consumer"]) != "false" || namespaces["other"] == nil {
 			t.Fatal("lost extension namespace")
-		}
-		if key == "profile-existing" {
-			var auth map[string]json.RawMessage
-			if err := json.Unmarshal(object["authCredentials"], &auth); err != nil || string(auth["futureAuth"]) != "42" {
-				t.Fatal("lost nested opaque field")
-			}
 		}
 	}
 	fresh, err := profiles.CreateProfiler(profiles.ProfileDriverKeyring)

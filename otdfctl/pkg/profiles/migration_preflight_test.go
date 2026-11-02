@@ -52,7 +52,6 @@ func TestMigrateEmptySourceDoesNotInitializeEitherStore(t *testing.T) {
 
 func TestMigrateRejectsMemoryWithoutDeletingPersistentSource(t *testing.T) {
 	for _, data := range []string{
-		`{"version":"1.0","profiles":[],"defaultProfile":"","futureGlobal":1}`,
 		`{"version":"1.0","profiles":[],"defaultProfile":"","extensions":{"owner":true}}`,
 		`{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`,
 	} {
@@ -75,31 +74,6 @@ func TestMigrateRejectsMemoryWithoutDeletingPersistentSource(t *testing.T) {
 				t.Fatalf("persistent profile changed: %q %v", got, err)
 			}
 		})
-	}
-}
-
-func TestMigrateSourceConflictLeavesAbsentDestinationAbsent(t *testing.T) {
-	isolateMigrationStores(t)
-	const global = `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`
-	const profile = `{"profile":"alpha","authCredentials":{"future":1},"AUTHCREDENTIALS":{"future":2}}`
-	if err := keyring.Set(config.AppName, "global", global); err != nil {
-		t.Fatal(err)
-	}
-	if err := keyring.Set(config.AppName, "profile-alpha", profile); err != nil {
-		t.Fatal(err)
-	}
-	destinationGlobal := migrationFileStore(t, "global")
-	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrOpaqueConflict) {
-		t.Fatalf("source conflict not reported: %v", err)
-	}
-	if destinationGlobal.Exists() || migrationFileStore(t, "profile-alpha").Exists() {
-		t.Fatal("destination initialized before source validation")
-	}
-	if got, err := keyring.Get(config.AppName, "global"); err != nil || got != global {
-		t.Fatalf("source global changed: %q %v", got, err)
-	}
-	if got, err := keyring.Get(config.AppName, "profile-alpha"); err != nil || got != profile {
-		t.Fatalf("source profile changed: %q %v", got, err)
 	}
 }
 
@@ -163,19 +137,19 @@ func TestMigrateRejectsOrphanDestinationBeforeAnyWrite(t *testing.T) {
 
 func TestMigrateGlobalConflictDoesNotUpgradeDestination(t *testing.T) {
 	isolateMigrationStores(t)
-	const source = `{"version":"1.0","profiles":[],"defaultProfile":"","future":1}`
+	const source = `{"version":"1.0","profiles":[],"defaultProfile":"","extensions":{"owner":1}}`
 	if err := keyring.Set(config.AppName, "global", source); err != nil {
 		t.Fatal(err)
 	}
 	destination := migrationFileStore(t, "global")
-	if err := destination.Set(map[string]any{"version": "old", "profiles": []string{}, "defaultProfile": "", "future": 2}); err != nil {
+	if err := destination.Set(map[string]any{"version": "old", "profiles": []string{}, "defaultProfile": "", "extensions": map[string]any{"owner": 2}}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := destination.Get()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrOpaqueConflict) {
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrExtensionConflict) {
 		t.Fatalf("expected conflict, got %v", err)
 	}
 	if got, err := destination.Get(); err != nil || string(got) != string(before) {

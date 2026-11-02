@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -88,16 +87,16 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
@@ -258,16 +257,16 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
@@ -407,14 +406,14 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Logf("LDAP lookup failed as expected (no test data): %v", err)
 		return
 	}
 
-	if len(resp.Msg.GetEntityChains()) > 0 {
-		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.Msg.GetEntityChains()[0].GetEntities()))
+	if len(resp.GetEntityChains()) > 0 {
+		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.GetEntityChains()[0].GetEntities()))
 	}
 }
 
@@ -672,16 +671,16 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("Multi-provider failover test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain after failover")
 	}
@@ -772,18 +771,18 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 	}
 
 	start := time.Now()
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	duration := time.Since(start)
 
 	if err != nil {
 		t.Fatalf("Multi-provider early success test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
@@ -884,17 +883,17 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("Entity chain creation test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 3 {
-		t.Fatalf("Expected 3 entity chains, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 3 {
+		t.Fatalf("Expected 3 entity chains, got %d", len(resp.GetEntityChains()))
 	}
 
 	totalEntities := 0
-	for i, chain := range resp.Msg.GetEntityChains() {
+	for i, chain := range resp.GetEntityChains() {
 		if len(chain.GetEntities()) == 0 {
 			t.Errorf("Chain %d has no entities", i)
 			continue
@@ -914,7 +913,7 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 	}
 
 	t.Logf("✅ Entity chain creation test passed: Created %d chains with %d total entities",
-		len(resp.Msg.GetEntityChains()), totalEntities)
+		len(resp.GetEntityChains()), totalEntities)
 }
 
 // Helper functions

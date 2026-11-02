@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/auth/authz"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -37,20 +37,20 @@ type keyAuthzDBClient interface {
 	ListKeys(context.Context, *kasr.ListKeysRequest) (*kasr.ListKeysResponse, error)
 }
 
-func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req proto.Message) (authz.ResolverContext, error) {
 	return resolveGetKeyAuthzContext(ctx, req, s.dbClient)
 }
 
-func (s *KeyAccessServerRegistry) listKeysAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+func (s *KeyAccessServerRegistry) listKeysAuthzResolver(ctx context.Context, req proto.Message) (authz.ResolverContext, error) {
 	return resolveListKeysAuthzContext(ctx, req, s.dbClient)
 }
 
-func resolveGetKeyAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
+func resolveGetKeyAuthzContext(ctx context.Context, req proto.Message, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
-	msg, ok := req.Any().(*kasr.GetKeyRequest)
+	msg, ok := req.(*kasr.GetKeyRequest)
 	if !ok {
-		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedGetKeyAuthzRequestType, req.Any())
+		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedGetKeyAuthzRequestType, req)
 	}
 
 	kasURI, err := resolveGetKeyKasURI(ctx, msg, &resolverCtx, dbClient)
@@ -64,12 +64,12 @@ func resolveGetKeyAuthzContext(ctx context.Context, req connect.AnyRequest, dbCl
 	return resolverCtx, nil
 }
 
-func resolveListKeysAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
+func resolveListKeysAuthzContext(ctx context.Context, req proto.Message, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
-	msg, ok := req.Any().(*kasr.ListKeysRequest)
+	msg, ok := req.(*kasr.ListKeysRequest)
 	if !ok {
-		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedListKeysAuthzRequestType, req.Any())
+		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedListKeysAuthzRequestType, req)
 	}
 
 	if err := resolveListKeysAuthzResources(ctx, msg, &resolverCtx, dbClient); err != nil {

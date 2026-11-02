@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/service/logger"
@@ -36,7 +36,7 @@ func TestCreateDynamicValueMappingRequiresNamespaceRegardlessOfConfig(t *testing
 				config: &policyconfig.Config{NamespacedPolicy: namespacedPolicy},
 			}
 
-			_, err := service.CreateDynamicValueMapping(t.Context(), connect.NewRequest(validCreateRequest()))
+			_, err := service.CreateDynamicValueMapping(t.Context(), validCreateRequest())
 
 			require.Error(t, err)
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

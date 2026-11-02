@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/logger"
@@ -73,11 +73,11 @@ func validSubjectConditionSetCreate() *subjectmapping.SubjectConditionSetCreate 
 func Test_CreateSubjectMapping_NamespacedPolicyRequiresNamespace(t *testing.T) {
 	service := newNamespacedSubjectMappingService()
 
-	_, err := service.CreateSubjectMapping(t.Context(), connect.NewRequest(&subjectmapping.CreateSubjectMappingRequest{
+	_, err := service.CreateSubjectMapping(t.Context(), &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fakeID,
 		Actions:                validActions,
 		NewSubjectConditionSet: validSubjectConditionSetCreate(),
-	}))
+	})
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -87,9 +87,9 @@ func Test_CreateSubjectMapping_NamespacedPolicyRequiresNamespace(t *testing.T) {
 func Test_CreateSubjectConditionSet_NamespacedPolicyRequiresNamespace(t *testing.T) {
 	service := newNamespacedSubjectMappingService()
 
-	_, err := service.CreateSubjectConditionSet(t.Context(), connect.NewRequest(&subjectmapping.CreateSubjectConditionSetRequest{
+	_, err := service.CreateSubjectConditionSet(t.Context(), &subjectmapping.CreateSubjectConditionSetRequest{
 		SubjectConditionSet: validSubjectConditionSetCreate(),
-	}))
+	})
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

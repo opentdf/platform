@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
@@ -154,7 +155,16 @@ func buildToken(c *profiles.AuthCredentials) *oauth2.Token {
 
 func ParseClaimsJWT(accessToken string) (JWTClaims, error) {
 	c := JWTClaims{}
-	jwt, err := jwt.ParseSigned(accessToken)
+	// Read expiration for local token caching; the server verifies the signature.
+	// v3 accepted any algorithm, including unknown names and "none". With v4,
+	// explicitly allow all known signing algorithms and reject unsupported values.
+	jwt, err := jwt.ParseSigned(accessToken, []jose.SignatureAlgorithm{
+		jose.RS256, jose.RS384, jose.RS512,
+		jose.PS256, jose.PS384, jose.PS512,
+		jose.ES256, jose.ES384, jose.ES512,
+		jose.HS256, jose.HS384, jose.HS512,
+		jose.EdDSA,
+	})
 	if err != nil {
 		return c, errors.Join(ErrParsingAccessToken, err)
 	}

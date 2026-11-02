@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -67,9 +67,9 @@ func (s *ActionSuite) Test_CreateAction_NamespacedPolicyRequiresNamespace() {
 		config: &policyconfig.Config{NamespacedPolicy: true},
 	}
 
-	_, err := service.CreateAction(s.T().Context(), connect.NewRequest(&actions.CreateActionRequest{
+	_, err := service.CreateAction(s.T().Context(), &actions.CreateActionRequest{
 		Name: "valid_name",
-	}))
+	})
 
 	s.Require().Error(err)
 	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))

@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"connectrpc.com/connect"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // ResolverResource represents a single resource's authorization dimensions.
@@ -32,18 +32,18 @@ type ResolverContext struct {
 //
 // Parameters:
 //   - ctx: Request context (includes auth info, can be used for DB calls)
-//   - req: The connect request (use Deserialize helper to get typed proto)
+//   - req: The decoded request message; assert it to the method's request type
 //
 // Returns:
 //   - ResolverContext with populated dimensions
 //   - Error if resolution fails (results in 403)
 //
 // Service maintainers are responsible for:
-//  1. Deserializing the request using the provided helper
+//  1. Asserting the request to the method's request type
 //  2. Extracting relevant fields
 //  3. Performing any required DB lookups
 //  4. Populating dimensions in ResolverContext
-type ResolverFunc func(ctx context.Context, req connect.AnyRequest) (ResolverContext, error)
+type ResolverFunc func(ctx context.Context, req proto.Message) (ResolverContext, error)
 
 // ResolverRegistry holds resolver functions keyed by service method.
 // This is the global registry used by the interceptor.

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -470,12 +469,12 @@ func (a *ClaimsTestAdapter) testCreateEntityChainsFromTokens(ctx context.Context
 		Tokens: tokens,
 	}
 
-	resp, err := implementation.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := implementation.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg, nil
+	return resp, nil
 }
 
 // testResolveEntities is a helper for testing entity resolution
@@ -484,12 +483,12 @@ func (a *ClaimsTestAdapter) testResolveEntities(ctx context.Context, implementat
 		Entities: entities,
 	}
 
-	resp, err := implementation.ResolveEntities(ctx, connect.NewRequest(req))
+	resp, err := implementation.ResolveEntities(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg, nil
+	return resp, nil
 }
 
 // encodeBase64URL encodes bytes to base64 URL encoding without padding

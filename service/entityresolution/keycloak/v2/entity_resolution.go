@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
@@ -81,29 +81,31 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	return keycloakSVC, nil
 }
 
-func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
 	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
-	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache)
-	return connect.NewResponse(&resp), err
+	resp, err := EntityResolution(ctx, req, s.idpConfig, connector, s.logger, s.svcCache)
+	return &resp, err
 }
 
-func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
+		cause := fmt.Errorf("%w: %w", ErrCreationFailed, err)
+		return nil, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 	}
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache)
-	return connect.NewResponse(&resp), err
+	resp, err := CreateEntityChainsFromTokens(ctx, req, s.idpConfig, connector, s.logger, s.svcCache)
+	return &resp, err
 }
 
 func (c Config) LogValue() slog.Value {
@@ -184,7 +186,7 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				logger.Error("error getting client info", slog.String("error", err.Error()))
 				return entityresolutionV2.ResolveEntitiesResponse{},
-					connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
+					connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
@@ -192,13 +194,13 @@ func EntityResolution(ctx context.Context,
 				if err != nil {
 					logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
 					return entityresolutionV2.ResolveEntitiesResponse{},
-						connect.NewError(connect.CodeInternal, ErrCreationFailed)
+						connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 				}
 				mystruct, structErr := structpb.NewStruct(json)
 				if structErr != nil {
 					logger.Error("error making struct!", slog.String("error", structErr.Error()))
 					return entityresolutionV2.ResolveEntitiesResponse{},
-						connect.NewError(connect.CodeInternal, ErrCreationFailed)
+						connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
@@ -207,7 +209,7 @@ func EntityResolution(ctx context.Context,
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {
 					logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
@@ -236,7 +238,7 @@ func EntityResolution(ctx context.Context,
 		case err != nil:
 			logger.ErrorContext(ctx, "error getting users", slog.Any("error", err))
 			return entityresolutionV2.ResolveEntitiesResponse{},
-				connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
+				connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 		case len(users) == 1:
 			user := users[0]
 			logger.DebugContext(ctx,
@@ -254,14 +256,14 @@ func EntityResolution(ctx context.Context,
 				case groupErr != nil:
 					logger.Error("error getting group", slog.String("group", groupErr.Error()))
 					return entityresolutionV2.ResolveEntitiesResponse{},
-						connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
+						connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 				case len(groups) == 1:
 					logger.Info("group found for", slog.String("entity", ident.String()))
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger, svcCache)
 					if exErr != nil {
 						return entityresolutionV2.ResolveEntitiesResponse{},
-							connect.NewError(connect.CodeNotFound, ErrNotFound)
+							connect.NewError(connect.CodeNotFound, ErrNotFound.Error()).WithCause(ErrNotFound)
 					}
 					keycloakEntities = expandedRepresentations
 				default:
@@ -286,11 +288,11 @@ func EntityResolution(ctx context.Context,
 						entityStruct, err := entityToStructPb(ident)
 						if err != nil {
 							logger.Error("unable to make entity struct from email or username", slog.String("error", err.Error()))
-							return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
+							return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 						}
 						jsonEntities = append(jsonEntities, entityStruct)
 					} else {
-						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.Code(entityNotFoundErr.GetCode()), ErrGetRetrievalFailed)
+						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.Code(entityNotFoundErr.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 					}
 				}
 			} else if ident.GetUserName() != "" {
@@ -299,12 +301,12 @@ func EntityResolution(ctx context.Context,
 					entityStruct, err := entityToStructPb(ident)
 					if err != nil {
 						logger.Error("unable to make entity struct from username", slog.String("error", err.Error()))
-						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
+						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 					}
 					jsonEntities = append(jsonEntities, entityStruct)
 				} else {
 					entityNotFoundErr := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: ident.GetUserName()}
-					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.Code(entityNotFoundErr.GetCode()), ErrGetRetrievalFailed)
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.Code(entityNotFoundErr.GetCode()), ErrGetRetrievalFailed.Error()).WithCause(ErrGetRetrievalFailed)
 				}
 			}
 		}
@@ -314,13 +316,13 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
 				return entityresolutionV2.ResolveEntitiesResponse{},
-					connect.NewError(connect.CodeInternal, ErrCreationFailed)
+					connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 			}
 			mystruct, structErr := structpb.NewStruct(json)
 			if structErr != nil {
 				logger.Error("error making struct!", slog.String("error", structErr.Error()))
 				return entityresolutionV2.ResolveEntitiesResponse{},
-					connect.NewError(connect.CodeInternal, ErrCreationFailed)
+					connect.NewError(connect.CodeInternal, ErrCreationFailed.Error()).WithCause(ErrCreationFailed)
 			}
 			jsonEntities = append(jsonEntities, mystruct)
 		}

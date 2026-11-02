@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"strconv"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/internal/connectcompat"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/tracing"
 )
@@ -42,7 +43,7 @@ func classifyAccessError(ctx context.Context, err error) (string, bool) {
 	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
 		return AccessErrCategoryContextCancelled, true
 	}
-	switch connect.CodeOf(err) { //nolint:exhaustive // transport-level codes only; everything else defaults to a denial
+	switch connectcompat.CodeOf(err) { //nolint:exhaustive // transport-level codes only; everything else defaults to a denial
 	case connect.CodeUnavailable,
 		connect.CodeDeadlineExceeded,
 		connect.CodeCanceled,
@@ -141,7 +142,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 				ctx,
 				"get decision failed",
 				slog.String("category", category),
-				slog.String("code", connect.CodeOf(err).String()),
+				slog.String("code", connectcompat.CodeOf(err).String()),
 				slog.Int("resources", 1),
 			)
 			p.Logger.DebugContext(
@@ -174,7 +175,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 			ctx,
 			"get multi-resource decision failed",
 			slog.String("category", category),
-			slog.String("code", connect.CodeOf(err).String()),
+			slog.String("code", connectcompat.CodeOf(err).String()),
 			slog.Int("resources", len(resources)),
 		)
 		p.Logger.DebugContext(

@@ -312,12 +312,12 @@ func Start(f ...StartOptions) error {
 		if err := validateExternalInterceptorFactory(factory); err != nil {
 			return err
 		}
-		interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
+		extra, err := buildExternalInterceptor(factory, newInterceptorParams(factory, cfg, client, logger))
 		if err != nil {
-			return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+			return err
 		}
-		if interceptor != nil {
-			otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
+		if extra.V1 != nil || extra.V2 != nil {
+			otdf.ConnectRPC.AddExtraInterceptors(extra)
 		}
 	}
 
@@ -380,6 +380,16 @@ func validateExternalInterceptorFactory(factory InterceptorFactory) error {
 		return ErrExternalInterceptorFactoryFuncRequired
 	}
 	return nil
+}
+
+// buildExternalInterceptor runs a factory and names the result after it.
+func buildExternalInterceptor(factory InterceptorFactory, params InterceptorParams) (ConnectServerInterceptor, error) {
+	extra, err := factory.Factory(params)
+	if err != nil {
+		return extra, fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+	}
+	extra.Name = factory.Name
+	return extra, nil
 }
 
 func newInterceptorParams(factory InterceptorFactory, cfg *config.Config, client *sdk.SDK, logger *logger.Logger) InterceptorParams {

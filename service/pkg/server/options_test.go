@@ -49,22 +49,22 @@ func TestWithConnectInterceptors(t *testing.T) {
 		{
 			name: "single interceptor is appended",
 			apply: func(c *StartConfig) {
-				*c = WithConnectInterceptors(noopInterceptor())(*c)
+				*c = WithConnectInterceptors(noopExtra("test"))(*c)
 			},
 			wantCount: 1,
 		},
 		{
 			name: "multiple interceptors are appended in order",
 			apply: func(c *StartConfig) {
-				*c = WithConnectInterceptors(noopInterceptor(), noopInterceptor(), noopInterceptor())(*c)
+				*c = WithConnectInterceptors(noopExtra("test"), noopExtra("test"), noopExtra("test"))(*c)
 			},
 			wantCount: 3,
 		},
 		{
 			name: "calling twice accumulates interceptors",
 			apply: func(c *StartConfig) {
-				*c = WithConnectInterceptors(noopInterceptor())(*c)
-				*c = WithConnectInterceptors(noopInterceptor(), noopInterceptor())(*c)
+				*c = WithConnectInterceptors(noopExtra("test"))(*c)
+				*c = WithConnectInterceptors(noopExtra("test"), noopExtra("test"))(*c)
 			},
 			wantCount: 3,
 		},
@@ -96,8 +96,8 @@ func TestWithConnectInterceptors(t *testing.T) {
 func TestWithExternalInterceptorFactories(t *testing.T) {
 	factory := InterceptorFactory{
 		Name: "test",
-		Factory: func(InterceptorParams) (connect.Interceptor, error) {
-			return noopInterceptor(), nil
+		Factory: func(InterceptorParams) (ConnectServerInterceptor, error) {
+			return noopExtra(""), nil
 		},
 	}
 
@@ -161,10 +161,10 @@ func TestExternalInterceptorFactoryReceivesNamedConfig(t *testing.T) {
 
 	factory := InterceptorFactory{
 		Name: "audit_enrichment",
-		Factory: func(params InterceptorParams) (connect.Interceptor, error) {
+		Factory: func(params InterceptorParams) (ConnectServerInterceptor, error) {
 			var cfg auditConfig
 			if err := mapstructure.Decode(params.Config, &cfg); err != nil {
-				return nil, err
+				return ConnectServerInterceptor{}, err
 			}
 
 			require.Equal(t, auditConfig{
@@ -175,7 +175,7 @@ func TestExternalInterceptorFactoryReceivesNamedConfig(t *testing.T) {
 				},
 			}, cfg)
 
-			return noopInterceptor(), nil
+			return noopExtra(""), nil
 		},
 	}
 
@@ -193,7 +193,8 @@ func TestExternalInterceptorFactoryReceivesNamedConfig(t *testing.T) {
 
 	interceptor, err := factory.Factory(params)
 	require.NoError(t, err)
-	require.NotNil(t, interceptor)
+	require.NotNil(t, interceptor.V1)
+	require.NotNil(t, interceptor.V2)
 }
 
 func TestValidateExternalInterceptorFactoryRequiresName(t *testing.T) {
@@ -217,22 +218,22 @@ func TestWithIPCInterceptors(t *testing.T) {
 		{
 			name: "single interceptor is appended",
 			apply: func(c *StartConfig) {
-				*c = WithIPCInterceptors(noopInterceptor())(*c)
+				*c = WithIPCInterceptors(noopExtra("test"))(*c)
 			},
 			wantCount: 1,
 		},
 		{
 			name: "multiple interceptors are appended in order",
 			apply: func(c *StartConfig) {
-				*c = WithIPCInterceptors(noopInterceptor(), noopInterceptor(), noopInterceptor())(*c)
+				*c = WithIPCInterceptors(noopExtra("test"), noopExtra("test"), noopExtra("test"))(*c)
 			},
 			wantCount: 3,
 		},
 		{
 			name: "calling twice accumulates interceptors",
 			apply: func(c *StartConfig) {
-				*c = WithIPCInterceptors(noopInterceptor())(*c)
-				*c = WithIPCInterceptors(noopInterceptor(), noopInterceptor())(*c)
+				*c = WithIPCInterceptors(noopExtra("test"))(*c)
+				*c = WithIPCInterceptors(noopExtra("test"), noopExtra("test"))(*c)
 			},
 			wantCount: 3,
 		},
@@ -263,11 +264,14 @@ func TestWithIPCInterceptors(t *testing.T) {
 
 func TestWithConnectAndIPCInterceptorsTogether(t *testing.T) {
 	var cfg StartConfig
-	cfg = WithConnectInterceptors(noopInterceptor(), noopInterceptor())(cfg)
-	cfg = WithIPCInterceptors(noopInterceptor())(cfg)
+	cfg = WithConnectInterceptors(noopExtra("first"))(cfg)
+	cfg = WithIPCInterceptors(noopExtra("ipc"))(cfg)
+	cfg = WithConnectInterceptors(noopExtra("second"))(cfg)
 
 	require.Len(t, cfg.extraConnectInterceptors, 2, "expected 2 connect interceptors")
 	require.Len(t, cfg.extraIPCInterceptors, 1, "expected 1 IPC interceptor")
+	assert.Equal(t, "first", cfg.extraConnectInterceptors[0].Name)
+	assert.Equal(t, "second", cfg.extraConnectInterceptors[1].Name)
 
 	// Verify slices are independent (not sharing backing array)
 	assert.NotSame(

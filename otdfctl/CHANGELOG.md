@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.40.0](https://github.com/opentdf/platform/compare/otdfctl/v0.39.0...otdfctl/v0.40.0) (2026-11-02)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **cli:** migrate go-jose from v3 to v4 ([#4278](https://github.com/opentdf/platform/issues/4278)) ([4a44e06](https://github.com/opentdf/platform/commit/4a44e061e47d843f6e52419da5814c8f91ec1d48))
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+* **deps:** bump github.com/go-jose/go-jose/v4 from 4.1.4 to 4.1.6 in /otdfctl ([#4264](https://github.com/opentdf/platform/issues/4264)) ([6f073b0](https://github.com/opentdf/platform/commit/6f073b026b0a255f643b7bd161ed32b3440ccb65))
+* **deps:** bump github.com/opentdf/platform/lib/flattening from 0.1.3 to 0.2.0 in /otdfctl ([#4196](https://github.com/opentdf/platform/issues/4196)) ([99bcbce](https://github.com/opentdf/platform/commit/99bcbce15701931f80212971f6287f72b95e76a8))
+* **deps:** upgrade all SDK consumers to v0.36.0 ([#4270](https://github.com/opentdf/platform/issues/4270)) ([f43c9ac](https://github.com/opentdf/platform/commit/f43c9ac62aa4289178a1bbc27adcd5087bdb45a9))
+* **policy:** require namespaces for dynamic value mappings ([#4236](https://github.com/opentdf/platform/issues/4236)) ([d83dbef](https://github.com/opentdf/platform/commit/d83dbeff073436539d80d8a252c2c2267490f58c))
+
 ## [0.39.0](https://github.com/opentdf/platform/compare/otdfctl/v0.38.0...otdfctl/v0.39.0) (2026-10-19)
 
 

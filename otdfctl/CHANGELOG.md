@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/opentdf/platform/compare/otdfctl/v0.40.0...otdfctl/v0.41.0) (2026-11-02)
+
+
+### Features
+
+* **cli:** support typed configuration extensions ([#4139](https://github.com/opentdf/platform/issues/4139)) ([16dbf24](https://github.com/opentdf/platform/commit/16dbf242a73cfff3a27113bdb3689fe4c94f181c))
+
 ## [0.40.0](https://github.com/opentdf/platform/compare/otdfctl/v0.39.0...otdfctl/v0.40.0) (2026-11-02)
 
 

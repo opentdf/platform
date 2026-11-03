@@ -473,6 +473,12 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 // Some invalid manifests are still usable, so this file may still be usable.
 var ErrInvalidPerSchema = errors.New("manifest was not valid")
 
+// ErrTDFManifestTooLarge reports a manifest that exceeds the bound used while
+// detecting or loading a TDF.
+var ErrTDFManifestTooLarge = zipstream.ErrManifestTooLarge
+
+const defaultIsValidTDFManifestMaxSize = 10 * 1024 * 1024
+
 //go:embed schema/manifest-lax.schema.json
 var manifestLaxSchema []byte
 
@@ -483,13 +489,28 @@ var manifestStrictSchema []byte
 // Then attempts to extract a manifest, then finally it validates the manifest using the json schema
 // If any of the checks fail, it will return false.
 //
+// IsValidTdf uses a 10 MiB manifest bound because it is commonly called on
+// untrusted input just to detect a TDF. Use IsValidTdfWithMaxManifestSize when
+// a caller has a larger, trusted manifest budget. LoadTDF keeps its separate
+// WithMaxManifestSize option for callers that need to read larger TDFs.
+//
 // Something to keep in mind is that if we make updates to the schema, such as making certain fields
 // 'required', older TDF versions will fail despite being valid. So each time we release an update to
 // the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
 // to validate against all previously known schema versions.
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
-	// create tdf reader
-	tdfReader, err := zipstream.NewTDFReader(reader)
+	return IsValidTdfWithMaxManifestSize(reader, defaultIsValidTDFManifestMaxSize)
+}
+
+// IsValidTdfWithMaxManifestSize validates a TDF while limiting how many
+// manifest bytes can be read. The limit is checked from ZIP metadata before
+// the manifest is read or parsed. size must be greater than zero.
+func IsValidTdfWithMaxManifestSize(reader io.ReadSeeker, size int64) (bool, error) {
+	if err := validateMaxManifestSize(size); err != nil {
+		return false, err
+	}
+
+	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(size))
 	if err != nil {
 		return false, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}

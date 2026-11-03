@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/service/internal/access/v2"
+	"github.com/opentdf/platform/service/internal/connectcompat"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -62,5 +63,22 @@ func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...an
 	l.ErrorContext(ctx, "unexpected error", logs...)
 
 	// Ensure error response is safe and does not leak internal information
-	return connect.NewError(connect.CodeInternal, ErrResponseSafeInternalError.Error()).WithCause(ErrResponseSafeInternalError)
+	code := connect.CodeInternal
+	dependencyCode := connectcompat.CodeOf(err)
+	// A deliberate rejection must not become a retryable service failure, even
+	// when its cause includes a timeout.
+	if dependencyCode == connect.CodePermissionDenied {
+		return connect.NewError(connect.CodePermissionDenied, ErrResponseSafeInternalError.Error()).WithCause(ErrResponseSafeInternalError)
+	}
+	switch {
+	case errors.Is(err, context.Canceled):
+		code = connect.CodeCanceled
+	case errors.Is(err, context.DeadlineExceeded):
+		code = connect.CodeDeadlineExceeded
+	default:
+		if dependencyCode == connect.CodeUnavailable || dependencyCode == connect.CodeDeadlineExceeded || dependencyCode == connect.CodeCanceled || dependencyCode == connect.CodeResourceExhausted {
+			code = dependencyCode
+		}
+	}
+	return connect.NewError(code, ErrResponseSafeInternalError.Error()).WithCause(ErrResponseSafeInternalError)
 }

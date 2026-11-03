@@ -505,8 +505,10 @@ func IsValidTdf(reader io.ReadSeeker, opts ...TDFReaderOption) (bool, error) {
 		maxManifestSize:           defaultIsValidTDFManifestMaxSize,
 		schemaValidationIntensity: Lax,
 	}
-	if err := applyTDFReaderOptions(config, opts...); err != nil {
-		return false, err
+	for _, opt := range opts {
+		if err := opt(config); err != nil {
+			return false, err
+		}
 	}
 
 	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(config.maxManifestSize))

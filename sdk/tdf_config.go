@@ -447,22 +447,16 @@ func (a AllowList) Add(kasURL string) error {
 	return nil
 }
 
-func applyTDFReaderOptions(c *TDFReaderConfig, opts ...TDFReaderOption) error {
-	for _, opt := range opts {
-		if err := opt(c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
 	}
 
-	if err := applyTDFReaderOptions(c, opt...); err != nil {
-		return nil, err
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.kasSessionKey == nil {

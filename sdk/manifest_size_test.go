@@ -70,7 +70,7 @@ func manifestDataOffset(t *testing.T, data []byte, name string) int64 {
 // limit remains opt-in for callers that need larger TDFs.
 func TestIsValidTdf_DefaultManifestSizeCap(t *testing.T) {
 	manifest := `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":true},` +
-		`"encryptionInformation":{},"pad":"` + strings.Repeat("a", 11*1024*1024) + `"}`
+		`"encryptionInformation":{},"pad":"` + strings.Repeat("a", defaultIsValidTDFManifestMaxSize) + `"}`
 
 	valid, err := IsValidTdf(bytes.NewReader(namedManifestZip(t, "0.manifest.json", manifest)))
 	assert.False(t, valid)
@@ -120,7 +120,7 @@ func TestIsValidTdf_WithMaxManifestSize_SpecNameDoesNotFallBack(t *testing.T) {
 }
 
 func TestIsValidTdf_WithMaxManifestSize_AcceptsManifestOverDefault(t *testing.T) {
-	manifest := minimalManifestJSON + strings.Repeat(" ", defaultIsValidTDFManifestMaxSize+1-len(minimalManifestJSON))
+	manifest := minimalManifestJSON + strings.Repeat(" ", defaultIsValidTDFManifestMaxSize)
 	valid, err := IsValidTdf(
 		bytes.NewReader(namedManifestZip(t, "manifest.json", manifest)),
 		WithMaxManifestSize(int64(len(manifest))),

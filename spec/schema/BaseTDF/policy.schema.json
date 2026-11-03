@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opentdf.io/spec/schema/BaseTDF/policy.schema.json",
+  "title": "TDF Policy Object",
+  "description": "Policy object schema for BaseTDF v4.4.0. Defines the attribute-based access control (ABAC) policy and dissemination list embedded in a TDF manifest. The policy is serialized to JSON, base64-encoded, and stored in encryptionInformation.policy.",
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "description": "A unique identifier for this policy instance. Used in audit logs to correlate rewrap requests with specific TDF policies. UUIDv4 (RFC 9562) is RECOMMENDED."
+    },
+    "body": {
+      "type": "object",
+      "description": "Contains the access control rules for this policy.",
+      "properties": {
+        "dataAttributes": {
+          "type": "array",
+          "description": "The set of attribute values that define the access requirements for the protected data. Each attribute object identifies a specific attribute value and the KAS instance responsible for the corresponding key material. When empty, no attribute-based access control is applied.",
+          "items": {
+            "$ref": "#/definitions/dataAttribute"
+          }
+        },
+        "dissem": {
+          "type": "array",
+          "description": "A list of entity identifiers (typically email addresses) that restricts access to the listed entities, independent of attribute-based checks. When empty, no dissemination restriction is applied.",
+          "items": {
+            "type": "string",
+            "description": "An entity identifier, typically an email address."
+          }
+        }
+      },
+      "required": ["dataAttributes", "dissem"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["uuid", "body"],
+  "additionalProperties": false,
+  "definitions": {
+    "dataAttribute": {
+      "type": "object",
+      "description": "A data attribute object representing a specific attribute value and its associated KAS instance. The attribute field uses a fully qualified name (FQN) URI: https://{authority}/attr/{name}/value/{value}.",
+      "properties": {
+        "attribute": {
+          "type": "string",
+          "description": "The fully qualified attribute value URI. Format: https://{authority}/attr/{name}/value/{value}. The scheme MUST be https for production (http MAY be used in development).",
+          "format": "uri"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "A human-readable label for this attribute value. Used for display purposes only; MUST NOT affect access control evaluation."
+        },
+        "isDefault": {
+          "type": "boolean",
+          "description": "Indicates whether this is the default value for the attribute definition. Informational only; MUST NOT affect access control evaluation."
+        },
+        "pubKey": {
+          "type": "string",
+          "description": "Legacy field. Was previously used to carry the KAS public key. New implementations SHOULD set this to an empty string."
+        },
+        "kasURL": {
+          "type": "string",
+          "description": "The URL of the KAS instance that holds the key material associated with this attribute value.",
+          "format": "uri"
+        }
+      },
+      "required": ["attribute", "kasURL"],
+      "additionalProperties": false
+    }
+  }
+}

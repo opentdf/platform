@@ -38,6 +38,8 @@ approval_rules:
       changed_files:
         paths:
           - "^.github/.*"
+        ignore:
+          - "^.github/release-please/.*"
     options:
       invalidate_on_push: true
       ignore_edited_comments: true

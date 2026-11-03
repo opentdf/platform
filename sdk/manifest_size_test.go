@@ -30,3 +30,27 @@ func TestIsValidTdf_NoDefaultManifestSizeCap(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, valid)
 }
+
+// A deflated manifest is not bounded by its archive the way a stored one is,
+// so IsValidTdf, which sets no manifest size limit, caps it at the larger of
+// the archive's length and 10 MiB. This one is 11 MiB of JSON that deflates
+// into an archive of a few KiB.
+func TestIsValidTdf_DeflatedManifestInflationBudget(t *testing.T) {
+	m := `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":true},` +
+		`"encryptionInformation":{},"pad":"` + strings.Repeat("a", 11*1024*1024) + `"}`
+
+	buf := &bytes.Buffer{}
+	w := zip.NewWriter(buf)
+	for _, f := range []struct{ name, body string }{{"0.payload", "payload"}, {"0.manifest.json", m}} {
+		fw, err := w.CreateHeader(&zip.FileHeader{Name: f.name, Method: zip.Deflate})
+		require.NoError(t, err)
+		_, err = fw.Write([]byte(f.body))
+		require.NoError(t, err)
+	}
+	require.NoError(t, w.Close())
+	require.Less(t, buf.Len(), 1024*1024)
+
+	valid, err := IsValidTdf(bytes.NewReader(buf.Bytes()))
+	require.ErrorContains(t, err, "manifest size limit")
+	assert.False(t, valid)
+}

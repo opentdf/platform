@@ -1642,6 +1642,118 @@ func (s *TDFSuite) Test_TDFCreateShortReads() {
 	s.Equal(payload, out.String())
 }
 
+// rezipTDF rewrites an SDK-written TDF the way another TDF writer might lay
+// it out: the manifest filed under manifestName, and each entry compressed
+// with DEFLATE when asked. archive/zip records the sizes of a compressed entry
+// in a data descriptor after its data, leaving zeros in the local header, so
+// the reader has to take them from the central directory.
+func rezipTDF(t *testing.T, tdf []byte, manifestName string, deflateManifest, deflatePayload bool) []byte {
+	t.Helper()
+
+	src, err := zip.NewReader(bytes.NewReader(tdf), int64(len(tdf)))
+	require.NoError(t, err)
+
+	want := map[string]uint16{}
+	var out bytes.Buffer
+	w := zip.NewWriter(&out)
+	for _, f := range src.File {
+		name, method := f.Name, zip.Store
+		switch f.Name {
+		case zipstream.TDFPayloadFileName:
+			if deflatePayload {
+				method = zip.Deflate
+			}
+		case zipstream.TDFManifestFileName:
+			name = manifestName
+			if deflateManifest {
+				method = zip.Deflate
+			}
+		default:
+			require.Failf(t, "unexpected TDF entry", "%q", f.Name)
+		}
+		want[name] = method
+
+		dst, err := w.CreateHeader(&zip.FileHeader{Name: name, Method: method})
+		require.NoError(t, err)
+		rc, err := f.Open()
+		require.NoError(t, err)
+		_, err = io.Copy(dst, rc)
+		require.NoError(t, err)
+		require.NoError(t, rc.Close())
+	}
+	require.NoError(t, w.Close())
+
+	// The rewrite has to be what the caller asked for, or a passing test
+	// proves nothing about compressed entries.
+	check, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+	require.NoError(t, err)
+	require.Len(t, check.File, len(want))
+	for _, f := range check.File {
+		require.Equal(t, want[f.Name], f.Method, "method of %s", f.Name)
+	}
+	return out.Bytes()
+}
+
+// Test_DeflatedZipEntries decrypts TDFs whose ZIP entries another writer
+// compressed with DEFLATE. The ciphertext is what this SDK wrote, so every
+// segment hash and the root signature still have to verify once inflated.
+func (s *TDFSuite) Test_DeflatedZipEntries() {
+	var plain strings.Builder
+	for i := range 1000 {
+		plain.WriteString(strconv.Itoa(i) + ",")
+	}
+	plainText := []byte(plain.String())
+	const segmentSize = 700
+
+	var tdfBuf bytes.Buffer
+	_, err := s.sdk.CreateTDF(&tdfBuf, bytes.NewReader(plainText),
+		WithKasInformation(KASInfo{URL: s.kasTestURLLookup["http://localhost:65432/"]}),
+		WithSegmentSize(segmentSize),
+	)
+	s.Require().NoError(err)
+
+	for _, manifestName := range []string{zipstream.TDFManifestFileName, zipstream.TDFManifestFileNameSpec} {
+		for _, tc := range []struct {
+			name            string
+			deflateManifest bool
+			deflatePayload  bool
+		}{
+			{"both deflated", true, true},
+			{"deflated payload only", false, true},
+			{"deflated manifest only", true, false},
+		} {
+			s.Run(manifestName+"/"+tc.name, func() {
+				tdf := rezipTDF(s.T(), tdfBuf.Bytes(), manifestName, tc.deflateManifest, tc.deflatePayload)
+
+				r, err := s.sdk.LoadTDF(bytes.NewReader(tdf))
+				s.Require().NoError(err)
+
+				var out bytes.Buffer
+				_, err = r.WriteTo(&out)
+				s.Require().NoError(err)
+				s.Equal(plainText, out.Bytes())
+
+				// ReadAt from the last segment back to the first, in reads
+				// that straddle segment boundaries.
+				const chunk = 500
+				for off := (len(plainText) - 1) / chunk * chunk; off >= 0; off -= chunk {
+					buf := make([]byte, min(chunk, len(plainText)-off))
+					n, err := r.ReadAt(buf, int64(off))
+					s.Require().NoError(err, "ReadAt %d", off)
+					s.Equal(plainText[off:off+n], buf[:n], "ReadAt %d", off)
+				}
+
+				// Seek back into the middle and read through to the end.
+				_, err = r.Seek(1234, io.SeekStart)
+				s.Require().NoError(err)
+				rest, err := io.ReadAll(r)
+				s.Require().NoError(err)
+				s.Equal(plainText[1234:], rest)
+			})
+		}
+	}
+}
+
 // nonSeekableReader hides the Seek method of the reader it wraps, standing in for a
 // pipe or network stream whose length cannot be measured before it is read.
 type nonSeekableReader struct{ inner io.Reader }

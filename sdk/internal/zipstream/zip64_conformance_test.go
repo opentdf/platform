@@ -25,9 +25,18 @@ type rawZipEntry struct {
 	name string
 	// data is the stored (compressed) content.
 	data []byte
-	// uncompressedSize overrides the declared original size. Zero means
-	// len(data), i.e. a normal STORED entry.
+	// method is the compression method written to both headers. Zero is
+	// STORED; deflatedEntry builds a method 8 entry.
+	method uint16
+	// uncompressedSize overrides the declared original size. On a STORED
+	// entry zero means len(data); any other method declares it verbatim, so
+	// an empty deflated entry can declare zero.
 	uncompressedSize uint64
+	// crc32 overrides the CRC-32 written to both headers, which covers the
+	// uncompressed data. On a STORED entry zero means the CRC-32 of data; any
+	// other method declares it verbatim, and zero tells archive/zip not to
+	// check it.
+	crc32 uint32
 	// comment is the central directory file comment.
 	comment string
 	// extraPrefix is written into the extra-field area ahead of the ZIP64
@@ -62,10 +71,17 @@ func (e rawZipEntry) zip64Offset(actual uint64) uint64 {
 }
 
 func (e rawZipEntry) uncompressed() uint64 {
-	if e.uncompressedSize != 0 {
+	if e.uncompressedSize != 0 || e.method != zip.Store {
 		return e.uncompressedSize
 	}
 	return uint64(len(e.data))
+}
+
+func (e rawZipEntry) checksum() uint32 {
+	if e.crc32 != 0 || e.method != zip.Store {
+		return e.crc32
+	}
+	return crc32.ChecksumIEEE(e.data)
 }
 
 // clamp32 narrows a size for a 32-bit header field, substituting the ZIP64
@@ -87,12 +103,13 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 	for i, e := range entries {
 		offsets[i] = uint64(buf.Len())
 		lfh := LocalFileHeader{
-			Signature:        fileHeaderSignature,
-			Version:          zipVersion,
-			Crc32:            crc32.ChecksumIEEE(e.data),
-			CompressedSize:   clamp32(uint64(len(e.data))),
-			UncompressedSize: clamp32(e.uncompressed()),
-			FilenameLength:   uint16(len(e.name)),
+			Signature:         fileHeaderSignature,
+			Version:           zipVersion,
+			CompressionMethod: e.method,
+			Crc32:             e.checksum(),
+			CompressedSize:    clamp32(uint64(len(e.data))),
+			UncompressedSize:  clamp32(e.uncompressed()),
+			FilenameLength:    uint16(len(e.name)),
 		}
 		require.NoError(t, binary.Write(buf, binary.LittleEndian, lfh))
 		buf.WriteString(e.name)
@@ -108,7 +125,8 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 			Signature:         centralDirectoryHeaderSignature,
 			VersionCreated:    zipVersion,
 			VersionNeeded:     zipVersion,
-			Crc32:             crc32.ChecksumIEEE(e.data),
+			CompressionMethod: e.method,
+			Crc32:             e.checksum(),
 			CompressedSize:    clamp32(uint64(len(e.data))),
 			UncompressedSize:  clamp32(e.uncompressed()),
 			FilenameLength:    uint16(len(e.name)),

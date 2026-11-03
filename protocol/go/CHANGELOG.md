@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.44.0](https://github.com/opentdf/platform/compare/protocol/go/v0.43.0...protocol/go/v0.44.0) (2026-10-28)
+
+
+### Features
+
+* **authz:** identify entity categories in v2 entitlements ([#4258](https://github.com/opentdf/platform/issues/4258)) ([6f0ed4e](https://github.com/opentdf/platform/commit/6f0ed4e85cc313f2735017c6cf068213a590fb2d))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+
 ## [0.43.0](https://github.com/opentdf/platform/compare/protocol/go/v0.42.0...protocol/go/v0.43.0) (2026-10-22)
 
 

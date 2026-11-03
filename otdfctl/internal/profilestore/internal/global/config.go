@@ -1,0 +1,259 @@
+package global
+
+import (
+	"bytes"
+	"encoding/json"
+
+	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
+)
+
+// Define constants for the different storage drivers and store keys
+const (
+	PROFILE_DRIVER_KEYRING   ProfileDriver = "keyring"
+	PROFILE_DRIVER_IN_MEMORY ProfileDriver = "in-memory"
+	PROFILE_DRIVER_FILE      ProfileDriver = "file"
+	// Experimental: enables definition of custom storage driver
+	PROFILE_DRIVER_CUSTOM  ProfileDriver = "custom"
+	PROFILE_DRIVER_DEFAULT               = PROFILE_DRIVER_FILE
+	STORE_KEY_PROFILE                    = "profile"
+	STORE_KEY_GLOBAL                     = "global"
+)
+
+type ProfileDriver string
+
+// This variable is used to store the version of the profiles. Since the profiles structure might
+// change in the future, this variable is used to keep track of the version of the profiles and will
+// be used to determine how to handle migration of the profiles.
+const PROFILES_VERSION_v1_0 = "1.0"
+
+const PROFILES_VERSION_LATEST = PROFILES_VERSION_v1_0
+
+type Store struct {
+	store  store.Interface
+	config Config
+	object map[string]json.RawMessage
+}
+
+type Config struct {
+	ProfilesVersion string   `json:"version"`
+	Profiles        []string `json:"profiles"`
+	DefaultProfile  string   `json:"defaultProfile"`
+}
+
+// LoadGlobalConfig loads the global configuration from the store for the given name of the configuration being stored.
+// (i.e. if storing a config for example_app, then the configName should be "example_app")
+func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
+	p, err := ReadGlobalConfig(configName, newStore, driverOpts...)
+	if err != nil {
+		return nil, err
+	}
+	if p.object == nil || p.config.ProfilesVersion != PROFILES_VERSION_LATEST {
+		// Version migration currently consists only of updating the version.
+		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
+		if err := p.save(); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+// ReadGlobalConfig reads without creating or version-saving a global record.
+// Migration uses it to finish validation before initializing its destination.
+func ReadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
+	underlyingStore, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	p := &Store{
+		store: underlyingStore,
+
+		config: Config{
+			Profiles:       make([]string, 0),
+			DefaultProfile: "",
+		},
+	}
+
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
+		return p, nil
+	}
+
+	data, err := p.store.Get()
+	if err != nil {
+		return nil, err
+	}
+	p.object, err = store.DecodeObject(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &p.config); err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func HasGlobalStore(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (bool, error) {
+	store, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
+	if err != nil {
+		return false, err
+	}
+
+	return store.Exists(), nil
+}
+
+// Extensions returns opaque payloads; a missing member yields an empty map.
+func (p *Store) Extensions() (map[string]json.RawMessage, error) {
+	return store.Extensions(p.object)
+}
+
+// Extension returns a payload and its presence (including JSON null).
+func (p *Store) Extension(namespace string) (json.RawMessage, bool, error) {
+	return store.Extension(p.object, namespace)
+}
+
+// CheckExtensionsTo rejects migration over a different destination payload in
+// the same namespace. Payloads are opaque: only identical bytes are reusable.
+func (p *Store) CheckExtensionsTo(destination *Store) error {
+	source, err := p.Extensions()
+	if err != nil {
+		return err
+	}
+	target, err := destination.Extensions()
+	if err != nil {
+		return err
+	}
+	for namespace, payload := range source {
+		if existing, ok := target[namespace]; ok && !bytes.Equal(payload, existing) {
+			return store.ErrExtensionConflict
+		}
+	}
+	return nil
+}
+
+// SetExtension replaces one namespace in the latest persisted configuration.
+func (p *Store) SetExtension(namespace string, payload json.RawMessage) error {
+	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {
+		return store.ErrInvalidExtensions
+	}
+	data, err := p.store.Get()
+	if err != nil {
+		return err
+	}
+	latest, err := store.DecodeObject(data)
+	if err != nil {
+		return err
+	}
+	object, err := store.PutExtension(latest, namespace, payload)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
+}
+
+func (p *Store) ProfileExists(profileName string) bool {
+	for _, profile := range p.config.Profiles {
+		if profile == profileName {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Store) AddProfile(profileName string) error {
+	previous := p.config.Profiles
+	p.config.Profiles = append(p.config.Profiles, profileName)
+	if err := p.save(); err != nil {
+		p.config.Profiles = previous
+		return err
+	}
+	return nil
+}
+
+func (p *Store) ListProfiles() []string {
+	return p.config.Profiles
+}
+
+func (p *Store) RemoveProfile(profileName string) error {
+	if profileName == p.config.DefaultProfile {
+		return ErrDeletingDefaultProfile
+	}
+	return p.remove(profileName)
+}
+
+// RemoveProfileForce removes a profile from the global configuration without
+// enforcing the default profile protection. This is intended for bulk delete operations
+// where all profiles are being removed (e.g. DeleteAllProfiles).
+func (p *Store) RemoveProfileForce(profileName string) error {
+	if profileName == p.config.DefaultProfile {
+		p.config.DefaultProfile = ""
+	}
+
+	return p.remove(profileName)
+}
+
+func (p *Store) SetDefaultProfile(profileName string) error {
+	previous := p.config.DefaultProfile
+	p.config.DefaultProfile = profileName
+	if err := p.save(); err != nil {
+		p.config.DefaultProfile = previous
+		return err
+	}
+	return nil
+}
+
+func (p *Store) GetDefaultProfile() string {
+	return p.config.DefaultProfile
+}
+
+// DeleteStore removes the persisted global configuration from the underlying store.
+func (p *Store) DeleteStore() error {
+	return p.store.Delete()
+}
+
+func (p *Store) remove(profileName string) error {
+	for i, profile := range p.config.Profiles {
+		if profile == profileName {
+			p.config.Profiles = append(p.config.Profiles[:i], p.config.Profiles[i+1:]...)
+			return p.save()
+		}
+	}
+
+	return nil
+}
+
+func (p *Store) save() error {
+	latest := p.object
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
+		data, err := p.store.Get()
+		if err != nil {
+			return err
+		}
+		latest, err = store.DecodeObject(data)
+		if err != nil {
+			return err
+		}
+	}
+	object, err := store.MergeCore(latest, p.config)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
+}

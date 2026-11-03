@@ -34,6 +34,7 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -660,13 +661,20 @@ func (i connectInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFu
 // request context with configured token claims needed by later middleware. It
 // covers unary, streaming, and bidi RPCs; streaming RPCs are authenticated once
 // at stream establishment.
+//
+// When ConnectAuthNRequestGate already authenticated the request, the
+// interceptor reuses the gate's context and only sets DPoP-Nonce response
+// headers; validating the same DPoP proof twice would trip replay detection.
 func (a Authentication) ConnectAuthNInterceptor() connect.Interceptor {
 	return connectInterceptor{
 		unary: func(next connect.UnaryFunc) connect.UnaryFunc {
 			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				ctx, cerr := a.authenticateConnect(ctx, req.Spec().Procedure, req.HTTPMethod(), req.Header())
-				if cerr != nil {
-					return nil, cerr
+				if !authenticatedByGate(ctx) {
+					authedCtx, cerr := a.authenticateConnect(ctx, req.Spec().Procedure, req.HTTPMethod(), req.Header())
+					if cerr != nil {
+						return nil, cerr
+					}
+					ctx = authedCtx
 				}
 
 				// Always send a fresh nonce in successful responses when nonces are enabled.
@@ -691,10 +699,13 @@ func (a Authentication) ConnectAuthNInterceptor() connect.Interceptor {
 		},
 		stream: func(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 			return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-				// Streaming RPCs are always POST and expose no HTTPMethod on the conn.
-				ctx, cerr := a.authenticateConnect(ctx, conn.Spec().Procedure, http.MethodPost, conn.RequestHeader())
-				if cerr != nil {
-					return cerr
+				if !authenticatedByGate(ctx) {
+					// Streaming RPCs are always POST and expose no HTTPMethod on the conn.
+					authedCtx, cerr := a.authenticateConnect(ctx, conn.Spec().Procedure, http.MethodPost, conn.RequestHeader())
+					if cerr != nil {
+						return cerr
+					}
+					ctx = authedCtx
 				}
 				if publicRoute, _ := ctxAuth.PublicRouteFromContext(ctx); !publicRoute && a.dpopNonceManager.requireNonce {
 					conn.ResponseHeader().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
@@ -733,7 +744,8 @@ func (a Authentication) ConnectAuthZInterceptor() connect.Interceptor {
 				}
 
 				log := a.logger
-				handlerCtx, cerr := a.finalizeAuthzDecision(ctx, log, token, a.authorize(ctx, log, token, req, roleReq.Action))
+				msg, _ := req.Any().(proto.Message)
+				handlerCtx, cerr := a.finalizeAuthzDecision(ctx, log, token, a.authorize(ctx, log, token, req.Spec().Procedure, msg, roleReq.Action))
 				if cerr != nil {
 					return nil, cerr
 				}
@@ -897,33 +909,44 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
-
-			// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
-			md := metadata.New(map[string]string{})
-			if clientID := req.Header().Get(canonicalIPCHeaderClientID); clientID != "" {
-				md.Set(ctxAuth.ClientIDKey, clientID)
-			}
-			if authToken := req.Header().Get(canonicalIPCHeaderAccessToken); authToken != "" {
-				md.Set(ctxAuth.AccessTokenKey, authToken)
-			}
-			if hasIncoming {
-				md = metadata.Join(md, incomingMD.Copy())
-			}
-			ctx = metadata.NewIncomingContext(ctx, md)
-
-			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
+			nextCtx, err := a.ipcServerContext(ctx, req.Spec().Procedure, req.Header())
 			if err != nil {
 				return nil, err
-			}
-			nextCtx, err = rehydrateIPCAuthContext(nextCtx, a.logger)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid IPC authentication context"))
 			}
 			return next(nextCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ipcServerContext returns the handler context for an in-process request: it
+// moves IPC headers into incoming metadata, reauthenticates configured routes,
+// and rehydrates the propagated auth context.
+func (a Authentication) ipcServerContext(ctx context.Context, procedure string, header http.Header) (context.Context, error) {
+	incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
+
+	// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
+	md := metadata.New(map[string]string{})
+	if clientID := header.Get(canonicalIPCHeaderClientID); clientID != "" {
+		md.Set(ctxAuth.ClientIDKey, clientID)
+	}
+	if authToken := header.Get(canonicalIPCHeaderAccessToken); authToken != "" {
+		md.Set(ctxAuth.AccessTokenKey, authToken)
+	}
+	if hasIncoming {
+		md = metadata.Join(md, incomingMD.Copy())
+	}
+	ctx = metadata.NewIncomingContext(ctx, md)
+
+	nextCtx, err := a.ipcReauthCheck(ctx, procedure, header)
+	if err != nil {
+		return nil, err
+	}
+	nextCtx, err = rehydrateIPCAuthContext(nextCtx, a.logger)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid IPC authentication context"))
+	}
+	return nextCtx, nil
 }
 
 // authzResult holds the result of an authorization check
@@ -1068,23 +1091,24 @@ func (a Authentication) finalizeAuthzDecision(ctx context.Context, log *logger.L
 func (a *Authentication) resolveResourceContext(
 	ctx context.Context,
 	log *logger.Logger,
-	req connect.AnyRequest,
+	procedure string,
+	msg proto.Message,
 ) (*internalauthz.ResolverContext, error) {
 	// Skip if resolver registry not available or authorizer doesn't support resource authorization
 	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
 		return nil, errNoResourceContext
 	}
 
-	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	resolver, ok := a.authzResolverRegistry.Get(procedure)
 	if !ok {
 		return nil, errNoResourceContext
 	}
 
-	resolvedCtx, err := resolver(ctx, req)
+	resolvedCtx, err := resolver(ctx, msg)
 	if err != nil {
 		log.WarnContext(
 			ctx, "authz resolver failed",
-			slog.String("procedure", req.Spec().Procedure),
+			slog.String("procedure", procedure),
 			slog.Any("error", err),
 		)
 		return nil, err
@@ -1094,13 +1118,14 @@ func (a *Authentication) resolveResourceContext(
 }
 
 // authorize performs the full authorization check for a unary request.
-// It builds the authorization request, resolves resource context if applicable,
-// and returns the authorization decision.
+// It builds the authorization request, resolves resource context from the
+// decoded request message if applicable, and returns the authorization decision.
 func (a *Authentication) authorize(
 	ctx context.Context,
 	log *logger.Logger,
 	token jwt.Token,
-	req connect.AnyRequest,
+	procedure string,
+	msg proto.Message,
 	action string,
 ) authzResult {
 	// Defensive check: authorizer must be initialized
@@ -1115,12 +1140,12 @@ func (a *Authentication) authorize(
 	// Build authorization request
 	authzReq := &internalauthz.Request{
 		Token:  token,
-		RPC:    req.Spec().Procedure,
+		RPC:    procedure,
 		Action: action,
 	}
 
 	// Try to resolve resource context for fine-grained authorization
-	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, procedure, msg)
 	if resolveErr != nil && !errors.Is(resolveErr, errNoResourceContext) {
 		return authzResult{
 			err:     errors.New("authorization context resolution failed"),

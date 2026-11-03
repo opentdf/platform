@@ -9,6 +9,7 @@ import (
 
 	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
@@ -3537,6 +3538,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(regResValSingleActionAttrValFQN, entityEntitlement.GetEphemeralId())
+		s.Equal(entity.Entity_CATEGORY_UNSPECIFIED, entityEntitlement.GetEntityCategory())
 		actionsPerAttrValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
 		s.Require().Len(actionsPerAttrValueFQN, 1)
 		actionsList := actionsPerAttrValueFQN[testClassSecretFQN]

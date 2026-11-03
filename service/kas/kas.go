@@ -11,7 +11,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnectv2"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/logger"
@@ -36,16 +36,16 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 	}
 }
 
-func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler] {
+func NewRegistration() *serviceregistry.Service[kasconnectv2.AccessServiceHandler] {
 	p := new(access.Provider)
 	onConfigUpdate := OnConfigUpdate(p)
-	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
-		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
-			Namespace:      "kas",
-			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
-			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
-			OnConfigUpdate: onConfigUpdate,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
+	return &serviceregistry.Service[kasconnectv2.AccessServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[kasconnectv2.AccessServiceHandler]{
+			Namespace:              "kas",
+			ServiceDesc:            &kaspb.AccessService_ServiceDesc,
+			ConnectRPCRegisterFunc: kasconnectv2.RegisterAccessServiceHandler,
+			OnConfigUpdate:         onConfigUpdate,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnectv2.AccessServiceHandler, serviceregistry.HandlerServer) {
 				kasCfg, err := decodeKASConfig(srp.Config, srp.Logger)
 				if err != nil {
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))

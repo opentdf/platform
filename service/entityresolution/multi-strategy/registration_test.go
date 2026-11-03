@@ -3,7 +3,6 @@ package multistrategy
 import (
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -58,18 +57,18 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 	claimsAny, err := anypb.New(claimsStruct)
 	require.NoError(t, err)
 
-	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&entityresolution.ResolveEntitiesRequest{
+	resp, err := erService.ResolveEntities(t.Context(), &entityresolution.ResolveEntitiesRequest{
 		Entities: []*authorization.Entity{
 			{
 				Id:         "diana-claims",
 				EntityType: &authorization.Entity_Claims{Claims: claimsAny},
 			},
 		},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
+	require.Len(t, resp.GetEntityRepresentations(), 1)
 
-	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	props := resp.GetEntityRepresentations()[0].GetAdditionalProps()
 	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
@@ -102,16 +101,16 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 	}, logger.CreateTestLogger())
 	require.NoError(t, err)
 
-	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&entityresolution.ResolveEntitiesRequest{
+	resp, err := erService.ResolveEntities(t.Context(), &entityresolution.ResolveEntitiesRequest{
 		Entities: []*authorization.Entity{{
 			Id:         "alice-user-name",
 			EntityType: &authorization.Entity_UserName{UserName: "alice"},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
+	require.Len(t, resp.GetEntityRepresentations(), 1)
 
-	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	props := resp.GetEntityRepresentations()[0].GetAdditionalProps()
 	require.Len(t, props, 1)
 
 	result := props[0].AsMap()

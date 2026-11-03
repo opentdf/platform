@@ -220,6 +220,12 @@ components:
           additionalProperties:
             title: value
             $ref: '#/components/schemas/authorization.v2.EntityEntitlements.ActionsList'
+        entityCategory:
+          title: entity_category
+          description: |-
+            category of the entity these entitlements belong to; unspecified for registered resources
+             and entities whose category was not provided
+          $ref: '#/components/schemas/entity.Entity.Category'
       title: EntityEntitlements
       additionalProperties: false
       description: Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]

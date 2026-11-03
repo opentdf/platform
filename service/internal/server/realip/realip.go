@@ -36,7 +36,7 @@ func ConnectRealIPUnaryInterceptor(trustedProxyCIDRs []string) (connect.UnaryInt
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			ctx = context.WithValue(ctx, ClientIP{}, resolver.resolve(req.Peer(), req.Header()))
+			ctx = context.WithValue(ctx, ClientIP{}, resolver.resolve(req.Peer().Addr, req.Header()))
 			return next(ctx, req)
 		})
 	}), nil
@@ -50,20 +50,25 @@ func ConnectTrustedRequestIPUnaryInterceptor(header string) connect.UnaryInterce
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			ip := peerIP(req.Peer())
-			if values := req.Header().Values(header); len(values) == 1 {
-				if propagated, ok := parseIP(values[0]); ok {
-					ip = propagated
-				}
-			}
-			var clientIP net.IP
-			if ip.IsValid() {
-				clientIP = ip.AsSlice()
-			}
-			ctx = context.WithValue(ctx, ClientIP{}, clientIP)
+			ctx = context.WithValue(ctx, ClientIP{}, trustedRequestIP(req.Peer().Addr, req.Header().Values(header)))
 			return next(ctx, req)
 		})
 	})
+}
+
+// trustedRequestIP returns the single propagated IP in values, falling back to
+// the transport peer address.
+func trustedRequestIP(peerAddr string, values []string) net.IP {
+	ip := peerIP(peerAddr)
+	if len(values) == 1 {
+		if propagated, ok := parseIP(values[0]); ok {
+			ip = propagated
+		}
+	}
+	if !ip.IsValid() {
+		return nil
+	}
+	return ip.AsSlice()
 }
 
 func newResolver(trustedProxyCIDRs []string) (*resolver, error) {
@@ -82,7 +87,7 @@ func newResolver(trustedProxyCIDRs []string) (*resolver, error) {
 	return &resolver{trustedProxies: trustedProxies}, nil
 }
 
-func (r *resolver) resolve(peer connect.Peer, headers http.Header) net.IP {
+func (r *resolver) resolve(peer string, headers http.Header) net.IP {
 	peerAddr := peerIP(peer)
 	if !peerAddr.IsValid() {
 		return nil
@@ -139,11 +144,11 @@ func parseIP(value string) (netip.Addr, bool) {
 	return ip.Unmap(), true
 }
 
-func peerIP(peer connect.Peer) netip.Addr {
-	if addrPort, err := netip.ParseAddrPort(strings.TrimSpace(peer.Addr)); err == nil {
+func peerIP(addr string) netip.Addr {
+	if addrPort, err := netip.ParseAddrPort(strings.TrimSpace(addr)); err == nil {
 		return addrPort.Addr().Unmap()
 	}
-	ip, ok := parseIP(peer.Addr)
+	ip, ok := parseIP(addr)
 	if !ok {
 		return netip.Addr{}
 	}

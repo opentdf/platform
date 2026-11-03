@@ -139,7 +139,7 @@ Root level key `server`
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable Go performance profiling under `/debug/pprof/`; uses HTTP authentication and authorization when server authentication is enabled, with collection durations capped at 30 seconds | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
-| `grpc.maxRecvMsgSize`   | Maximum size in bytes of a request message from external Connect, gRPC, and gRPC-Web clients, measured after decompression. Larger messages fail with `resource_exhausted` (HTTP 429 for Connect). Values of zero or less use the default. | `4194304` | OPENTDF_SERVER_GRPC_MAXRECVMSGSIZE |
+| `grpc.maxRecvMsgSize`   | Maximum size in bytes of a request message from external Connect, gRPC, and gRPC-Web clients, measured after decompression. Larger messages fail with `resource_exhausted` (HTTP 429 for Connect). Values of zero or less use the default. Services can raise or lower their own limits. In-process calls between platform services are not limited. | `4194304` | OPENTDF_SERVER_GRPC_MAXRECVMSGSIZE |
 | `grpc.maxCallRecvMsgSize` | Maximum size in bytes of a response message the in-process client accepts when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLRECVMSGSIZE |
 | `grpc.maxCallSendMsgSize` | Maximum size in bytes of a request message the in-process client sends when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLSENDMSGSIZE |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
@@ -278,27 +278,31 @@ All layers are additive. Deduplication is handled automatically (case-insensitiv
 
 Applications that embed the OpenTDF platform can inject custom [Connect interceptors](https://connectrpc.com/docs/go/interceptors/) into the server at startup. These interceptors run on every RPC after the built-in auth, validation, and audit interceptors.
 
-Two option functions are available:
+Platform services run on connect-go v2, and services an application registers can run on connect-go v1 or v2. Each service runs the interceptor form for its connect-go version, so an interceptor takes both forms:
 
 | Option | Description |
 | --- | --- |
-| `WithConnectInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to all external Connect RPCs. |
-| `WithIPCInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+| `WithConnectInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to all external RPCs. |
+| `WithIPCInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+| `WithExternalInterceptorFactories(factories ...server.InterceptorFactory)` | Builds external interceptors after the SDK is created. `Factory` returns both forms, and the factory's `Name` names the interceptor. |
 
-Both options are variadic and additive: calling them multiple times accumulates interceptors in order.
+All options are variadic and additive: calling them multiple times accumulates interceptors in order.
+
+The platform fails to start when an interceptor has no form for the connect-go version of a registered service, so an interceptor never silently skips a service. An interceptor without a v1 form is fine when every service runs on v2.
 
 ```go
 import (
-    "connectrpc.com/connect"
     "github.com/opentdf/platform/service/pkg/server"
 )
 
 err := server.Start(
     server.WithConfigFile("opentdf.yaml"),
     // Add a logging interceptor to all external RPCs
-    server.WithConnectInterceptors(loggingInterceptor),
-    // Add a metrics interceptor to in-process IPC calls
-    server.WithIPCInterceptors(metricsInterceptor),
+    server.WithConnectInterceptors(server.ConnectServerInterceptor{
+        Name: "logging",
+        V1:   loggingInterceptor,       // connect.Interceptor
+        V2:   loggingServerInterceptor, // connectv2.ServerInterceptor
+    }),
 )
 ```
 

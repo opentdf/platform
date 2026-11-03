@@ -191,13 +191,13 @@ func (p *JustInTimePDP) GetDecision(
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		entityRepresentations, _, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
+		entityRepresentations, _, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
+		entityRepresentations, _, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
@@ -311,16 +311,17 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	var (
 		entityRepresentations   []*entityresolutionV2.EntityRepresentation
+		entityCategories        map[string]entity.Entity_Category
 		err                     error
 		skipEnvironmentEntities = false
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
@@ -333,7 +334,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		return innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -361,6 +362,9 @@ func (p *JustInTimePDP) GetEntitlements(
 	entitlements, err := innerPDP.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
+	}
+	for _, entitlement := range entitlements {
+		entitlement.EntityCategory = entityCategories[entitlement.GetEphemeralId()]
 	}
 	return entitlements, nil
 }
@@ -519,7 +523,7 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	p.logger.DebugContext(
 		ctx,
 		"resolving entities from entity chain",
@@ -529,18 +533,32 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 
 	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
 	if len(filteredEntities) == 0 {
-		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+		return nil, nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
 	}
 
 	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: filteredEntities})
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve entities: %w", err)
+		return nil, nil, fmt.Errorf("failed to resolve entities: %w", err)
 	}
 	entityRepresentations := ersResp.GetEntityRepresentations()
 	if entityRepresentations == nil {
-		return nil, errors.New("failed to get entity representations")
+		return nil, nil, errors.New("failed to get entity representations")
 	}
-	return entityRepresentations, nil
+	return entityRepresentations, entityCategoriesByID(filteredEntities), nil
+}
+
+// entityCategoriesByID uses the same fallback IDs as ERS for entities without an
+// ephemeral ID. Resolved representations and entitlement results may be reordered.
+func entityCategoriesByID(entities []*entity.Entity) map[string]entity.Entity_Category {
+	categories := make(map[string]entity.Entity_Category, len(entities))
+	for idx, chained := range entities {
+		entityID := chained.GetEphemeralId()
+		if entityID == "" {
+			entityID = ent.EntityIDPrefix + strconv.Itoa(idx)
+		}
+		categories[entityID] = chained.GetCategory()
+	}
+	return categories
 }
 
 func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) []*entity.Entity {
@@ -568,28 +586,28 @@ func directEntitlementClaimKey(claimsStruct *structpb.Struct) (string, bool) {
 	return "", false
 }
 
-func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, error) {
+func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
 	if len(filteredEntities) == 0 {
-		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+		return nil, nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
 	}
 
 	entityRepresentations := make([]*entityresolutionV2.EntityRepresentation, 0, len(filteredEntities))
 	for idx, chained := range filteredEntities {
 		claims := chained.GetClaims()
 		if claims == nil {
-			return nil, fmt.Errorf("%w: entity %s does not contain claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId())
+			return nil, nil, fmt.Errorf("%w: entity %s does not contain claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId())
 		}
 
 		var claimsStruct structpb.Struct
 		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
-			return nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
+			return nil, nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
 		}
 
 		// Direct entitlements are carried inline on the claims. Taking the no-rehydrate
 		// shortcut here would silently drop them, so defer to ERS whenever the claim is present.
 		if key, ok := directEntitlementClaimKey(&claimsStruct); ok {
-			return nil, fmt.Errorf("%w: entity %s carries %q claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId(), key)
+			return nil, nil, fmt.Errorf("%w: entity %s carries %q claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId(), key)
 		}
 
 		originalID := chained.GetEphemeralId()
@@ -601,7 +619,7 @@ func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, ski
 			AdditionalProps: []*structpb.Struct{&claimsStruct},
 		})
 	}
-	return entityRepresentations, nil
+	return entityRepresentations, entityCategoriesByID(filteredEntities), nil
 }
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
@@ -611,23 +629,23 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	token *entity.Token,
 	skipEnvironmentEntities bool,
 	resources []*authzV2.Resource,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	// WARNING: do not log the token JWT, just its ID
 	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
 	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}, Resources: resources})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)
+		return nil, nil, fmt.Errorf("failed to create entity chains from token: %w", err)
 	}
 	entityChains := ersResp.GetEntityChains()
 	if len(entityChains) != 1 {
-		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
+		return nil, nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
 
-	entityRepresentations, err := entityRepresentationsFromResolvedChain(entityChains[0], skipEnvironmentEntities)
+	entityRepresentations, entityCategories, err := entityRepresentationsFromResolvedChain(entityChains[0], skipEnvironmentEntities)
 	if errors.Is(err, errResolvedTokenChainRequiresHydration) {
 		return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
 	}
-	return entityRepresentations, err
+	return entityRepresentations, entityCategories, err
 }
 
 // resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream
@@ -637,13 +655,13 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	withRequestToken *wrapperspb.BoolValue,
 	skipEnvironmentEntities bool,
 	resources []*authzV2.Resource,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	if !withRequestToken.GetValue() {
-		return nil, ErrInvalidWithRequestTokenEntityIdentifier
+		return nil, nil, ErrInvalidWithRequestTokenEntityIdentifier
 	}
 	rawToken := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
 	if rawToken == "" {
-		return nil, ErrFailedToWithRequestTokenEntityIdentifier
+		return nil, nil, ErrFailedToWithRequestTokenEntityIdentifier
 	}
 	token := &entity.Token{
 		Jwt:         rawToken,

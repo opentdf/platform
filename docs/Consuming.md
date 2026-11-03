@@ -68,6 +68,32 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
 You can now access platform services at http://localhost:8080/ , and Keycloak at http://localhost:8888/auth/ .
 
+## Inspecting entity entitlements
+
+Authorization v2 `GetEntitlements` returns a separate result for each resolved
+entity. A JWT can resolve to both a subject and an environment entity, depending
+on the configured entity resolver. Each result includes `entityCategory` so callers
+can distinguish their entitlements:
+
+```json
+{
+  "ephemeralId": "example-subject",
+  "entityCategory": "CATEGORY_SUBJECT",
+  "actionsPerAttributeValueFqn": {
+    "https://example.com/attr/department/value/finance": {
+      "actions": [{ "name": "read" }]
+    }
+  }
+}
+```
+
+`CATEGORY_SUBJECT` can describe either a person or a service account;
+`CATEGORY_ENVIRONMENT` describes the environment entity. Registered resources and
+entities without an assigned category use `CATEGORY_UNSPECIFIED`, which may be
+omitted from the JSON response. Use the category field rather than result order or
+the format of the ephemeral ID to identify an entity's role. Multiple entities
+with the same category still have separate entitlement results.
+
 ##  Next steps
 * Try out our CLI (`otdfctl`): https://github.com/opentdf/platform/otdfctl
    ```sh

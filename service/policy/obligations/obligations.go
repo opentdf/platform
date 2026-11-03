@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
-	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
+	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -40,19 +39,19 @@ func OnConfigUpdate(s *Service) serviceregistry.OnConfigUpdateHook {
 	}
 }
 
-func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[obligationsconnect.ServiceHandler] {
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[obligationsconnectv2.ServiceHandler] {
 	service := new(Service)
 	onUpdateConfigHook := OnConfigUpdate(service)
 
-	return &serviceregistry.Service[obligationsconnect.ServiceHandler]{
+	return &serviceregistry.Service[obligationsconnectv2.ServiceHandler]{
 		Close: service.Close,
-		ServiceOptions: serviceregistry.ServiceOptions[obligationsconnect.ServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &obligations.Service_ServiceDesc,
-			ConnectRPCFunc: obligationsconnect.NewServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (obligationsconnect.ServiceHandler, serviceregistry.HandlerServer) {
+		ServiceOptions: serviceregistry.ServiceOptions[obligationsconnectv2.ServiceHandler]{
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &obligations.Service_ServiceDesc,
+			ConnectRPCRegisterFunc: obligationsconnectv2.RegisterServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (obligationsconnectv2.ServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -86,10 +85,10 @@ func (s *Service) Close() {
 	s.dbClient.Close()
 }
 
-func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+func (s *Service) ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error) {
 	s.logger.DebugContext(ctx, "listing obligations")
 
-	os, pr, err := s.dbClient.ListObligations(ctx, req.Msg)
+	os, pr, err := s.dbClient.ListObligations(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
@@ -97,10 +96,10 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 		Obligations: os,
 		Pagination:  pr,
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+func (s *Service) CreateObligation(ctx context.Context, req *obligations.CreateObligationRequest) (*obligations.CreateObligationResponse, error) {
 	rsp := &obligations.CreateObligationResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -108,10 +107,10 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 		ObjectType: audit.ObjectTypeObligationDefinition,
 	}
 
-	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
+	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.GetName()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		obl, err := txClient.CreateObligation(ctx, req.Msg)
+		obl, err := txClient.CreateObligation(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -124,29 +123,29 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	identifier := req.Msg.GetId() + req.Msg.GetFqn()
+func (s *Service) GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error) {
+	identifier := req.GetId() + req.GetFqn()
 	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", identifier))
 
-	obl, err := s.dbClient.GetObligation(ctx, req.Msg)
+	obl, err := s.dbClient.GetObligation(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", identifier))
 	}
 	rsp := &obligations.GetObligationResponse{Obligation: obl}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+func (s *Service) GetObligationsByFQNs(ctx context.Context, req *obligations.GetObligationsByFQNsRequest) (*obligations.GetObligationsByFQNsResponse, error) {
 	s.logger.DebugContext(ctx, "getting obligations")
 
-	os, err := s.dbClient.GetObligationsByFQNs(ctx, req.Msg)
+	os, err := s.dbClient.GetObligationsByFQNs(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
 	}
@@ -155,11 +154,11 @@ func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request
 		obls[identifier.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
 	}
 	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) UpdateObligation(ctx context.Context, req *obligations.UpdateObligationRequest) (*obligations.UpdateObligationResponse, error) {
+	id := req.GetId()
 
 	rsp := &obligations.UpdateObligationResponse{}
 
@@ -177,7 +176,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 			return err
 		}
 
-		updated, err := txClient.UpdateObligation(ctx, req.Msg)
+		updated, err := txClient.UpdateObligation(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -190,14 +189,14 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) DeleteObligation(ctx context.Context, req *obligations.DeleteObligationRequest) (*obligations.DeleteObligationResponse, error) {
+	id := req.GetId()
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -207,19 +206,19 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 
 	s.logger.DebugContext(ctx, "deleting obligation", slog.String("id", id))
 
-	deleted, err := s.dbClient.DeleteObligation(ctx, req.Msg)
+	deleted, err := s.dbClient.DeleteObligation(ctx, req)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation", req.String()))
 	}
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp := &obligations.DeleteObligationResponse{Obligation: deleted}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+func (s *Service) CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error) {
 	rsp := &obligations.CreateObligationValueResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -227,10 +226,10 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 		ObjectType: audit.ObjectTypeObligationValue,
 	}
 
-	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.Msg.GetValue()))
+	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.GetValue()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		val, err := txClient.CreateObligationValue(ctx, req.Msg)
+		val, err := txClient.CreateObligationValue(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -243,29 +242,29 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_value", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
-	identifier := req.Msg.GetId() + req.Msg.GetFqn()
+func (s *Service) GetObligationValue(ctx context.Context, req *obligations.GetObligationValueRequest) (*obligations.GetObligationValueResponse, error) {
+	identifier := req.GetId() + req.GetFqn()
 	s.logger.DebugContext(ctx, "getting obligation value", slog.Any("identifier", identifier))
 
-	val, err := s.dbClient.GetObligationValue(ctx, req.Msg)
+	val, err := s.dbClient.GetObligationValue(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", identifier))
 	}
 	rsp := &obligations.GetObligationValueResponse{Value: val}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *obligations.GetObligationValuesByFQNsRequest) (*obligations.GetObligationValuesByFQNsResponse, error) {
 	s.logger.DebugContext(ctx, "getting obligation values")
 
-	vs, err := s.dbClient.GetObligationValuesByFQNs(ctx, req.Msg)
+	vs, err := s.dbClient.GetObligationValuesByFQNs(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
 	}
@@ -275,11 +274,11 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 		vals[identifier.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
 	}
 	rsp := &obligations.GetObligationValuesByFQNsResponse{FqnValueMap: vals}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error) {
+	id := req.GetId()
 
 	rsp := &obligations.UpdateObligationValueResponse{}
 
@@ -297,7 +296,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 			return err
 		}
 
-		updated, err := txClient.UpdateObligationValue(ctx, req.Msg)
+		updated, err := txClient.UpdateObligationValue(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -310,14 +309,14 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation_value", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error) {
+	id := req.GetId()
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -327,32 +326,32 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 
 	s.logger.DebugContext(ctx, "deleting obligation value", slog.String("id", id))
 
-	deleted, err := s.dbClient.DeleteObligationValue(ctx, req.Msg)
+	deleted, err := s.dbClient.DeleteObligationValue(ctx, req)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation_value", req.String()))
 	}
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp := &obligations.DeleteObligationValueResponse{Value: deleted}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) GetObligationTrigger(ctx context.Context, req *connect.Request[obligations.GetObligationTriggerRequest]) (*connect.Response[obligations.GetObligationTriggerResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) GetObligationTrigger(ctx context.Context, req *obligations.GetObligationTriggerRequest) (*obligations.GetObligationTriggerResponse, error) {
+	id := req.GetId()
 	s.logger.DebugContext(ctx, "getting obligation trigger", slog.String("id", id))
 
-	trigger, err := s.dbClient.GetObligationTrigger(ctx, req.Msg)
+	trigger, err := s.dbClient.GetObligationTrigger(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	rsp := &obligations.GetObligationTriggerResponse{Trigger: trigger}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+func (s *Service) AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error) {
 	rsp := &obligations.AddObligationTriggerResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -360,19 +359,19 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		ObjectType: audit.ObjectTypeObligationTrigger,
 	}
 
-	oblIdentifier := req.Msg.GetObligationValue()
+	oblIdentifier := req.GetObligationValue()
 	oblVal := oblIdentifier.GetId()
 	if oblVal == "" {
 		oblVal = oblIdentifier.GetFqn()
 	}
 
-	actionIdentifier := req.Msg.GetAction()
+	actionIdentifier := req.GetAction()
 	act := actionIdentifier.GetId()
 	if act == "" {
 		act = actionIdentifier.GetName()
 	}
 
-	attrValIdentifier := req.Msg.GetAttributeValue()
+	attrValIdentifier := req.GetAttributeValue()
 	attrVal := attrValIdentifier.GetId()
 	if attrVal == "" {
 		attrVal = attrValIdentifier.GetFqn()
@@ -385,7 +384,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 	)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		trigger, err := txClient.CreateObligationTrigger(ctx, req.Msg)
+		trigger, err := txClient.CreateObligationTrigger(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -398,15 +397,15 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_trigger", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_trigger", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
-	id := req.Msg.GetId()
+func (s *Service) RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error) {
+	id := req.GetId()
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -416,22 +415,22 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 
 	s.logger.DebugContext(ctx, "removing obligation trigger", slog.String("id", id))
 
-	deleted, err := s.dbClient.DeleteObligationTrigger(ctx, req.Msg)
+	deleted, err := s.dbClient.DeleteObligationTrigger(ctx, req)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation_trigger", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation_trigger", req.String()))
 	}
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp := &obligations.RemoveObligationTriggerResponse{Trigger: deleted}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+func (s *Service) ListObligationTriggers(ctx context.Context, req *obligations.ListObligationTriggersRequest) (*obligations.ListObligationTriggersResponse, error) {
 	s.logger.DebugContext(ctx, "listing obligation triggers")
 
-	triggers, pr, err := s.dbClient.ListObligationTriggers(ctx, req.Msg)
+	triggers, pr, err := s.dbClient.ListObligationTriggers(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
@@ -439,7 +438,7 @@ func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Reque
 		Triggers:   triggers,
 		Pagination: pr,
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {

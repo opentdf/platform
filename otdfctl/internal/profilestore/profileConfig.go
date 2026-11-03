@@ -1,0 +1,200 @@
+package profilestore
+
+import (
+	"encoding/json"
+	"reflect"
+
+	"github.com/opentdf/platform/otdfctl/internal/profilestore/internal/global"
+	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
+)
+
+type ProfileStore struct {
+	// Store is the specific initialized driver that satisfies the Interface.
+	store store.Interface
+	// Profile is the struct that holds the profile data and satisfies the NamedProfile interface.
+	// Exported to allow write/read access to the profile data being stored.
+	Profile NamedProfile
+	object  map[string]json.RawMessage
+}
+
+// NamedProfile is the holder of a profile containing a name and all stored profile data.
+// It is marshaled on Get and unmarshaled on Set, so an interface is used to allow
+// for any struct to be stored. The struct satisfying the interface must have JSON tags
+// for each stored field.
+//
+// Example:
+//
+//	type MyProfile struct {
+//		 Name string `json:"name"`
+//		 Email string `json:"email"`
+//	}
+//
+//	func (p *MyProfile) GetName() string {
+//	 return p.Name
+//	}
+type NamedProfile interface {
+	GetName() string
+}
+
+func NewProfileStore(serviceNamespace string, newStore store.NewStoreInterface, profile NamedProfile) (*ProfileStore, error) {
+	profileName := profile.GetName()
+
+	if err := validateProfileName(profileName); err != nil {
+		return nil, err
+	}
+
+	store, err := newStore(serviceNamespace, getStoreKey(profileName))
+	if err != nil {
+		return nil, err
+	}
+
+	p := &ProfileStore{
+		store:   store,
+		Profile: profile,
+	}
+	return p, nil
+}
+
+func LoadProfileStore[T NamedProfile](serviceNamespace string, newStore store.NewStoreInterface, profileName string) (*ProfileStore, error) {
+	if err := validateProfileName(profileName); err != nil {
+		return nil, err
+	}
+
+	store, err := newStore(serviceNamespace, getStoreKey(profileName))
+	if err != nil {
+		return nil, err
+	}
+
+	p := &ProfileStore{
+		store: store,
+	}
+	_, err = GetStoredProfile[T](p)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// Generic wrapper for working with specific types
+func GetStoredProfile[T NamedProfile](profileStore *ProfileStore) (T, error) {
+	var profile T
+	data, err := profileStore.store.Get()
+	if err != nil {
+		return profile, err
+	}
+	object, err := store.DecodeObject(data)
+	if err != nil {
+		return profile, err
+	}
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return profile, err
+	}
+	profileStore.object = object
+	profileStore.Profile = profile
+	return profile, nil
+}
+
+// Save the current profile data to the store
+func (p *ProfileStore) Save() error {
+	latest := p.object
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
+		data, err := p.store.Get()
+		if err != nil {
+			return err
+		}
+		latest, err = store.DecodeObject(data)
+		if err != nil {
+			return err
+		}
+	}
+	return p.saveCore(latest)
+}
+
+// Extensions returns opaque payloads; missing extensions are represented by an empty map.
+func (p *ProfileStore) Extensions() (map[string]json.RawMessage, error) {
+	return store.Extensions(p.object)
+}
+
+func (p *ProfileStore) Extension(namespace string) (json.RawMessage, bool, error) {
+	return store.Extension(p.object, namespace)
+}
+
+// SetExtension replaces one namespace in the latest persisted profile.
+func (p *ProfileStore) SetExtension(namespace string, payload json.RawMessage) error {
+	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {
+		return store.ErrInvalidExtensions
+	}
+	data, err := p.store.Get()
+	if err != nil {
+		return err
+	}
+	latest, err := store.DecodeObject(data)
+	if err != nil {
+		return err
+	}
+	// Decode the latest typed core too: duplicate literal/escaped object keys
+	// merge struct members in encoding/json but collapse in a RawMessage map.
+	// Never use p.Profile here; its cached core may be stale.
+	core := reflect.New(reflect.TypeOf(p.Profile))
+	if err := json.Unmarshal(data, core.Interface()); err != nil {
+		return err
+	}
+	latest, err = store.MergeCore(latest, core.Elem().Interface())
+	if err != nil {
+		return err
+	}
+	object, err := store.PutExtension(latest, namespace, payload)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
+}
+
+// Delete the current profile from the store
+func (p *ProfileStore) Delete() error {
+	return p.store.Delete()
+}
+
+// Profile Name
+func (p *ProfileStore) GetProfileName() string {
+	return p.Profile.GetName()
+}
+
+// create never uses the update path: an observed record or lookup error must
+// not become a merge/write. The underlying drivers do not provide atomic create.
+func (p *ProfileStore) create() error {
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrProfileNameConflict
+	}
+	return p.saveCore(nil)
+}
+
+func (p *ProfileStore) saveCore(latest map[string]json.RawMessage) error {
+	object, err := store.MergeCore(latest, p.Profile)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
+}
+
+// utility functions
+
+func getStoreKey(n string) string {
+	return global.STORE_KEY_PROFILE + "-" + n
+}

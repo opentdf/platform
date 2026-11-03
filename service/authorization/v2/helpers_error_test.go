@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"connectrpc.com/connect"
+	connectv1 "connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	access "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/require"
@@ -25,13 +26,18 @@ func TestStatusifyWrappedEvaluationCodes(t *testing.T) {
 		{connect.CodeInvalidArgument, connect.CodeInternal},
 	} {
 		t.Run(tt.input.String(), func(t *testing.T) {
-			upstream := connect.NewError(tt.input, errors.New("upstream error"))
-			err := statusifyError(t.Context(), logger.CreateTestLogger(), errors.Join(ErrFailedToGetDecision, fmt.Errorf("entity resolution: %w", upstream)))
-			var response *connect.Error
-			require.ErrorAs(t, err, &response)
-			require.Equal(t, tt.want, response.Code())
-			require.Equal(t, ErrResponseSafeInternalError.Error(), response.Message())
-			require.ErrorIs(t, err, ErrResponseSafeInternalError)
+			// ERS SDK clients still return v1 errors while Authorization serves v2.
+			for _, upstream := range []error{
+				connect.NewError(tt.input, "upstream error"),
+				connectv1.NewError(connectv1.Code(tt.input), errors.New("upstream error")),
+			} {
+				err := statusifyError(t.Context(), logger.CreateTestLogger(), errors.Join(ErrFailedToGetDecision, fmt.Errorf("entity resolution: %w", upstream)))
+				var response *connect.Error
+				require.ErrorAs(t, err, &response)
+				require.Equal(t, tt.want, response.Code())
+				require.Equal(t, ErrResponseSafeInternalError.Error(), response.Message())
+				require.ErrorIs(t, err, ErrResponseSafeInternalError)
+			}
 		})
 	}
 }
@@ -67,8 +73,12 @@ func TestStatusifyPreservesExistingNotFoundResponse(t *testing.T) {
 }
 
 func TestSecurityRejectionDoesNotBecomeRetryableOnTimeout(t *testing.T) {
-	cause := connect.NewError(connect.CodePermissionDenied, context.DeadlineExceeded)
-	err := statusifyError(t.Context(), logger.CreateTestLogger(), cause)
-	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-	require.ErrorIs(t, err, ErrResponseSafeInternalError)
+	for _, cause := range []error{
+		connect.NewError(connect.CodePermissionDenied, context.DeadlineExceeded.Error()).WithCause(context.DeadlineExceeded),
+		connectv1.NewError(connectv1.CodePermissionDenied, context.DeadlineExceeded),
+	} {
+		err := statusifyError(t.Context(), logger.CreateTestLogger(), cause)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+		require.ErrorIs(t, err, ErrResponseSafeInternalError)
+	}
 }

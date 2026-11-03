@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
@@ -186,14 +185,14 @@ type MultiStrategyERSWrapper struct {
 }
 
 // ResolveEntities converts entity ID requests into mock JWT token requests
-func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
 	// Convert entity IDs to mock JWT tokens and use CreateEntityChainsFromTokens
 	var tokens []*entity.Token
 
 	// Store entity ID to expected data mapping for later use
 	entityDataMap := make(map[string]map[string]interface{})
 
-	for _, entityReq := range req.Msg.GetEntities() {
+	for _, entityReq := range req.GetEntities() {
 		entityID := entityReq.GetEphemeralId()
 
 		// Create mock JWT based on entity ID pattern and store expected data
@@ -248,7 +247,7 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 		Tokens: tokens,
 	}
 
-	chainResp, err := w.ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(chainReq))
+	chainResp, err := w.ers.CreateEntityChainsFromTokens(ctx, chainReq)
 	if err != nil {
 		w.logger.Error("failed to create entity chains for contract test", slog.Any("error", err))
 		return nil, err
@@ -257,7 +256,7 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 	// Convert entity chains back to entity representations
 	var representations []*entityresolutionV2.EntityRepresentation
 
-	for _, chain := range chainResp.Msg.GetEntityChains() {
+	for _, chain := range chainResp.GetEntityChains() {
 		if len(chain.GetEntities()) > 0 {
 			representation := w.processEntityChain(chain, entityDataMap)
 			if representation != nil {
@@ -270,11 +269,11 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 		EntityRepresentations: representations,
 	}
 
-	return connect.NewResponse(response), nil
+	return response, nil
 }
 
 // CreateEntityChainsFromTokens delegates to the wrapped ERS
-func (w *MultiStrategyERSWrapper) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (w *MultiStrategyERSWrapper) CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	return w.ers.CreateEntityChainsFromTokens(ctx, req)
 }
 
@@ -525,19 +524,19 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		}
 
 		// This should fail fast since JWT doesn't have the required claim
-		resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(v2Req))
+		resp, err := ers.CreateEntityChainsFromTokens(ctx, v2Req)
 		if err != nil {
 			t.Logf("Got expected error with fail-fast strategy: %v", err)
 			return
 		}
 
 		// With proper v2 implementation, this should either fail or succeed with entities
-		if len(resp.Msg.GetEntityChains()) == 0 {
+		if len(resp.GetEntityChains()) == 0 {
 			t.Fatal("Expected at least one chain, got none")
 		}
 
 		// Check what entities we get from the v2 implementation
-		chain := resp.Msg.GetEntityChains()[0]
+		chain := resp.GetEntityChains()[0]
 		t.Logf("Got %d entities in chain for fail-fast strategy", len(chain.GetEntities()))
 
 		// The v2 implementation should now properly parse JWT and create entities
@@ -610,17 +609,17 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		}
 
 		// This should succeed with fallback strategy
-		resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(v2Req))
+		resp, err := ers.CreateEntityChainsFromTokens(ctx, v2Req)
 		if err != nil {
 			t.Fatalf("Expected success with continue strategy, got error: %v", err)
 		}
 
-		if len(resp.Msg.GetEntityChains()) == 0 {
+		if len(resp.GetEntityChains()) == 0 {
 			t.Fatal("Expected at least one entity chain, got none")
 		}
 
 		// Check what entities we get from the v2 implementation with continue strategy
-		chain := resp.Msg.GetEntityChains()[0]
+		chain := resp.GetEntityChains()[0]
 		t.Logf("Got %d entities in chain with continue strategy", len(chain.GetEntities()))
 
 		// The v2 implementation should now properly parse JWT and create entities

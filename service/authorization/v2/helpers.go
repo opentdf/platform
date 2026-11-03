@@ -53,19 +53,21 @@ func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...an
 	logs = append(logs, slog.Any("error", err))
 	if errors.Is(err, access.ErrFQNNotFound) {
 		l.ErrorContext(ctx, "FQN not found", logs...)
-		return connect.NewError(connect.CodeNotFound, &evaluationError{cause: err})
+		return connect.NewError(connect.CodeNotFound, err)
 	}
 	if errors.Is(err, access.ErrDefinitionNotFound) {
 		l.ErrorContext(ctx, "definition not found", logs...)
-		return connect.NewError(connect.CodeNotFound, &evaluationError{cause: err})
+		return connect.NewError(connect.CodeNotFound, err)
 	}
 	l.ErrorContext(ctx, "unexpected error", logs...)
 
 	// Ensure error response is safe and does not leak internal information
 	code := connect.CodeInternal
 	dependencyCode := connect.CodeOf(err)
-	if dependencyCode == connect.CodePermissionDenied || dependencyCode == connect.CodeUnauthenticated || dependencyCode == connect.CodeInvalidArgument {
-		return connect.NewError(dependencyCode, &evaluationError{cause: err})
+	// A deliberate rejection must not become a retryable service failure, even
+	// when its cause includes a timeout.
+	if dependencyCode == connect.CodePermissionDenied {
+		return connect.NewError(connect.CodePermissionDenied, ErrResponseSafeInternalError)
 	}
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -77,11 +79,5 @@ func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...an
 			code = dependencyCode
 		}
 	}
-	return connect.NewError(code, &evaluationError{cause: err})
+	return connect.NewError(code, ErrResponseSafeInternalError)
 }
-
-// Dependency details stay available to local callers but never go on the wire.
-type evaluationError struct{ cause error }
-
-func (e *evaluationError) Error() string { return ErrResponseSafeInternalError.Error() }
-func (e *evaluationError) Unwrap() error { return e.cause }

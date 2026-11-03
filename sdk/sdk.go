@@ -477,7 +477,7 @@ var ErrInvalidPerSchema = errors.New("manifest was not valid")
 // detecting or loading a TDF.
 var ErrTDFManifestTooLarge = zipstream.ErrManifestTooLarge
 
-const defaultIsValidTDFManifestMaxSize = 10 * 1024 * 1024
+const defaultIsValidTDFManifestMaxSize = 1<<28
 
 //go:embed schema/manifest-lax.schema.json
 var manifestLaxSchema []byte

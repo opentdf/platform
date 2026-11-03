@@ -10,6 +10,7 @@
 
 - [Configuration](./docs/Configuring.md)
 - [OpenID Connect (OIDC)](./docs/OIDC.md)
+- [Plan for coordinating audit, logging, and telemetry fixes](./docs/improving-ops.md)
 - [Multi-Strategy Entity Resolution Service](./service/entityresolution/multi-strategy/README.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)

@@ -77,7 +77,7 @@ func TestIsValidTdf_DefaultManifestSizeCap(t *testing.T) {
 	require.ErrorIs(t, err, ErrTDFManifestTooLarge)
 }
 
-func TestIsValidTdfWithMaxManifestSize_RejectsManifestBeforeReading(t *testing.T) {
+func TestIsValidTdf_WithMaxManifestSize_RejectsManifestBeforeReading(t *testing.T) {
 	manifest := minimalManifestJSON + strings.Repeat(" ", 64)
 	for _, name := range []string{"manifest.json", "0.manifest.json"} {
 		t.Run(name, func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestIsValidTdfWithMaxManifestSize_RejectsManifestBeforeReading(t *testing.T
 				dataLength: int64(len(manifest)),
 			}
 
-			valid, err := IsValidTdfWithMaxManifestSize(tracked, int64(len(manifest)-1))
+			valid, err := IsValidTdf(tracked, WithMaxManifestSize(int64(len(manifest)-1)))
 			assert.False(t, valid)
 			require.ErrorIs(t, err, ErrTDFManifestTooLarge)
 			assert.Zero(t, tracked.dataReads, "manifest size must be checked before reading entry data")
@@ -96,7 +96,7 @@ func TestIsValidTdfWithMaxManifestSize_RejectsManifestBeforeReading(t *testing.T
 	}
 }
 
-func TestIsValidTdfWithMaxManifestSize_SpecNameDoesNotFallBack(t *testing.T) {
+func TestIsValidTdf_WithMaxManifestSize_SpecNameDoesNotFallBack(t *testing.T) {
 	validManifest := minimalManifestJSON
 	oversizedManifest := validManifest + strings.Repeat(" ", 64)
 	buf := &bytes.Buffer{}
@@ -114,15 +114,16 @@ func TestIsValidTdfWithMaxManifestSize_SpecNameDoesNotFallBack(t *testing.T) {
 	require.NoError(t, w.Close())
 	data := buf.Bytes()
 
-	valid, err := IsValidTdfWithMaxManifestSize(bytes.NewReader(data), int64(len(oversizedManifest)-1))
+	valid, err := IsValidTdf(bytes.NewReader(data), WithMaxManifestSize(int64(len(oversizedManifest)-1)))
 	assert.False(t, valid)
 	require.ErrorIs(t, err, ErrTDFManifestTooLarge)
 }
 
-func TestIsValidTdfWithMaxManifestSize_AcceptsValidTdf(t *testing.T) {
-	valid, err := IsValidTdfWithMaxManifestSize(
-		bytes.NewReader(namedManifestZip(t, "manifest.json", minimalManifestJSON)),
-		int64(len(minimalManifestJSON)),
+func TestIsValidTdf_WithMaxManifestSize_AcceptsManifestOverDefault(t *testing.T) {
+	manifest := minimalManifestJSON + strings.Repeat(" ", defaultIsValidTDFManifestMaxSize+1-len(minimalManifestJSON))
+	valid, err := IsValidTdf(
+		bytes.NewReader(namedManifestZip(t, "manifest.json", manifest)),
+		WithMaxManifestSize(int64(len(manifest))),
 	)
 	require.NoError(t, err)
 	assert.True(t, valid)
@@ -143,19 +144,28 @@ func TestIsValidTdf_OrdinaryZIP(t *testing.T) {
 	require.NotErrorIs(t, err, ErrTDFManifestTooLarge)
 }
 
-func TestIsValidTdfWithMaxManifestSize_MalformedManifest(t *testing.T) {
-	valid, err := IsValidTdfWithMaxManifestSize(
+func TestIsValidTdf_WithMaxManifestSize_MalformedManifest(t *testing.T) {
+	valid, err := IsValidTdf(
 		bytes.NewReader(namedManifestZip(t, "manifest.json", "{")),
-		1024,
+		WithMaxManifestSize(1024),
 	)
 	assert.False(t, valid)
 	require.Error(t, err)
 	require.NotErrorIs(t, err, ErrTDFManifestTooLarge)
 }
 
-func TestIsValidTdfWithMaxManifestSize_RejectsNonPositiveSize(t *testing.T) {
+func TestIsValidTdf_WithSchemaValidationSkip(t *testing.T) {
+	valid, err := IsValidTdf(
+		bytes.NewReader(namedManifestZip(t, "manifest.json", "{")),
+		WithSchemaValidation(Skip),
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+}
+
+func TestIsValidTdf_WithMaxManifestSize_RejectsNonPositiveSize(t *testing.T) {
 	for _, size := range []int64{0, -1} {
-		valid, err := IsValidTdfWithMaxManifestSize(bytes.NewReader(nil), size)
+		valid, err := IsValidTdf(bytes.NewReader(nil), WithMaxManifestSize(size))
 		assert.False(t, valid)
 		require.ErrorContains(t, err, "greater than 0")
 	}

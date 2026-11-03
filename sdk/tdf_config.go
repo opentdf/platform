@@ -447,16 +447,22 @@ func (a AllowList) Add(kasURL string) error {
 	return nil
 }
 
+func applyTDFReaderOptions(c *TDFReaderConfig, opts ...TDFReaderOption) error {
+	for _, opt := range opts {
+		if err := opt(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
 	}
 
-	for _, o := range opt {
-		err := o(c)
-		if err != nil {
-			return nil, err
-		}
+	if err := applyTDFReaderOptions(c, opt...); err != nil {
+		return nil, err
 	}
 
 	if c.kasSessionKey == nil {
@@ -477,12 +483,13 @@ func validateMaxManifestSize(size int64) error {
 	return nil
 }
 
-// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for the TDF reader.
-// By default there is no limit: the manifest grows with the policy size and the number of
-// segments, so very large payloads legitimately carry very large manifests. A declared
-// manifest size is always bounded by the archive itself, so this option is not needed to
-// reject forged ZIP sizes; use it to cap how much memory a manifest read may allocate.
-// size must be greater than 0.
+// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for
+// LoadTDF and IsValidTdf. LoadTDF has no limit by default; IsValidTdf defaults
+// to 10 MiB. The manifest grows with policy size and the number of segments,
+// so very large payloads can legitimately carry very large manifests. A
+// declared manifest size is always bounded by the archive itself; use this
+// option to cap how much memory a manifest read may allocate. size must be
+// greater than 0.
 func WithMaxManifestSize(size int64) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		if err := validateMaxManifestSize(size); err != nil {

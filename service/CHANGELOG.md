@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.5](https://github.com/opentdf/platform/compare/service/v0.25.4...service/v0.25.5) (2026-11-04)
+
+
+### Bug Fixes
+
+* **core:** authenticate and size-limit Connect requests before decoding ([#4285](https://github.com/opentdf/platform/issues/4285)) ([50a4704](https://github.com/opentdf/platform/commit/50a470414a55a0d4f60377a06bf04a4ae2115643))
+
 ## [0.25.4](https://github.com/opentdf/platform/compare/service/v0.25.3...service/v0.25.4) (2026-10-07)
 
 

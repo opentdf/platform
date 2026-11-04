@@ -21,6 +21,17 @@ type Service struct {
 
 // NewService creates a new multi-strategy entity resolution service
 func NewService(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*Service, error) {
+	if err := validateConfig(config, logger); err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeConfiguration,
+			"invalid multi-strategy configuration",
+			err,
+			map[string]interface{}{
+				"strategy_count": len(config.MappingStrategies),
+			},
+		)
+	}
+
 	// Create provider registry
 	registry := NewProviderRegistry()
 

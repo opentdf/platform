@@ -25,9 +25,10 @@ performs login, token refresh, or token revocation for your application.
 3. Open the profiler with `New(namespace, WithFileStore(directory))`. This initializes
    or loads its global record. `Open` defers global initialization/version writes;
    it does not make the returned profiler immutable or prevent driver setup.
-4. Register a profile using `AddProfile`; its first profile becomes default even
-   when `setDefault` is false. Use `RegisterProfile` for create-only registration
-   that does not select a default. It rejects existing indexed or orphaned records.
+4. Use `RegisterProfile` for create-only registration: it rejects existing indexed
+   or orphaned records without selecting a default. Call `SetDefaultProfile`
+   separately when desired. `AddProfile` selects the first profile as default even
+   when `setDefault` is false, but can overwrite a record missing from the index.
 5. Load using the same concrete pointer type, modify it, and call `Save`. Propagate
    read errors; an inaccessible keyring or corrupt record is not a missing profile.
 
@@ -65,7 +66,10 @@ func main() {
     }
     const name = "personal"
     if !profilestore.GetGlobalConfig(p).ProfileExists(name) {
-        if err := p.AddProfile(&applicationProfile{Name: name}, true); err != nil {
+        if _, err := profilestore.RegisterProfile(p, &applicationProfile{Name: name}); err != nil {
+            log.Fatal(err)
+        }
+        if err := profilestore.SetDefaultProfile(p, name); err != nil {
             log.Fatal(err)
         }
     }
@@ -118,7 +122,11 @@ concrete type remains internal, so callers should not name or construct that typ
   profiler while its existing global record remains in the original store. Use one
   filesystem directory/custom factory per process; serial startup alone does not
   isolate instances. There is no transaction, compare-and-swap, concurrent-writer
-  guarantee, or automatic migration. Serialize writes and design application-level
+  guarantee, or automatic migration. Serialize filesystem-store initialization
+  across goroutines and processes sharing a directory, including initialization
+  triggered by reads such as `GetProfile`: constructors create and remove the same
+  `.tmp_profile_rw_test` file, so concurrent initialization can panic. Serializing
+  writes alone is insufficient. Also serialize writes and design application-level
   recovery for partial multi-record operations.
 - Directory setup can panic on executable-path or permission failures. `Get` may
   create an encryption-key entry if it is missing; a subsequent decryption failure

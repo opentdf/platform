@@ -30,7 +30,10 @@ func ExampleNew() {
 	}
 	const name = "personal"
 	if !profilestore.GetGlobalConfig(p).ProfileExists(name) {
-		if err := p.AddProfile(&applicationProfile{Name: name}, true); err != nil {
+		if _, err := profilestore.RegisterProfile(p, &applicationProfile{Name: name}); err != nil {
+			log.Fatal(err)
+		}
+		if err := profilestore.SetDefaultProfile(p, name); err != nil {
 			log.Fatal(err)
 		}
 	}

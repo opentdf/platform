@@ -7,6 +7,7 @@ This package handles authentication (authn) and authorization (authz) for the Op
 ```
 auth/
 ├── authn.go           # Authentication middleware and token validation
+├── connect_gate.go    # Connect request gate that authenticates before body decoding
 ├── config.go          # Configuration types
 ├── discovery.go       # OIDC discovery
 └── authz/             # Authorization interfaces and implementations
@@ -16,6 +17,17 @@ auth/
         ├── v1/        # Legacy path + action authorization
         └── v2/        # RPC + dimensions authorization
 ```
+
+## Connect Request Flow
+
+External Connect requests pass through these stages:
+
+1. The HTTP router stores the request's HTTP method in the context (`ContextWithHTTPMethod`).
+2. `ConnectAuthNRequestGate` authenticates the request from its headers, including DPoP proof validation, before Connect reads, decompresses, or unmarshals the body. Unauthenticated requests are rejected without decoding the body.
+3. `ConnectAuthNInterceptor` sets `DPoP-Nonce` response headers when nonces are required. It authenticates only when the gate did not run, such as for handlers built outside the platform server.
+4. `ConnectAuthZInterceptor` authorizes the request. Unary authorization may read the decoded message through resource resolvers.
+
+The in-process (IPC) server does not use the gate; `IPCUnaryServerInterceptor` handles its requests. Requests rejected by the gate never reach the interceptor chain, so tracing interceptors record no span for them.
 
 ## Authz v1
 
@@ -76,6 +88,20 @@ The table lists production resolver coverage in this workspace. The v2 authorize
 | `/policy.kasregistry.KeyAccessServerRegistryService/GetKey` | `kas_uri` |
 | `/policy.kasregistry.KeyAccessServerRegistryService/ListKeys` | `kas_uri` |
 | All other RPCs | none (`*`) |
+
+### Streaming and Bidi RPCs
+
+The Connect authN and authz interceptors cover unary, streaming, and bidi RPCs. A
+streaming RPC is authenticated and authorized once, at stream establishment, before the
+handler runs.
+
+Because no request message is available at establishment, resource-dimension resolvers
+cannot run for streams. Streaming authorization is therefore **procedure-level only**: the
+enforcement request always uses wildcard dimensions (`*`). As a result, a dimension-scoped
+v2 policy row (one that requires a concrete dimension such as `kas_uri=...`) never matches
+a stream, so dimension-scoped policy **fails closed** for streaming RPCs. To authorize a
+stream, grant it with a wildcard-dimension rule. This mirrors the raw-HTTP `MuxHandler`
+path, which is likewise procedure-level.
 
 ### KAS URI Policy Encoding
 

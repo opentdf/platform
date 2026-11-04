@@ -100,6 +100,11 @@ type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)
 	ReflectionEnabled bool `mapstructure:"reflectionEnabled" json:"reflectionEnabled" default:"true"`
 
+	// MaxRecvMsgSizeBytes caps each request message that external clients send to
+	// Connect, gRPC, and gRPC-Web handlers, measured after decompression.
+	MaxRecvMsgSizeBytes int `mapstructure:"maxRecvMsgSize" json:"maxRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+
+	// MaxCallRecvMsgSizeBytes and MaxCallSendMsgSizeBytes configure the in-process client used for IPC.
 	MaxCallRecvMsgSizeBytes int `mapstructure:"maxCallRecvMsgSize" json:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 	MaxCallSendMsgSizeBytes int `mapstructure:"maxCallSendMsgSize" json:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 }
@@ -232,6 +237,7 @@ type OpenTDFServer struct {
 	ConnectRPC          *ConnectRPC
 	CacheManager        *cache.Manager
 	reflectionEnabled   bool
+	maxRecvMsgSize      int
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -299,6 +305,9 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
+	// Prepend so options a service appends when registering its handler take precedence.
+	connectRPC.Interceptors = append(externalConnectHandlerOptions(config), connectRPC.Interceptors...)
+	connectRPC.Interceptors = append(externalConnectRequestGates(config, authN), connectRPC.Interceptors...)
 
 	httpMux := http.NewServeMux()
 
@@ -315,6 +324,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:      cacheManager,
 		ConnectRPC:        connectRPC,
 		reflectionEnabled: config.GRPC.ReflectionEnabled,
+		maxRecvMsgSize:    config.GRPC.MaxRecvMsgSizeBytes,
 		ConnectRPCInProcess: &inProcessServer{
 			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
@@ -440,7 +450,9 @@ func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// contentType := r.Header.Get("Content-Type")
 		if (r.Method == http.MethodPost || r.Method == http.MethodGet || r.Method == http.MethodOptions) && rpcPathRegex.MatchString(r.URL.Path) {
-			connectRPC.ServeHTTP(w, r)
+			// Request gates cannot read the HTTP method from Connect, so record it
+			// for DPoP method binding in the authentication gate.
+			connectRPC.ServeHTTP(w, r.WithContext(auth.ContextWithHTTPMethod(r.Context(), r.Method)))
 		} else {
 			httpHandler.ServeHTTP(w, r)
 		}
@@ -504,6 +516,17 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 	}, nil
 }
 
+// externalConnectRequestGates returns the request gates for the external Connect
+// server. The authentication gate rejects unauthenticated requests from their
+// headers before Connect reads, decompresses, or unmarshals the request body.
+// The in-process server keeps its own IPC interceptor.
+func externalConnectRequestGates(c Config, authN *auth.Authentication) []connect.HandlerOption {
+	if !c.Auth.Enabled || authN == nil {
+		return nil
+	}
+	return []connect.HandlerOption{connect.WithRequestGate(authN.ConnectAuthNRequestGate())}
+}
+
 func (s OpenTDFServer) Start() error {
 	s.registerReflectionHandlers()
 
@@ -551,8 +574,10 @@ func (s OpenTDFServer) registerReflectionHandlers() {
 		s.ConnectRPC.ServiceReflection...,
 	)
 
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	// Reflection handlers skip the shared interceptors but still need the read limit.
+	readLimitOptions := readLimitHandlerOptions(s.maxRecvMsgSize)
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector, readLimitOptions...))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector, readLimitOptions...))
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {

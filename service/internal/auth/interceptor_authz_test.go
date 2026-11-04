@@ -559,11 +559,188 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_UnregisteredResolverProcedureUse
 		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
 	}
 
-	resp, err := authn.ConnectAuthZInterceptor()(next)(ctx, req)
+	resp, err := authn.ConnectAuthZInterceptor().WrapUnary(next)(ctx, req)
 
 	s.Require().NoError(err)
 	s.Require().NotNil(resp)
 	s.True(nextCalled, "next handler should be called when wildcard-dimension policy allows the RPC")
+}
+
+// Streaming authorization tests. Streaming RPCs have no request message at stream
+// establishment, so authorization is procedure-level only (no resolver runs).
+
+func (s *InterceptorAuthzSuite) TestStreaming_AllowedRoleInvokesNext() {
+	const requestedRPC = "/policy.attributes.AttributesService/GetAttribute"
+	csvPolicy := "p, role:attribute-reader, " + requestedRPC + ", *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("attribute-reader"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn(requestedRPC)
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().NoError(err)
+	s.True(called, "handler should run when the wildcard-dimension policy allows the RPC")
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_DeniedReturnsPermissionDenied() {
+	const requestedRPC = "/policy.attributes.AttributesService/GetAttribute"
+	csvPolicy := "p, role:attribute-reader, " + requestedRPC + ", *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("unrelated-role"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn(requestedRPC)
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(called, "handler must not run when authorization denies the stream")
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_MissingTokenReturnsUnauthenticated() {
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer("p, role:x, *, *, allow"),
+	}
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/policy.attributes.AttributesService/GetAttribute")
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(s.T().Context(), conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodeUnauthenticated, connect.CodeOf(err))
+	s.False(called, "handler must not run without an authenticated token")
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_PublicRouteBypassesAuthz() {
+	authn := &Authentication{logger: s.logger}
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/kas.AccessService/PublicKey")
+	ctx := ctxAuth.ContextWithPublicRoute(s.T().Context(), true)
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().NoError(err, "public routes should bypass stream authorization")
+	s.True(called)
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_DimensionScopedPolicyFailsClosed() {
+	const requestedRPC = "/policy.attributes.AttributesService/GetAttribute"
+	// The policy only permits the RPC within namespace=hr. A stream cannot supply
+	// resource dimensions at establishment, so this must fail closed.
+	csvPolicy := "p, role:hr-admin, " + requestedRPC + ", namespace=hr, allow"
+
+	// Register a resolver for the RPC so we can prove the documented mechanism:
+	// streams authorize at procedure level and never invoke resolvers, even when
+	// one is registered and the authorizer supports resource authorization.
+	registry := internalauthz.NewResolverRegistry()
+	resolverCalled := false
+	s.Require().NoError(registry.ScopedForService(&attributes.AttributesService_ServiceDesc).Register(
+		"GetAttribute",
+		func(context.Context, connect.AnyRequest) (internalauthz.ResolverContext, error) {
+			resolverCalled = true
+			return internalauthz.NewResolverContext(), nil
+		},
+	))
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("hr-admin"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn(requestedRPC)
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(called, "dimension-scoped policy must fail closed for streams")
+	s.False(resolverCalled, "resolvers must never run for streams; authorization is procedure-level only")
+}
+
+// Streaming authorization is mode-agnostic: the stream path authorizes at the
+// procedure level regardless of authorizer version. These tests exercise the
+// legacy v1 (path+action) authorizer to complement the v2 coverage above.
+
+func (s *InterceptorAuthzSuite) TestStreaming_V1_AllowedRoleInvokesNext() {
+	policyCfg := internalauthz.PolicyConfig{}
+	s.Require().NoError(defaults.Set(&policyCfg))
+
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV1Authorizer(policyCfg),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("opentdf-admin"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/policy.attributes.AttributesService/GetAttribute")
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().NoError(err)
+	s.True(called, "handler should run when the v1 policy allows the RPC")
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_V1_DeniedReturnsPermissionDenied() {
+	policyCfg := internalauthz.PolicyConfig{}
+	s.Require().NoError(defaults.Set(&policyCfg))
+
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV1Authorizer(policyCfg),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("unknown-role"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/policy.attributes.AttributesService/GetAttribute")
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(called, "handler must not run when the v1 policy denies the stream")
 }
 
 func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
@@ -704,7 +881,7 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied(
 		return connect.NewResponse(&kasregistry.GetKeyResponse{}), nil
 	}
 
-	_, err := authn.ConnectAuthZInterceptor()(next)(ctx, req)
+	_, err := authn.ConnectAuthZInterceptor().WrapUnary(next)(ctx, req)
 
 	s.Require().Error(err)
 	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
@@ -728,7 +905,7 @@ func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated
 		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
 	}
 
-	_, err := authn.ConnectAuthZInterceptor()(next)(s.T().Context(), req)
+	_, err := authn.ConnectAuthZInterceptor().WrapUnary(next)(s.T().Context(), req)
 
 	s.Require().Error(err)
 	s.Equal(connect.CodeUnauthenticated, connect.CodeOf(err))

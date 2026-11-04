@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
-	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/platform"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles/extensions"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
+	"github.com/opentdf/platform/otdfctl/pkg/profilestore/pkg/platform"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
 )

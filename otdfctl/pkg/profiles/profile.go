@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"strings"
 
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
-	osplatform "github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/platform"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
+	osplatform "github.com/opentdf/platform/otdfctl/pkg/profilestore/pkg/platform"
 )
 
 type ProfileDriver string

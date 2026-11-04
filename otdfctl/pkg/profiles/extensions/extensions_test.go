@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles/extensions"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
 	"github.com/zalando/go-keyring"
 )
 

@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
-	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/cert"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -33,6 +33,16 @@ type AssertionConfig struct {
 	SigningKey     AssertionKey
 }
 
+// Assertion is one entry of a manifest's assertions array.
+//
+// An Assertion decoded from JSON also keeps the exact bytes it was decoded
+// from. Hashing and verification use those bytes, as the ZTDF assertions
+// specification requires, so members this type does not model are covered
+// and an object-valued statement value is hashed as an object. Changing the
+// fields of a decoded Assertion therefore does not change its hash or what
+// it verifies. The typed fields are a view of the received object: ID is
+// empty when the received id is not a JSON string, and Binding is empty when
+// the received binding is not an object holding string members.
 type Assertion struct {
 	ID             string         `json:"id"`
 	Type           AssertionType  `json:"type"`
@@ -40,9 +50,54 @@ type Assertion struct {
 	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
 	Statement      Statement      `json:"statement"`
 	Binding        Binding        `json:"binding,omitempty"`
+
+	// raw is the JSON this assertion was decoded from, or nil for an
+	// assertion built in code.
+	raw []byte
 }
 
-var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
+// UnmarshalJSON decodes an assertion and keeps a copy of data, the assertion
+// as received, for hashing and verification.
+//
+// The id and binding members are decoded leniently: a value of the wrong JSON
+// type leaves the typed field empty instead of failing, so that a manifest
+// with such an assertion can still be loaded with verification disabled, and
+// verification reports the problem with its own reason.
+func (a *Assertion) UnmarshalJSON(data []byte) error {
+	// encoding/json passes null to non-pointer values; by convention, a no-op
+	// for the typed fields. Keep it as received so verification sees it.
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		a.raw = []byte("null")
+		return nil
+	}
+
+	type assertionFields Assertion // no methods, so no recursion
+	aux := struct {
+		ID      json.RawMessage `json:"id"`
+		Binding json.RawMessage `json:"binding"`
+		*assertionFields
+	}{assertionFields: (*assertionFields)(a)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	a.ID = jsonStringOrEmpty(aux.ID)
+	a.Binding = lenientBinding(aux.Binding)
+	a.raw = bytes.Clone(data)
+	return nil
+}
+
+// lenientBinding returns the typed view of a binding member: its method and
+// signature when they are strings, and nothing for any other value.
+func lenientBinding(raw json.RawMessage) Binding {
+	var fields struct {
+		Method    json.RawMessage `json:"method"`
+		Signature json.RawMessage `json:"signature"`
+	}
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return Binding{}
+	}
+	return Binding{Method: jsonStringOrEmpty(fields.Method), Signature: jsonStringOrEmpty(fields.Signature)}
+}
 
 // signAssertions builds and signs the manifest assertion list.
 //
@@ -56,18 +111,18 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 func signAssertions(aggregateHash []byte, configs []AssertionConfig, defaultKey []byte, useHex bool) ([]Assertion, error) {
 	var signed []Assertion
 	for _, assertion := range configs {
-		tmpAssertion := Assertion{
-			ID:             assertion.ID,
-			Type:           assertion.Type,
-			Scope:          assertion.Scope,
-			Statement:      assertion.Statement,
-			AppliesToState: assertion.AppliesToState,
-		}
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
+		// Hash the wire object this writer emits, minus its binding, with
+		// the same function readers use. The manifest serializes the same
+		// struct, so the bytes written are the bytes hashed.
+		tmpAssertion, wireJSON, err := writableAssertion(assertion)
 		if err != nil {
 			return nil, err
 		}
+		hashHex, err := ComputeAssertionHash(wireJSON)
+		if err != nil {
+			return nil, err
+		}
+		hashOfAssertionAsHex := []byte(hashHex)
 
 		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
 		if _, err := hex.Decode(hashOfAssertion, hashOfAssertionAsHex); err != nil {
@@ -100,6 +155,43 @@ func signAssertions(aggregateHash []byte, configs []AssertionConfig, defaultKey 
 		signed = append(signed, tmpAssertion)
 	}
 	return signed, nil
+}
+
+// writableAssertion returns the unsigned assertion a writer emits for config, and
+// its JSON. It refuses, with ErrInvalidAssertion, an assertion that readers
+// would reject while parsing it: an empty id (spec Section 3.3), or JSON that
+// breaks the Section 3 rules, such as a string holding a noncharacter.
+func writableAssertion(config AssertionConfig) (Assertion, []byte, error) {
+	a := Assertion{
+		ID:             config.ID,
+		Type:           config.Type,
+		Scope:          config.Scope,
+		Statement:      config.Statement,
+		AppliesToState: config.AppliesToState,
+	}
+	wireJSON, err := json.Marshal(a)
+	if err != nil {
+		return Assertion{}, nil, fmt.Errorf("%w: encoding assertion %q: %w", ErrInvalidAssertion, config.ID, err)
+	}
+	w, err := parseAssertionWire(wireJSON)
+	if err != nil {
+		return Assertion{}, nil, fmt.Errorf("%w: assertion %q: %s", ErrInvalidAssertion, config.ID, failureDetail(err))
+	}
+	if _, ok := w.exactID(); !ok {
+		return Assertion{}, nil, fmt.Errorf("%w: assertion id must be a nonempty string", ErrInvalidAssertion)
+	}
+	return a, wireJSON, nil
+}
+
+// failureDetail describes an ErrAssertionFailure without its tamper wording,
+// for errors that are not about a received TDF.
+func failureDetail(err error) string {
+	var failure ErrAssertionFailure
+	if !errors.As(err, &failure) {
+		return err.Error()
+	}
+	detail := strings.TrimPrefix(err.Error(), failure.Error()+": ")
+	return fmt.Sprintf("%s (%s)", detail, failure.Reason)
 }
 
 // Sign signs the assertion with the given hash and signature using the key.
@@ -182,40 +274,36 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 	return hash, sig, nil
 }
 
-// GetHash returns the hash of the assertion in hex format.
+// GetHash returns the assertion's assertionHash in lowercase hex, computed
+// as ComputeAssertionHash does. For an assertion decoded from JSON it hashes
+// the bytes as received; for one built in code, the object this SDK writes.
+// The binding is never part of the hash.
 func (a Assertion) GetHash() ([]byte, error) {
-	// Clear out the binding
-	a.Binding = Binding{}
-
-	// Marshal the assertion to JSON
-	assertionJSON, err := json.Marshal(a)
+	w, err := a.wire()
 	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
+		return nil, err
 	}
-
-	// Unmarshal the JSON into a map to manipulate it
-	var jsonObject map[string]interface{}
-	if err := json.Unmarshal(assertionJSON, &jsonObject); err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	// Remove the binding key
-	delete(jsonObject, "binding")
-
-	// Marshal the map back to JSON
-	assertionJSON, err = json.Marshal(jsonObject)
+	h, err := w.hash()
 	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
+		return nil, err
 	}
-
-	// Transform the JSON using JCS
-	transformedJSON, err := jcs.Transform(assertionJSON)
-	if err != nil {
-		return nil, fmt.Errorf("jcs.Transform failed: %w", err)
-	}
-
-	return ocrypto.SHA256AsHex(transformedJSON), nil
+	return []byte(h), nil
 }
+
+// wire returns the assertion as received or, for an assertion built in code,
+// as this SDK writes it.
+func (a Assertion) wire() (*assertionWire, error) {
+	raw := a.raw
+	if raw == nil {
+		var err error
+		if raw, err = json.Marshal(a); err != nil {
+			return nil, assertionFailureCause(a.ID, AssertionReasonInvalidJSON, "encoding the assertion", err)
+		}
+	}
+	return parseAssertionWire(raw)
+}
+
+var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 func (s *Statement) UnmarshalJSON(data []byte) error {
 	// encoding/json passes null to non-pointer fields; by convention, a no-op.

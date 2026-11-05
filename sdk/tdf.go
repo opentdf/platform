@@ -921,6 +921,15 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	// Spec Section 3 parsing runs before anything decodes the manifest, and
+	// whether or not assertion verification is enabled: encoding/json would
+	// otherwise keep the last of duplicate members and match names such as
+	// "Assertions" or "ID" case-insensitively. This only parses; assertions
+	// are verified when the payload key is unwrapped.
+	if err := checkManifestSection3([]byte(manifest)); err != nil {
+		return nil, err
+	}
+
 	if config.schemaValidationIntensity == Lax || config.schemaValidationIntensity == Strict {
 		valid, err := isValidManifest(manifest, config.schemaValidationIntensity)
 		if err != nil {
@@ -931,8 +940,9 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		}
 	}
 
+	// The Section 3 checks above already ran, so skip repeating them.
 	manifestObj := &Manifest{}
-	err = json.Unmarshal([]byte(manifest), manifestObj)
+	err = manifestObj.unmarshalChecked([]byte(manifest))
 	if err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed:%w", err)
 	}

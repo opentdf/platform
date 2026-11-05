@@ -3,6 +3,7 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -71,15 +72,140 @@ var (
 	ErrRewrapForbidden = errors.New("tdf: rewrap request 403")
 )
 
-// Custom error struct for Assertion errors
+// AssertionFailureReason is the stable code that explains why an assertion,
+// or the manifest that carries it, was rejected. The values are the reason
+// strings of the ZTDF assertions specification, Section 9.
+type AssertionFailureReason string
+
+const (
+	// AssertionReasonInvalidJSON: the manifest is not JSON, or an assertion
+	// object is not I-JSON (lone surrogate, noncharacter, invalid UTF-8, or a
+	// number outside the IEEE 754 double range).
+	AssertionReasonInvalidJSON AssertionFailureReason = "invalid-json"
+	// AssertionReasonDuplicateMember: an object in the manifest repeats a
+	// member name, compared after decoding escapes.
+	AssertionReasonDuplicateMember AssertionFailureReason = "duplicate-member"
+	// AssertionReasonAmbiguousMember: an object at a modelled level holds a
+	// case variant of a modelled member name, such as "ID" or "Assertions",
+	// or two members whose names differ only in case.
+	AssertionReasonAmbiguousMember AssertionFailureReason = "ambiguous-member"
+	// AssertionReasonInvalidID: the assertion's "id" is missing, empty, or
+	// not a JSON string.
+	AssertionReasonInvalidID AssertionFailureReason = "invalid-id"
+	// AssertionReasonInvalidStatement is reserved for statement checks that the
+	// specification still marks as proposed. Nothing returns it yet.
+	AssertionReasonInvalidStatement AssertionFailureReason = "invalid-statement"
+	// AssertionReasonInvalidBinding: the binding is missing, is not an object,
+	// carries both binding forms or neither, or holds a malformed JWS.
+	AssertionReasonInvalidBinding AssertionFailureReason = "invalid-binding"
+	// AssertionReasonUnsupportedBinding: the binding names an unknown method,
+	// or is a STANAG 4778 binding object, which this SDK does not verify.
+	AssertionReasonUnsupportedBinding AssertionFailureReason = "unsupported-binding"
+	// AssertionReasonUnsupportedAlgorithm: the JWS alg is missing, "none", or
+	// not one this SDK verifies.
+	AssertionReasonUnsupportedAlgorithm AssertionFailureReason = "unsupported-algorithm"
+	// AssertionReasonAlgorithmMismatch: the JWS alg differs from the algorithm
+	// configured for the selected key.
+	AssertionReasonAlgorithmMismatch AssertionFailureReason = "algorithm-mismatch"
+	// AssertionReasonInvalidEmbeddedKey: an embedded jwk or x5c is symmetric,
+	// private, malformed, contradictory, or present when the selected key is
+	// an HMAC secret.
+	AssertionReasonInvalidEmbeddedKey AssertionFailureReason = "invalid-embedded-key"
+	// AssertionReasonSignerNotPermitted: an embedded key is not the selected
+	// verification key.
+	AssertionReasonSignerNotPermitted AssertionFailureReason = "signer-not-permitted"
+	// AssertionReasonSignatureInvalid: the JWS signature does not verify under
+	// the selected key.
+	AssertionReasonSignatureInvalid AssertionFailureReason = "signature-invalid"
+	// AssertionReasonBindingMismatch: the assertionHash or assertionSig claim
+	// is missing, not a string, or differs from the recomputed value.
+	AssertionReasonBindingMismatch AssertionFailureReason = "binding-mismatch"
+	// AssertionReasonConfigurationError: the verification key selected for the
+	// assertion is empty, unusable, or of the wrong type for its algorithm.
+	AssertionReasonConfigurationError AssertionFailureReason = "configuration-error"
+)
+
+// ErrAssertionFailure reports an assertion that failed verification, or a
+// manifest rejected while parsing its assertions. It unwraps to ErrTampered.
+//
+// ID is the assertion's exact "id" when one could be read, and empty
+// otherwise. Reason is a single stable code; match on it with errors.As
+// rather than on the message text.
 type ErrAssertionFailure struct { //nolint:errname // match naming of existing errors
-	ID string
+	ID     string
+	Reason AssertionFailureReason
 }
 
 func (e ErrAssertionFailure) Error() string {
-	return fmt.Errorf("[%w] tdf: issue verifying assertions, id: %s", ErrTampered, e.ID).Error()
+	msg := fmt.Sprintf("[%s] tdf: issue verifying assertions", ErrTampered)
+	if e.ID != "" {
+		msg += ", id: " + renderAssertionID(e.ID)
+	}
+	if e.Reason != "" {
+		msg += ", reason=" + string(e.Reason)
+	}
+	return msg
 }
 
 func (e ErrAssertionFailure) Unwrap() error {
 	return ErrTampered
+}
+
+// maxRenderedIDLength caps how many code points of an assertion id an error
+// message shows.
+const maxRenderedIDLength = 256
+
+// renderAssertionID returns id for an error message. The id comes from the
+// TDF, so backslashes and control characters (U+0000 to U+001F and U+007F to
+// U+009F) are escaped as in JSON, and a long id is cut at 256 code points and
+// marked with an ellipsis. The id can then neither break the message across
+// lines nor hide its real end. ErrAssertionFailure.ID keeps the exact id.
+func renderAssertionID(id string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range id {
+		if n == maxRenderedIDLength {
+			b.WriteString("…")
+			break
+		}
+		n++
+		switch {
+		case r == '\\':
+			b.WriteString(`\\`)
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\b':
+			b.WriteString(`\b`)
+		case r == '\f':
+			b.WriteString(`\f`)
+		case r < 0x20 || (r >= 0x7F && r <= 0x9F):
+			fmt.Fprintf(&b, `\u%04x`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// ErrInvalidAssertion is returned by a TDF writer asked to write an assertion
+// that readers would reject while parsing it: one with an empty id, or whose
+// JSON breaks the parsing rules of the ZTDF assertions specification, such as
+// a string holding a Unicode noncharacter. It is a configuration error, not a
+// tamper error.
+var ErrInvalidAssertion = errors.New("tdf: invalid assertion configuration")
+
+// assertionFailure returns an ErrAssertionFailure for id and reason, followed
+// in the message by detail. The detail never holds key material.
+func assertionFailure(id string, reason AssertionFailureReason, detail string) error {
+	return fmt.Errorf("%w: %s", ErrAssertionFailure{ID: id, Reason: reason}, detail)
+}
+
+// assertionFailureCause is assertionFailure with an underlying error, which
+// stays reachable through errors.Is and errors.As.
+func assertionFailureCause(id string, reason AssertionFailureReason, detail string, cause error) error {
+	return fmt.Errorf("%w: %s: %w", ErrAssertionFailure{ID: id, Reason: reason}, detail, cause)
 }

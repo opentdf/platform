@@ -124,3 +124,13 @@ const (
 	// efficient, and lets the TDF's DEK double as the signing key.
 	AssertionKeyAlgHS256 = sdk.AssertionKeyAlgHS256
 )
+
+// ComputeAssertionHash returns the assertionHash of one assertion, given the
+// raw JSON text of its wire object: Section 3 parsing, then the RFC 8785
+// canonical form of the object minus its top-level binding, hashed with
+// SHA-256.
+//
+// See [sdk.ComputeAssertionHash].
+func ComputeAssertionHash(wire []byte) (string, error) {
+	return sdk.ComputeAssertionHash(wire)
+}

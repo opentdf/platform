@@ -99,7 +99,7 @@
     "decrypt rejects empty stdin": "C11739304",
     "encrypt leaves no output behind when it fails": "C11739305",
     "decrypt leaves no output behind when it fails": "C11739306",
-    "decrypt leaves an existing output file untouched when it fails\"": "C11739307",
+    "decrypt leaves an existing output file untouched when it fails": "C11739307",
     "decrypt to /dev/null succeeds and leaves the device node alone": "C11739308",
     "encrypt measures a file and streams a pipe": "C11739309",
     "encrypt streams a process substitution": "C11739310",

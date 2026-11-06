@@ -15,6 +15,7 @@
     "Create an attribute - bad": "C793410",
     "Get an attribute definition - good": "C793412",
     "Get an attribute definition - bad": "C793413",
+    "Get an attribute value by ID or FQN": "C11739315",
     "Update an attribute definition (safe) - good": "C793414",
     "Update an attribute definition (safe) - bad": "C793415",
     "List attribute definitions": "C793416",
@@ -35,6 +36,7 @@
     "List attribute values - Bad": "C875685"
   },
   "Auth": {
+    "Linux auth uses an encrypted filesystem profile": "C11739316",
     "helpful error if wrong platform endpoint host": "C793419",
     "helpful error if bad credentials": "C793420",
     "helpful error if missing client credentials": "C793421",
@@ -58,8 +60,12 @@
   "Encrypt/Decrypt": {
     "roundtrip TDF3, no attributes, file": "C793423",
     "roundtrip TDF3, no attributes, ec-wrapping, file": "C797126",
+    "roundtrip TDF3, no attributes, mlkem:768 session key, file": "C11739313",
+    "roundtrip TDF3, no attributes, mlkem:1024 session key, file": "C11739314",
     "roundtrip TDF3, one attribute, stdin": "C793424",
     "roundtrip TDF3, one attribute, mixed case FQN, stdin": "C793425",
+    "inspect TDF3, one attribute, stdin": "C11128871",
+    "inspect rejects extra positional arguments": "C11128872",
     "allow traversal with mapped key uses definition when value missing": "C875793",
     "allow traversal uses attribute value mapping when value present": "C875794",
     "allow traversal with inactive attribute value fails": "C875795",
@@ -72,7 +78,33 @@
     "roundtrip TDF3, with allowlist containing non existent kas (should fail)": "C871547",
     "roundtrip TDF3, ignoring allowlist": "C871548",
     "roundtrip TDF3, not entitled to data, no required obligations returned": "C875374",
-    "roundtrip TDF3, entitled to data, required obligations returned": "C875375"
+    "roundtrip TDF3, entitled to data, required obligations returned": "C875375",
+    "roundtrip TDF3 with EC wrapped KAO": "C11739289",
+    "roundtrip TDF3 with X-Wing wrapped KAO": "C11739290",
+    "roundtrip TDF3 with P256+ML-KEM-768 wrapped KAO": "C11739291",
+    "roundtrip TDF3 with P384+ML-KEM-1024 wrapped KAO": "C11739292",
+    "roundtrip TDF3 with ML-KEM-768 wrapped KAO": "C11739293",
+    "roundtrip TDF3 with ML-KEM-1024 wrapped KAO": "C11739294",
+    "legacy no-KID TDF decrypts after key rotation": "C11739295",
+    "legacy KAS and crypto provider configuration decrypts existing TDFs": "C11739296"
+  },
+  "Streaming": {
+    "roundtrip TDF3, no attributes, file to file": "C11739297",
+    "roundtrip TDF3, no attributes, file to stdout": "C11739298",
+    "roundtrip TDF3, stdin to stdout, fully piped": "C11739299",
+    "roundtrip TDF3, decrypt reading the TDF from a pipe": "C11739300",
+    "roundtrip TDF3, decrypt reading the TDF from a redirect": "C11739301",
+    "inspect reads a TDF from a file and from stdin": "C11739302",
+    "encrypt rejects empty stdin": "C11739303",
+    "decrypt rejects empty stdin": "C11739304",
+    "encrypt leaves no output behind when it fails": "C11739305",
+    "decrypt leaves no output behind when it fails": "C11739306",
+    "decrypt leaves an existing output file untouched when it fails": "C11739307",
+    "decrypt to /dev/null succeeds and leaves the device node alone": "C11739308",
+    "encrypt measures a file and streams a pipe": "C11739309",
+    "encrypt streams a process substitution": "C11739310",
+    "encrypt streams a multi-segment pipe": "C11739311",
+    "encrypt and decrypt peak memory stay bounded on a large payload": "C11739312"
   },
   "KAS Grants": {
     "Unassign rejects more than one type of grant at once": "C793434",

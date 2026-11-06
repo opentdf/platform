@@ -324,6 +324,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				m: []string{http.MethodPost},
 			}
 			// Connect promotes the HTTP authority into Host before running interceptors.
+			// Ingress must reject unknown authorities and prevent direct access to this
+			// service that bypasses authority validation.
 			// Accept both schemes for deployments that terminate TLS before this server.
 			if host := req.Header().Get("Host"); host != "" {
 				ri.u = append(ri.u,

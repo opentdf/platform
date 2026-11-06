@@ -40,7 +40,7 @@ func NewAuthorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Authorizer, e
 	log.Info(
 		"casbin authorizer initialized",
 		slog.String("version", authorizer.Version()),
-		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
+		slog.Bool("supports_resource_auth", authorizer.SupportsResourceAuthorization()),
 	)
 
 	return authorizer, nil

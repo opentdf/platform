@@ -492,7 +492,9 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		dp := r.Header.Values("Dpop")
+		// The proofs are attacker-controlled request headers, so only their count is
+		// ever logged; logging the values verbatim trips CodeQL go/clear-text-logging.
+		dp := r.Header.Values("DPoP")
 		log := a.logger
 
 		// Verify the token
@@ -537,7 +539,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 					ctxWithAuthX,
 					"unauthenticated",
 					slog.Any("error", err),
-					slog.Any("dpop", dp),
+					slog.Int("dpop_proof_count", len(dp)),
 				)
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
@@ -546,7 +548,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
-				slog.Any("dpop", dp),
+				slog.Int("dpop_proof_count", len(dp)),
 			)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return

@@ -42,6 +42,27 @@ func (c AuthNConfig) dpopEnforced() bool {
 	return c.DPoP.Enforce || c.EnforceDPoP // honor deprecated EnforceDPoP during migration
 }
 
+// dpopFutureIATSkew is how far ahead of server time a DPoP proof's `iat` may be
+// and still be accepted, so clients whose clocks run slightly fast are not
+// rejected (RFC 9449 §11.1). It reuses the access-token clock skew
+// (server.auth.skew); a negative value is treated as zero.
+func (c AuthNConfig) dpopFutureIATSkew() time.Duration {
+	return max(c.TokenSkew, 0)
+}
+
+// dpopReplayTTL is how long a DPoP proof's `jti` must be remembered to reject
+// replays. A proof is accepted while its `iat` is at most dpopFutureIATSkew
+// ahead of server time and no older than DPoPSkew, so a proof first seen at t
+// stays acceptable until t + dpopFutureIATSkew + DPoPSkew. The extra second
+// covers the inclusive boundary of the `iat` age check.
+func (c AuthNConfig) dpopReplayTTL() time.Duration {
+	window := c.DPoPSkew
+	if window <= 0 {
+		window = time.Hour
+	}
+	return window + c.dpopFutureIATSkew() + time.Second
+}
+
 type DPoPConfig struct {
 	// Enforce requires access tokens to be DPoP-bound. Replaces the deprecated
 	// top-level server.auth.enforceDPoP field.

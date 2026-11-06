@@ -131,8 +131,8 @@ Root level key `server`
 | `auth.issuer`           | The issuer for the IDP.                                                                                       |         | OPENTDF_SERVER_AUTH_ISSUER           |
 | `auth.policy`           | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization) |         |                                      |
 | `auth.cache_refresh`    | Interval in which the IDP jwks should be refreshed                                                            | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH    |
-| `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
-| `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
+| `auth.dpopskew`         | The maximum age of a DPoP proof: how long after its `iat` the server still accepts it.                         | `1h`    | OPENTDF_SERVER_AUTH_DPOPSKEW         |
+| `auth.skew`             | The clock drift allowed between clients and the server: applied to access token time claims (`exp`, `nbf`, `iat`) and to how far in the future a DPoP proof's `iat` may be. | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | [DEPRECATED] The oidc client id. This is leveraged by otdfctl.                                                |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
 | `auth.dpop.enforce`     | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE     |
 | `auth.enforceDPoP`      | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.              | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |

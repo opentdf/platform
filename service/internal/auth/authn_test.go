@@ -1206,7 +1206,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodGet, "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "\"iat\" not satisfied"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "beyond the allowed clock skew"},
 		{
 			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
@@ -1330,6 +1330,171 @@ func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
 	s.Require().Error(err, "replaying the same proof should be rejected")
 	s.Contains(err.Error(), "replay")
+}
+
+// Test_CheckToken_DPoPIssuedAtWindow covers the DPoP proof `iat` acceptance
+// window: a proof from a client whose clock runs ahead is accepted up to
+// server.auth.skew (DSPX-5486), beyond that it is rejected as clock skew, and
+// the age bound (server.auth.dpopskew) is unchanged.
+func (s *AuthSuite) Test_CheckToken_DPoPIssuedAtWindow() {
+	// Whole-second server time so the proof's `iat` (whole seconds) lands exactly
+	// on each boundary.
+	now := time.Now().Truncate(time.Second)
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+	ri := receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}}
+
+	for _, tc := range []struct {
+		name      string
+		tokenSkew time.Duration
+		iatOffset time.Duration
+		wantErr   string
+	}{
+		{name: "client clock 3s ahead", tokenSkew: time.Minute, iatOffset: 3 * time.Second},
+		{name: "client clock ahead by exactly skew", tokenSkew: time.Minute, iatOffset: time.Minute},
+		{name: "client clock ahead beyond skew", tokenSkew: time.Minute, iatOffset: time.Minute + time.Second, wantErr: "beyond the allowed clock skew of 1m0s"},
+		{name: "zero skew rejects any future iat", tokenSkew: 0, iatOffset: time.Second, wantErr: "beyond the allowed clock skew of 0s"},
+		{name: "negative skew treated as zero", tokenSkew: -time.Minute, iatOffset: 0},
+		{name: "proof exactly dpopskew old", tokenSkew: time.Minute, iatOffset: -time.Hour},
+		{name: "proof older than dpopskew", tokenSkew: time.Minute, iatOffset: -time.Hour - time.Second, wantErr: "the DPoP JWT has expired"},
+	} {
+		s.Run(tc.name, func() {
+			auth := *s.auth
+			auth.oidcConfiguration.TokenSkew = tc.tokenSkew
+			auth.timeNow = func() time.Time { return now }
+
+			dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+				key:              dpopPublic,
+				actualSigningKey: dpopKey,
+				accessToken:      signedTok,
+				alg:              jwa.RS256,
+				typ:              dpopJWTType,
+				htm:              http.MethodPost,
+				htu:              "/a/path",
+				iat:              now.Add(tc.iatOffset),
+			})
+
+			_, _, err := auth.checkToken(s.T().Context(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+			if tc.wantErr == "" {
+				s.Require().NoError(err)
+				return
+			}
+			var proofErr *DPoPProofError
+			s.Require().ErrorAs(err, &proofErr)
+			s.Contains(err.Error(), tc.wantErr)
+		})
+	}
+}
+
+// Test_CheckToken_RejectsReplayedFutureDatedDPoP verifies that the replay cache
+// covers the extended acceptance window: a proof dated server.auth.skew in the
+// future stays fresh for skew + dpopskew, so its `jti` must be remembered for
+// that long or the proof could be replayed near the end of its lifetime.
+func (s *AuthSuite) Test_CheckToken_RejectsReplayedFutureDatedDPoP() {
+	start := time.Now().Truncate(time.Second)
+	clock := start
+	auth := *s.auth
+	auth.timeNow = func() time.Time { return clock }
+	skew := auth.oidcConfiguration.TokenSkew
+	maxAge := auth.oidcConfiguration.DPoPSkew
+
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+		key:              dpopPublic,
+		actualSigningKey: dpopKey,
+		accessToken:      signedTok,
+		alg:              jwa.RS256,
+		typ:              dpopJWTType,
+		htm:              http.MethodPost,
+		htu:              "/a/path",
+		iat:              start.Add(skew),
+	})
+	ri := receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}}
+	present := func() error {
+		_, _, err := auth.checkToken(s.T().Context(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+		return err
+	}
+
+	s.Require().NoError(present(), "a proof dated skew in the future should be accepted")
+
+	// At the last instant the proof is still fresh, so only the replay cache stops it.
+	clock = start.Add(skew + maxAge)
+	err := present()
+	s.Require().Error(err, "replay at the end of the extended window should be rejected")
+	s.Contains(err.Error(), "replay")
+
+	// Past the window the proof has aged out.
+	clock = start.Add(skew + maxAge + time.Second)
+	err = present()
+	s.Require().Error(err)
+	s.Contains(err.Error(), "the DPoP JWT has expired")
+}
+
+// Test_CheckToken_DPoPClockSkew_LogsSkewWithoutProof verifies that a proof
+// rejected for a future `iat` is logged as clock skew without logging the proof
+// or the access token.
+func (s *AuthSuite) Test_CheckToken_DPoPClockSkew_LogsSkewWithoutProof() {
+	var logs bytes.Buffer
+	auth := *s.auth
+	auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
+
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+		key:              dpopPublic,
+		actualSigningKey: dpopKey,
+		accessToken:      signedTok,
+		alg:              jwa.RS256,
+		typ:              dpopJWTType,
+		htm:              http.MethodPost,
+		htu:              "/a/path",
+		iat:              time.Now().Add(5 * time.Minute),
+	})
+
+	_, _, err := auth.checkToken(
+		s.T().Context(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{dpopToken},
+	)
+
+	var proofErr *DPoPProofError
+	s.Require().ErrorAs(err, &proofErr)
+	s.Contains(logs.String(), "failed to validate dpop")
+	s.Contains(logs.String(), "clock skew")
+	s.NotContains(logs.String(), dpopToken)
+	s.NotContains(logs.String(), string(signedTok))
+}
+
+// Test_CheckToken_DPoPProofExpClaimEnforced verifies that an optional `exp`
+// claim on a DPoP proof is still enforced now that time claims are validated
+// outside jwt.Parse.
+func (s *AuthSuite) Test_CheckToken_DPoPProofExpClaimEnforced() {
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+	headers := jws.NewHeaders()
+	s.Require().NoError(headers.Set(jws.JWKKey, dpopPublic))
+	s.Require().NoError(headers.Set(jws.TypeKey, dpopJWTType))
+
+	ath := sha256.Sum256(signedTok)
+	now := time.Now()
+	proof, err := jwt.NewBuilder().
+		Claim("htu", "/a/path").
+		Claim("htm", http.MethodPost).
+		Claim("ath", base64.RawURLEncoding.EncodeToString(ath[:])).
+		Claim("jti", "exp-claim-test").
+		IssuedAt(now).
+		Expiration(now.Add(-2 * time.Minute)). // past even with the 1m skew allowance
+		Build()
+	s.Require().NoError(err)
+	signedProof, err := jwt.Sign(proof, jwt.WithKey(jwa.RS256, dpopKey, jws.WithProtectedHeaders(headers)))
+	s.Require().NoError(err)
+
+	_, _, err = s.auth.checkToken(
+		s.T().Context(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{string(signedProof)},
+	)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid time claims in DPoP JWT")
 }
 
 // Test_ConnectAuthNInterceptor_PropagatesHTTPMethod verifies that the Connect

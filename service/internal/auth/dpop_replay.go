@@ -6,9 +6,10 @@ import (
 )
 
 // dpopReplayCache rejects replayed DPoP proofs by their `jti` value within the
-// acceptance window, per RFC 9449 §11.1. Entries expire after ttl (set to the
-// DPoP `iat` skew): a proof older than that window is already rejected by the
-// `iat` freshness check, so the `jti` need not be remembered any longer.
+// acceptance window, per RFC 9449 §11.1. Entries expire after ttl (see
+// AuthNConfig.dpopReplayTTL, which spans both the past and future `iat`
+// tolerances): after that the proof is already rejected by the `iat` freshness
+// check, so the `jti` need not be remembered any longer.
 type dpopReplayCache struct {
 	mu     sync.Mutex
 	seen   map[string]time.Time // jti -> expiry

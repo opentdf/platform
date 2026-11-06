@@ -538,6 +538,78 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	}
 }
 
+func (s *AuthSuite) TestDPoPFullURLValidation() {
+	const procedure = "/test.v1.DPoPService/Check"
+	const target = "https://api.example.test:8443" + procedure
+	publicKey, err := s.key.PublicKey()
+	s.Require().NoError(err)
+	s.Require().NoError(s.key.Set(jwk.AlgorithmKey, jwa.RS256))
+	thumbprint, err := publicKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	tok, err := jwt.NewBuilder().Issuer(s.server.URL).Audience([]string{"test"}).
+		Expiration(time.Now().Add(time.Hour)).
+		Claim("cnf", map[string]string{"jkt": base64.RawURLEncoding.EncodeToString(thumbprint)}).Build()
+	s.Require().NoError(err)
+	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	otherRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	otherKey, err := jwk.FromRaw(otherRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	otherPublic, err := otherKey.PublicKey()
+	s.Require().NoError(err)
+
+	for _, tt := range []struct {
+		name         string
+		mutate       func(*dpopTestCase)
+		missingProof bool
+		absoluteOnly bool
+		errorMessage string
+	}{
+		{name: "full URL"},
+		{name: "normalized URL", mutate: func(tc *dpopTestCase) { tc.htu = "HTTPS://API.EXAMPLE.TEST:8443" + procedure + "?ignored=1#fragment" }},
+		{name: "legacy path", mutate: func(tc *dpopTestCase) { tc.htu = procedure }},
+		{name: "wrong host", mutate: func(tc *dpopTestCase) { tc.htu = "https://other.example.test:8443" + procedure }, errorMessage: "incorrect `htu`"},
+		{name: "wrong port", mutate: func(tc *dpopTestCase) { tc.htu = "https://api.example.test:8444" + procedure }, errorMessage: "incorrect `htu`"},
+		{name: "wrong path", mutate: func(tc *dpopTestCase) { tc.htu = "https://api.example.test:8443/other" }, errorMessage: "incorrect `htu`"},
+		{name: "wrong method", mutate: func(tc *dpopTestCase) { tc.htm = http.MethodGet }, errorMessage: "incorrect `htm`"},
+		{name: "wrong signature", mutate: func(tc *dpopTestCase) { tc.actualSigningKey = otherKey }, errorMessage: "failed to verify signature"},
+		{name: "wrong proof key", mutate: func(tc *dpopTestCase) { tc.key, tc.actualSigningKey = otherPublic, otherKey }, errorMessage: "didn't match the thumbprint"},
+		{name: "wrong token hash", mutate: func(tc *dpopTestCase) { tc.ath = "wrong" }, errorMessage: "incorrect `ath`"},
+		{name: "stale proof", mutate: func(tc *dpopTestCase) { tc.iat = time.Now().Add(-2 * s.auth.oidcConfiguration.DPoPSkew) }, errorMessage: "DPoP JWT has expired"},
+		{name: "missing proof", missingProof: true, errorMessage: "got 0 dpop headers"},
+		{name: "relative proof rejected against absolute-only candidates", absoluteOnly: true, mutate: func(tc *dpopTestCase) { tc.htu = procedure }, errorMessage: "incorrect `htu`"},
+	} {
+		s.Run(tt.name, func() {
+			tc := dpopTestCase{
+				key: publicKey, actualSigningKey: s.key, accessToken: signed,
+				alg: jwa.RS256, typ: "dpop+jwt", htm: http.MethodPost, htu: target,
+			}
+			if tt.mutate != nil {
+				tt.mutate(&tc)
+			}
+			var proofs []string
+			if !tt.missingProof {
+				proofs = []string{makeDPoPToken(s.T(), tc)}
+			}
+			acceptable := []string{target}
+			if !tt.absoluteOnly {
+				acceptable = append(acceptable, procedure)
+			}
+			_, ctx, err := s.auth.checkToken(s.T().Context(), []string{"DPoP " + string(signed)},
+				receiverInfo{u: acceptable, m: []string{http.MethodPost}}, proofs)
+			if tt.errorMessage != "" {
+				s.Require().ErrorContains(err, tt.errorMessage)
+				return
+			}
+			s.Require().NoError(err)
+			s.NotNil(ctxAuth.GetJWKFromContext(ctx, s.auth.logger))
+		})
+	}
+}
+
 func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.37.0](https://github.com/opentdf/platform/compare/sdk/v0.36.0...sdk/v0.37.0) (2026-11-06)
+
+
+### Features
+
+* **sdk:** load TDFs from HTTP(S) URLs using range requests ([#4221](https://github.com/opentdf/platform/issues/4221)) ([57f15c4](https://github.com/opentdf/platform/commit/57f15c4a9a768ce7fbe0b43c8aebc850edaf097c))
+
+
+### Bug Fixes
+
+* **sdk:** accept mlkem-wrapped key access in manifest schemas (DSPX-4388) ([#4253](https://github.com/opentdf/platform/issues/4253)) ([25a734a](https://github.com/opentdf/platform/commit/25a734a6227530b9d683e4e73e5c8dfe0f3c13ec))
+* **sdk:** skip the segment ending at the cursor in Reader.WriteTo ([#4233](https://github.com/opentdf/platform/issues/4233)) ([55b2e14](https://github.com/opentdf/platform/commit/55b2e14805b986b38f1c0981a094745121906752))
+
 ## [0.36.0](https://github.com/opentdf/platform/compare/sdk/v0.35.0...sdk/v0.36.0) (2026-10-30)
 
 

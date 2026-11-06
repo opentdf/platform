@@ -44,6 +44,25 @@ func TestDPoPReplayCache_GCPrunesExpiredEntries(t *testing.T) {
 	assert.Len(t, c.seen, 1, "expired entries should be pruned, leaving only the new jti")
 }
 
+// The replay TTL must span the whole `iat` acceptance window: up to TokenSkew in
+// the future plus DPoPSkew in the past.
+func TestAuthNConfig_DPoPReplayTTL(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cfg  AuthNConfig
+		want time.Duration
+	}{
+		{name: "defaults", cfg: AuthNConfig{DPoPSkew: time.Hour, TokenSkew: time.Minute}, want: time.Hour + time.Minute + time.Second},
+		{name: "unset dpopskew falls back to 1h", cfg: AuthNConfig{TokenSkew: time.Minute}, want: time.Hour + time.Minute + time.Second},
+		{name: "zero skew", cfg: AuthNConfig{DPoPSkew: 10 * time.Minute}, want: 10*time.Minute + time.Second},
+		{name: "negative skew adds nothing", cfg: AuthNConfig{DPoPSkew: time.Hour, TokenSkew: -time.Minute}, want: time.Hour + time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.cfg.dpopReplayTTL())
+		})
+	}
+}
+
 func TestDPoPReplayCache_ZeroTTLDoesNotPanic(t *testing.T) {
 	c := newDPoPReplayCache(0)
 	now := time.Now()

@@ -113,6 +113,9 @@ type Authentication struct {
 	dpopNonceManager *dpopNonceManager
 	// dpopReplayCache rejects replayed DPoP proofs by `jti`
 	dpopReplayCache *dpopReplayCache
+	// timeNow is the clock for DPoP proof freshness and replay checks; nil
+	// means time.Now. Tests override it to move through the acceptance window.
+	timeNow func() time.Time
 
 	// Used for testing
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
@@ -202,20 +205,14 @@ func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
-	// Remember DPoP `jti` values for the acceptance window so a captured proof
-	// cannot be replayed; a proof older than DPoPSkew is rejected by the `iat`
-	// check, so the cache TTL tracks that window.
-	replayTTL := cfg.DPoPSkew
-	if replayTTL <= 0 {
-		replayTTL = time.Hour
-	}
-
 	a := &Authentication{
 		enforceDPoP:      cfg.dpopEnforced(),
 		strictDPoPHTU:    cfg.DPoP.StrictHTU,
 		logger:           logger,
 		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
-		dpopReplayCache:  newDPoPReplayCache(replayTTL),
+		// Remember DPoP `jti` values for as long as a proof can pass the `iat`
+		// checks so a captured proof cannot be replayed.
+		dpopReplayCache: newDPoPReplayCache(cfg.dpopReplayTTL()),
 	}
 
 	// Apply options
@@ -1367,19 +1364,44 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
-	// in the validated access token
-	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
+	// in the validated access token. Time claims are checked below rather than by
+	// jwt.Parse, whose default validation rejects any `iat` ahead of server time.
+	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey), jwt.WithValidate(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT: %w", err)
 	}
+
+	now := a.now()
+	futureSkew := a.oidcConfiguration.dpopFutureIATSkew()
 
 	issuedAt := dpopToken.IssuedAt()
 	if issuedAt.IsZero() {
 		return nil, errors.New("missing `iat` claim in the DPoP JWT")
 	}
 
-	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(time.Now()) {
+	// RFC 9449 §11.1: tolerate an `iat` slightly in the future to accommodate
+	// client clock offsets. The replay cache TTL (dpopReplayTTL) covers this
+	// extra window.
+	if ahead := issuedAt.Sub(now); ahead > futureSkew {
+		return nil, fmt.Errorf(
+			"the DPoP JWT `iat` is %s ahead of server time, beyond the allowed clock skew of %s (server.auth.skew); check that the client clock is synchronized",
+			ahead.Round(time.Millisecond), futureSkew,
+		)
+	}
+
+	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(now) {
 		return nil, errors.New("the DPoP JWT has expired")
+	}
+
+	// Optional `exp`/`nbf` claims are still enforced, with the same skew allowance.
+	if err := jwt.Validate(dpopToken,
+		jwt.WithClock(jwt.ClockFunc(func() time.Time { return now })),
+		jwt.WithAcceptableSkew(futureSkew),
+		jwt.WithResetValidators(true),
+		jwt.WithValidator(jwt.IsExpirationValid()),
+		jwt.WithValidator(jwt.IsNbfValid()),
+	); err != nil {
+		return nil, fmt.Errorf("invalid time claims in DPoP JWT: %w", err)
 	}
 
 	htma, ok := dpopToken.Get("htm")
@@ -1451,11 +1473,18 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	if !ok {
 		return nil, errors.New("`jti` claim invalid format in DPoP JWT")
 	}
-	if a.dpopReplayCache.observe(jti, time.Now()) {
+	if a.dpopReplayCache.observe(jti, now) {
 		return nil, errors.New("DPoP proof replay detected; `jti` already used")
 	}
 
 	return dpopKey, nil
+}
+
+func (a Authentication) now() time.Time {
+	if a.timeNow == nil {
+		return time.Now()
+	}
+	return a.timeNow()
 }
 
 func (a Authentication) isPublicRoute(path string) func(string) bool {

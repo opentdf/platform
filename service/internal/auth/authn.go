@@ -323,6 +323,14 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				u: []string{req.Spec().Procedure},
 				m: []string{http.MethodPost},
 			}
+			// Connect promotes the HTTP authority into Host before running interceptors.
+			// Accept both schemes for deployments that terminate TLS before this server.
+			if host := req.Header().Get("Host"); host != "" {
+				ri.u = append(ri.u,
+					"http://"+host+req.Spec().Procedure,
+					"https://"+host+req.Spec().Procedure,
+				)
+			}
 
 			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
 
@@ -634,7 +642,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
-	if !slices.Contains(dpopInfo.u, htu) {
+	if !slices.Contains(dpopInfo.u, htu) && !absoluteHTUMatches(htu, dpopInfo.u) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 

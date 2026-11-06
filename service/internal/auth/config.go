@@ -52,6 +52,12 @@ type DPoPConfig struct {
 	// (scheme + host). When false (default), a path-only htu is accepted as
 	// long as the path matches, easing SDK skew during rollout.
 	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
+	// StrictScheme rejects a DPoP-bound access token (one carrying a `cnf`
+	// claim) presented under the Bearer Authorization scheme, as RFC 9449 §7.2
+	// requires. When false (default), such a request is accepted with a warning
+	// log, easing SDK skew during rollout: web-sdk still presents DPoP-bound
+	// tokens under Bearer (DSPX-3573).
+	StrictScheme bool `mapstructure:"strict_scheme" json:"strict_scheme" default:"false"`
 }
 
 func (c DPoPConfig) Validate() error {

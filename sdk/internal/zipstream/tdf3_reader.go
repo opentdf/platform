@@ -9,6 +9,11 @@ import (
 	"math"
 )
 
+// ErrManifestTooLarge reports a manifest that exceeds the configured bound.
+// It is exported so the parent SDK can expose the same error identity without
+// duplicating ZIP parsing.
+var ErrManifestTooLarge = errors.New("tdf manifest exceeds maximum size")
+
 type TDFReader struct {
 	archiveReader Reader
 	// manifestMaxSize caps the manifest entry in bytes. Zero, the default,
@@ -64,6 +69,9 @@ func (tdfReader TDFReader) Manifest() (string, error) {
 		}
 	}
 	if err != nil {
+		if errors.Is(err, errZipFileSizeError) {
+			return "", fmt.Errorf("%w: %w", ErrManifestTooLarge, err)
+		}
 		return "", err
 	}
 	return string(fileContent), nil

@@ -473,6 +473,12 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 // Some invalid manifests are still usable, so this file may still be usable.
 var ErrInvalidPerSchema = errors.New("manifest was not valid")
 
+// ErrTDFManifestTooLarge reports a manifest that exceeds the bound used while
+// detecting or loading a TDF.
+var ErrTDFManifestTooLarge = zipstream.ErrManifestTooLarge
+
+const defaultIsValidTDFManifestMaxSize = 1<<28
+
 //go:embed schema/manifest-lax.schema.json
 var manifestLaxSchema []byte
 
@@ -483,13 +489,29 @@ var manifestStrictSchema []byte
 // Then attempts to extract a manifest, then finally it validates the manifest using the json schema
 // If any of the checks fail, it will return false.
 //
+// IsValidTdf uses a 10 MiB manifest bound because it is commonly called on
+// untrusted input just to detect a TDF. Pass WithMaxManifestSize to override
+// that bound for a caller with a larger, trusted manifest budget. Pass
+// WithSchemaValidation to select a different manifest validation intensity.
+// The limit is checked from ZIP metadata before the manifest is read or parsed.
+// LoadTDF has no manifest limit by default.
+//
 // Something to keep in mind is that if we make updates to the schema, such as making certain fields
 // 'required', older TDF versions will fail despite being valid. So each time we release an update to
 // the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
 // to validate against all previously known schema versions.
-func IsValidTdf(reader io.ReadSeeker) (bool, error) {
-	// create tdf reader
-	tdfReader, err := zipstream.NewTDFReader(reader)
+func IsValidTdf(reader io.ReadSeeker, opts ...TDFReaderOption) (bool, error) {
+	config := &TDFReaderConfig{
+		maxManifestSize:           defaultIsValidTDFManifestMaxSize,
+		schemaValidationIntensity: Lax,
+	}
+	for _, opt := range opts {
+		if err := opt(config); err != nil {
+			return false, err
+		}
+	}
+
+	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(config.maxManifestSize))
 	if err != nil {
 		return false, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}
@@ -499,7 +521,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
-	return isValidManifest(manifest, Lax)
+	return isValidManifest(manifest, config.schemaValidationIntensity)
 }
 
 func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool, error) {

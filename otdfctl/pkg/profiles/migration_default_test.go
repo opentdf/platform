@@ -3,7 +3,7 @@ package profiles
 import (
 	"testing"
 
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
 )
 
 func TestMigratePreservesIntentionalEmptyDefault(t *testing.T) {

@@ -31,6 +31,16 @@ First, in a separate prerequisite PR, mechanically copy the pinned `go-osprofile
 
 OpenTDF /otdfctl maintainers own this independent in-tree fork, including future fixes and security updates; there is no ongoing upstream-sync obligation.
 
+### Follow-on: public profile-store integration
+
+After the initial internal copy and extension implementation, promote the existing
+engine to `otdfctl/pkg/profilestore` so applications with their own profile schemas
+can import it, including its filesystem driver. This supersedes the initial
+internal-only placement without changing the recorded sequencing or maintenance
+ownership. Preserve the existing APIs, persisted identities, fixtures, provenance,
+and license; document integration and security boundaries alongside the public
+package. This promotion does not add consumer-specific adapters or migrations.
+
 ### Consequences
 
 * 🟩 **Good:** consumers share existing storage while owning isolated, typed settings.

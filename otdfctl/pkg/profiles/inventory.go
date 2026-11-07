@@ -1,7 +1,7 @@
 package profiles
 
 import (
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
 )
 

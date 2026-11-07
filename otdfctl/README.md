@@ -23,6 +23,13 @@ On Linux, persistent profiles require an available, unlocked Secret Service keyr
 
 Load up the platform (see its [README](https://github.com/opentdf/platform?tab=readme-ov-file#run) for instructions).
 
+## Go profile-store integration
+
+Applications that need their own profile schema can import the public
+[`pkg/profilestore`](pkg/profilestore/README.md) package. Its integration guide
+covers custom profiles, encrypted filesystem storage, OS credential-store
+requirements, and compatibility boundaries.
+
 ## Development
 
 ### CLI

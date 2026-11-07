@@ -138,6 +138,8 @@ func FuzzLoadTDF(f *testing.F) {
 		"HCDH2fQf//////////1BLAQItAC0ACAAAAF2CRjErOASPHwAAAB8AAAAJAAAAAAAAAAAAAA" +
 		"AAAAAAAAAwLnBheWxvYWRQSwECLQAtAAgAAABdgkYxMfZ9BwIFAAACBQAADwAAAAAAAAAAA" +
 		"AAAAABWAAAAMC5tYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAdAAAAJUFAAAAAA=="))
+	// DSPX-5102: a manifest declaring a cleartext payload.
+	f.Add(zipWithManifest(f, cleartextManifestJSON))
 	// fuzzed failure from above seed with size overflow, will fail on WriteTo action
 	f.Add(unverifiedBase64Bytes("UEsDBC0ACAAAAF2uLzEAAAAAAAAAAAAAAAAJAAAAM" +
 		"C5wYXlsb2FkThU3KcYXLpEEfhvsuHrxvIer1/zmhcGctLZ6o0RNOFBLBwhp296fHwAAAB8A" +

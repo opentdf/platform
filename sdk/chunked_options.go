@@ -213,6 +213,19 @@ func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 	}
 }
 
+// WithChunkedUnprefixedManifestName stores the manifest under the zip
+// entry name manifest.json instead of the legacy 0.manifest.json. See
+// WithUnprefixedManifestName for the compatibility caveat. A pre-4.3.0
+// WithChunkedTargetMode overrides this option.
+//
+// Experimental: not part of the stable SDK API; may change or be removed.
+func WithChunkedUnprefixedManifestName() ChunkedWriterOption {
+	return func(c *chunkedWriterConfig) error {
+		c.unprefixedManifestName = true
+		return nil
+	}
+}
+
 // WithChunkedMimeType records the payload MIME type in the manifest.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.

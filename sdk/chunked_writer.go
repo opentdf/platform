@@ -24,7 +24,7 @@ import (
 // outside. For archiveWriterFactory it is the signature that closes the seam,
 // not the return type's implementability: a struct declared anywhere with the
 // right method set satisfies zipstream.SegmentWriter, but no code outside this
-// package can spell `func(clock) zipstream.SegmentWriter` — clock is
+// package can spell `func(clock, ...zipstream.Option) zipstream.SegmentWriter` — clock is
 // unexported and zipstream lives under internal/ — so a factory value cannot
 // be constructed to pass in.
 
@@ -80,8 +80,9 @@ func defaultSegmentCipherFactory(dek []byte) (segmentCipher, error) {
 
 // archiveWriterFactory builds a zipstream.SegmentWriter for a new TDF. It
 // receives the writer's clock so ZIP header timestamps stay injectable
-// end-to-end.
-type archiveWriterFactory func(c clock) zipstream.SegmentWriter
+// end-to-end, and options forwarded from the chunked layer. Implementations
+// must pass opts through to zipstream.NewSegmentTDFWriter.
+type archiveWriterFactory func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter
 
 // defaultArchiveWriterFactory returns a ZIP64-enabled segment writer with its
 // clock plumbed to the caller-supplied clock.
@@ -92,11 +93,9 @@ type archiveWriterFactory func(c clock) zipstream.SegmentWriter
 // consulted solely when no explicit segment order has been set, and
 // zipstream's Finalize always derives an order from the segments actually
 // present before it checks completeness.
-func defaultArchiveWriterFactory(c clock) zipstream.SegmentWriter {
-	return zipstream.NewSegmentTDFWriter(1,
-		zipstream.WithZip64(),
-		zipstream.WithClock(c.Now),
-	)
+func defaultArchiveWriterFactory(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
+	archiveOpts := append([]zipstream.Option{zipstream.WithZip64(), zipstream.WithClock(c.Now)}, opts...)
+	return zipstream.NewSegmentTDFWriter(1, archiveOpts...)
 }
 
 // Sentinel errors returned by [ChunkedWriter].
@@ -403,6 +402,11 @@ type chunkedWriterConfig struct {
 	// keyAccess is set.
 	splitter KeySplitter
 
+	// unprefixedManifestName writes the manifest under the entry name
+	// manifest.json instead of the legacy 0.manifest.json. Ignored when
+	// useHex is set. Set by WithChunkedUnprefixedManifestName.
+	unprefixedManifestName bool
+
 	// useHex hex-encodes segment, root, and assertion signatures
 	// before base64, producing the doubly-encoded form that readers
 	// older than 4.3.0 require. Set by WithChunkedTargetMode.
@@ -611,8 +615,12 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 	if maxEncryptions == 0 {
 		maxEncryptions = maxAESGCMSegmentsPerDEK
 	}
+	var archiveOpts []zipstream.Option
+	if cfg.unprefixedManifestName && !cfg.useHex {
+		archiveOpts = append(archiveOpts, zipstream.WithUnprefixedManifestName())
+	}
 	return &chunkedWriter{
-		archiveWriter:     cfg.archiveFactory(cfg.clock),
+		archiveWriter:     cfg.archiveFactory(cfg.clock, archiveOpts...),
 		block:             block,
 		dek:               dek,
 		excludeVersion:    cfg.excludeVersion,

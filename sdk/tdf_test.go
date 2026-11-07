@@ -1181,6 +1181,78 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 	}
 }
 
+// assertManifestName checks that exactly one manifest entry exists with the expected name.
+func assertManifestName(t interface {
+	Errorf(string, ...interface{})
+	Helper()
+}, zipFiles []*zip.File, want string,
+) {
+	t.Helper()
+	var hasManifest, hasPrefixed bool
+	for _, f := range zipFiles {
+		if f.Name == "manifest.json" {
+			hasManifest = true
+		}
+		if f.Name == "0.manifest.json" {
+			hasPrefixed = true
+		}
+	}
+	if want == "manifest.json" && !hasManifest {
+		t.Errorf("should have %s", want)
+	}
+	if want == "manifest.json" && hasPrefixed {
+		t.Errorf("should not have 0.manifest.json")
+	}
+	if want == "0.manifest.json" && !hasPrefixed {
+		t.Errorf("should have %s", want)
+	}
+	if want == "0.manifest.json" && hasManifest {
+		t.Errorf("should not have manifest.json")
+	}
+}
+
+func (s *TDFSuite) Test_ManifestEntryName() {
+	for _, tc := range []struct {
+		name         string
+		opts         []TDFOption
+		wantManifest string
+	}{
+		{name: "default stays prefixed", wantManifest: "0.manifest.json"},
+		{name: "unprefixed opt-in", opts: []TDFOption{WithUnprefixedManifestName()}, wantManifest: "manifest.json"},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in first)",
+			opts:         []TDFOption{WithUnprefixedManifestName(), WithTargetMode("4.2.2")},
+			wantManifest: "0.manifest.json",
+		},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in second)",
+			opts:         []TDFOption{WithTargetMode("4.2.2"), WithUnprefixedManifestName()},
+			wantManifest: "0.manifest.json",
+		},
+	} {
+		s.Run(tc.name, func() {
+			kasURL := s.kasTestURLLookup["https://a.kas/"]
+			opts := append([]TDFOption{WithKasInformation(KASInfo{URL: kasURL})}, tc.opts...)
+
+			var buf bytes.Buffer
+			tdfObj, err := s.sdk.CreateTDF(&buf, bytes.NewReader([]byte("payload")), opts...)
+			s.Require().NoError(err)
+
+			// Check ZIP namelist
+			zipReader, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+			s.Require().NoError(err)
+
+			assertManifestName(s.T(), zipReader.File, tc.wantManifest)
+
+			// Verify LoadTDF round-trips
+			r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), WithKasAllowlist([]string{kasURL}))
+			s.Require().NoError(err)
+			s.Require().NotNil(r)
+			s.Equal(tdfObj.Manifest().Policy, r.Manifest().Policy, "manifest should round-trip")
+		})
+	}
+}
+
 func updateManifest(t *testing.T, tdfFile, outFile string, changer func(t *testing.T, dst io.Writer, f *zip.File) error) error {
 	z, err := zip.OpenReader(tdfFile)
 	if err != nil {

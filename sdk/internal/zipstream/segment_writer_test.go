@@ -1011,3 +1011,47 @@ func TestSegmentWriterNonMutatingFinalizeIsRetryable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, append(append([]byte{}, head...), payload...), got)
 }
+
+func TestSegmentWriter_ManifestEntryName(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		opts         []Option
+		wantManifest string
+	}{
+		{name: "default is 0.manifest.json", wantManifest: TDFManifestFileName},
+		{name: "WithUnprefixedManifestName writes manifest.json", opts: []Option{WithUnprefixedManifestName()}, wantManifest: TDFManifestFileNameSpec},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			opts := append([]Option{WithZip64()}, tc.opts...)
+			writer := NewSegmentTDFWriter(1, opts...)
+
+			payload := []byte("test payload")
+			segmentBytes, err := writer.WriteSegment(ctx, 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+			require.NoError(t, err)
+
+			var allBytes []byte
+			allBytes = append(allBytes, segmentBytes...)
+			allBytes = append(allBytes, payload...)
+
+			manifest := []byte(`{"test": true}`)
+			finalBytes, err := writer.Finalize(ctx, manifest)
+			require.NoError(t, err)
+			allBytes = append(allBytes, finalBytes...)
+
+			zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+			require.NoError(t, err)
+			require.Len(t, zipReader.File, 2, "should have payload and manifest")
+
+			var manifestEntry *zip.File
+			for _, f := range zipReader.File {
+				if f.Name != TDFPayloadFileName {
+					manifestEntry = f
+					break
+				}
+			}
+			require.NotNil(t, manifestEntry, "manifest entry must be present")
+			assert.Equal(t, tc.wantManifest, manifestEntry.Name, "manifest entry name")
+		})
+	}
+}

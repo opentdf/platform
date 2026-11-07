@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/opentdf/platform/compare/service/v0.30.0...service/v0.31.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* **authz:** preserve evaluation error codes ([#4265](https://github.com/opentdf/platform/issues/4265)) ([158f698](https://github.com/opentdf/platform/commit/158f69838f474080ebc3502cb3c22fd6e6ad9e51))
+
 ## [0.30.0](https://github.com/opentdf/platform/compare/service/v0.29.0...service/v0.30.0) (2026-11-03)
 
 

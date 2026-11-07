@@ -4,6 +4,7 @@ package zipstream
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"strings"
 	"testing"
@@ -172,4 +173,100 @@ func TestManifest_DeclaredSizeBeyondArchiveRejectedWithoutCap(t *testing.T) {
 		require.ErrorIs(t, err, errZipFormat)
 		require.ErrorContains(t, err, "file data at")
 	}
+}
+
+// WithRequireUnprefixedManifestName turns the prefixed name fallback off
+// entirely, for callers that want to reject archives whose manifest is filed
+// under the legacy 0.manifest.json entry rather than read them.
+// See https://github.com/opentdf/platform/issues/3513.
+func TestManifest_RequireUnprefixedName_RejectsPrefixedName(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "0.manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	manifest, err := reader.Manifest()
+	require.ErrorIs(t, err, ErrPrefixedManifestName)
+	require.Empty(t, manifest)
+}
+
+// The rejection is about the entry name, so it holds for a prefixed manifest
+// over the size cap too: the caller learns the name is wrong, not that an entry
+// it refuses to read is too large.
+func TestManifest_RequireUnprefixedName_RejectsOversizedPrefixedName(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "0.manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data),
+		WithRequireUnprefixedManifestName(), WithTDFManifestMaxSize(int64(len(testManifest)-1)))
+	require.NoError(t, err)
+
+	_, err = reader.Manifest()
+	require.ErrorIs(t, err, ErrPrefixedManifestName)
+	require.NotContains(t, err.Error(), "size too large")
+}
+
+// failingReads serves reads until fail is set, then refuses them all.
+type failingReads struct {
+	*bytes.Reader
+	fail bool
+}
+
+func (r *failingReads) Read(p []byte) (int, error) {
+	if r.fail {
+		return 0, errors.New("unexpected read")
+	}
+	return r.Reader.Read(p)
+}
+
+// Rejecting a prefixed manifest needs only its central-directory entry, so the
+// entry's contents are never read.
+func TestManifest_RequireUnprefixedName_RejectsPrefixedNameWithoutReading(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "0.manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	src := &failingReads{Reader: bytes.NewReader(data)}
+	reader, err := NewTDFReader(src, WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+	src.fail = true
+
+	_, err = reader.Manifest()
+	require.ErrorIs(t, err, ErrPrefixedManifestName)
+}
+
+func TestManifest_RequireUnprefixedName_ReadsUnprefixedName(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: "manifest.json", data: []byte(testManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	manifest, err := reader.Manifest()
+	require.NoError(t, err)
+	require.JSONEq(t, testManifest, manifest)
+}
+
+// An archive with no manifest at all reports a missing entry, not a prefixed
+// name: the two are different problems and a caller may want to tell them
+// apart.
+func TestManifest_RequireUnprefixedName_MissingEntirely(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithRequireUnprefixedManifestName())
+	require.NoError(t, err)
+
+	_, err = reader.Manifest()
+	require.ErrorIs(t, err, errZipFileNotFound)
+	require.NotErrorIs(t, err, ErrPrefixedManifestName)
 }

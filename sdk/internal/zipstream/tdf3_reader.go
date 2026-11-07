@@ -9,6 +9,13 @@ import (
 	"math"
 )
 
+// ErrPrefixedManifestName reports an archive whose manifest is filed under the
+// legacy 0.manifest.json entry name, read by a caller that asked to reject
+// such archives. It is distinct from a missing manifest: the manifest is there,
+// it is just not where the spec says to put it.
+var ErrPrefixedManifestName = errors.New("tdf: manifest entry is named " +
+	TDFManifestFileName + ", not " + TDFManifestFileNameSpec)
+
 type TDFReader struct {
 	archiveReader Reader
 	// manifestMaxSize caps the manifest entry in bytes. Zero, the default,
@@ -16,6 +23,9 @@ type TDFReader struct {
 	// declared size within the physical archive, and very large payloads
 	// legitimately carry manifests well beyond any fixed limit.
 	manifestMaxSize int64
+	// requireUnprefixedManifestName suppresses the legacy 0.manifest.json
+	// fallback in Manifest.
+	requireUnprefixedManifestName bool
 }
 
 type TDFReaderOptions func(*TDFReader)
@@ -25,6 +35,16 @@ type TDFReaderOptions func(*TDFReader)
 func WithTDFManifestMaxSize(size int64) TDFReaderOptions {
 	return func(tdfReader *TDFReader) {
 		tdfReader.manifestMaxSize = size
+	}
+}
+
+// WithRequireUnprefixedManifestName rejects an archive whose manifest is filed
+// under the legacy 0.manifest.json entry name rather than reading it. Off by
+// default: the reader accepts both names so archives written by earlier
+// releases keep working.
+func WithRequireUnprefixedManifestName() TDFReaderOptions {
+	return func(tdfReader *TDFReader) {
+		tdfReader.requireUnprefixedManifestName = true
 	}
 }
 
@@ -51,6 +71,11 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 // but too large is a size failure, and retrying under the other name would
 // both report the wrong reason and, in an archive holding both, hand back the
 // superseded manifest.
+//
+// WithRequireUnprefixedManifestName drops the fallback. The legacy prefixed
+// entry is still looked up in that mode, though never read, so an archive that
+// has one is told apart from an archive that has no manifest at all, whatever
+// the entry's size.
 func (tdfReader TDFReader) Manifest() (string, error) {
 	maxSize := tdfReader.manifestMaxSize
 	if maxSize <= 0 {
@@ -58,10 +83,13 @@ func (tdfReader TDFReader) Manifest() (string, error) {
 	}
 	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameSpec, maxSize)
 	if errors.Is(err, errZipFileNotFound) {
-		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, maxSize)
-		if errors.Is(err, errZipFileNotFound) {
-			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, err)
+		if _, lookupErr := tdfReader.archiveReader.ReadFileSize(TDFManifestFileName); lookupErr != nil {
+			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, lookupErr)
 		}
+		if tdfReader.requireUnprefixedManifestName {
+			return "", ErrPrefixedManifestName
+		}
+		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, maxSize)
 	}
 	if err != nil {
 		return "", err

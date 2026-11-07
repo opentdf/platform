@@ -904,7 +904,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	// create tdf reader
-	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(config.maxManifestSize))
+	zipOpts := []zipstream.TDFReaderOptions{zipstream.WithTDFManifestMaxSize(config.maxManifestSize)}
+	if config.requireUnprefixedManifestName {
+		zipOpts = append(zipOpts, zipstream.WithRequireUnprefixedManifestName())
+	}
+	tdfReader, err := zipstream.NewTDFReader(reader, zipOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}

@@ -137,12 +137,16 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 		return nil, fmt.Errorf("%w: %s", sdk.ErrUnsupportedSegmentIntegrityAlgorithm, config.segmentIntegrityAlg)
 	}
 
-	inner, err := sdk.NewChunkedWriter(ctx,
+	chunkedOpts := []sdk.ChunkedWriterOption{
 		sdk.WithChunkedInitialAttributes(config.initialAttributes),
 		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS),
 		sdk.WithChunkedKeySplitter(xorSplitter{}),
 		sdk.WithChunkedTargetMode(config.targetMode),
-	)
+	}
+	if config.hexlessPolicyBinding {
+		chunkedOpts = append(chunkedOpts, sdk.WithChunkedHexlessPolicyBinding())
+	}
+	inner, err := sdk.NewChunkedWriter(ctx, chunkedOpts...)
 	if err != nil {
 		return nil, err
 	}

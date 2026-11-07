@@ -704,6 +704,90 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 }
 
+// Test_PolicyBindingEncoding checks the policy binding CreateTDF writes is
+// HMAC(payload key, base64 policy) in the expected encoding: legacy
+// Base64(hex(HMAC)) unless the writer opts in to the spec's Base64(HMAC).
+func (s *TDFSuite) Test_PolicyBindingEncoding() {
+	for _, tc := range []struct {
+		name    string
+		opts    []TDFOption
+		wantHex bool
+	}{
+		{name: "default stays legacy", wantHex: true},
+		{name: "hexless opt-in", opts: []TDFOption{WithHexlessPolicyBinding()}},
+		{
+			name:    "legacy target mode overrides opt-in",
+			opts:    []TDFOption{WithHexlessPolicyBinding(), WithTargetMode("4.2.2")},
+			wantHex: true,
+		},
+		{
+			name:    "legacy target mode before opt-in",
+			opts:    []TDFOption{WithTargetMode("4.2.2"), WithHexlessPolicyBinding()},
+			wantHex: true,
+		},
+	} {
+		s.Run(tc.name, func() {
+			kasURL := s.kasTestURLLookup["https://a.kas/"]
+			opts := append([]TDFOption{WithKasInformation(KASInfo{URL: kasURL})}, tc.opts...)
+
+			var buf bytes.Buffer
+			tdfObj, err := s.sdk.CreateTDF(&buf, bytes.NewReader([]byte("bound")), opts...)
+			s.Require().NoError(err)
+
+			r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), WithKasAllowlist([]string{kasURL}))
+			s.Require().NoError(err)
+			payloadKey, err := r.UnsafePayloadKeyRetrieval()
+			s.Require().NoError(err)
+
+			want := ocrypto.CalculateSHA256Hmac(payloadKey, []byte(tdfObj.Manifest().Policy))
+			if tc.wantHex {
+				want = []byte(hex.EncodeToString(want))
+			}
+			s.Require().Len(tdfObj.Manifest().KeyAccessObjs, 1)
+			binding, ok := tdfObj.Manifest().KeyAccessObjs[0].PolicyBinding.(PolicyBinding)
+			s.Require().True(ok, "policy binding should be a PolicyBinding, got %T", tdfObj.Manifest().KeyAccessObjs[0].PolicyBinding)
+			s.Equal(string(ocrypto.Base64Encode(want)), binding.Hash)
+
+			decoded, err := ocrypto.Base64Decode([]byte(binding.Hash))
+			s.Require().NoError(err)
+			if tc.wantHex {
+				// Legacy encoding: Base64(hex(HMAC)) decodes to 64 hex chars
+				s.Require().Len(decoded, 2*sha256.Size, "legacy binding should decode to 64 hex chars")
+			} else {
+				// Hexless encoding: Base64(HMAC) decodes to 32 bytes
+				s.Require().Len(decoded, sha256.Size, "hexless binding should decode to 32 bytes")
+			}
+		})
+	}
+
+	s.Run("two key access objects", func() {
+		kasAURL := s.kasTestURLLookup["https://a.kas/"]
+		kasBURL := s.kasTestURLLookup["https://b.kas/"]
+		opts := []TDFOption{
+			withSplitPlan(
+				keySplitStep{KAS: kasAURL, SplitID: "a"},
+				keySplitStep{KAS: kasBURL, SplitID: "b"},
+			),
+			WithHexlessPolicyBinding(),
+		}
+
+		var buf bytes.Buffer
+		tdfObj, err := s.sdk.CreateTDF(&buf, bytes.NewReader([]byte("bound")), opts...)
+		s.Require().NoError(err)
+
+		s.Require().Len(tdfObj.Manifest().KeyAccessObjs, 2, "should have two key access objects")
+
+		for i, kao := range tdfObj.Manifest().KeyAccessObjs {
+			binding, ok := kao.PolicyBinding.(PolicyBinding)
+			s.Require().True(ok, "KAO %d policy binding should be a PolicyBinding, got %T", i, kao.PolicyBinding)
+
+			decoded, err := ocrypto.Base64Decode([]byte(binding.Hash))
+			s.Require().NoError(err)
+			s.Require().Len(decoded, 32, "KAO %d hexless binding should decode to 32 bytes", i)
+		}
+	})
+}
+
 func (s *TDFSuite) Test_SystemMetadataAssertions() {
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",

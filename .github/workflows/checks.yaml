@@ -110,6 +110,14 @@ jobs:
         run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
+      # fips140=on switches AES-GCM sealing to random IVs; fips140=only also
+      # refuses the RSA-OAEP SHA-1 key wrap, so it is not run here.
+      - name: go test (FIPS 140-3 mode)
+        if: matrix.directory == 'sdk' || matrix.directory == 'lib/ocrypto'
+        run: go test ./... -short
+        working-directory: ${{ matrix.directory }}
+        env:
+          GODEBUG: fips140=on
       - if: matrix.directory == 'service' && github.event_name != 'merge_group'
         run: go test ./service/integration -race -failfast
       - name: setup sqlc

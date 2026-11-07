@@ -119,8 +119,6 @@ func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o Enc
 // holds for SessionKeyAlgorithm in particular: the empty string is not a valid
 // ocrypto.KeyType, so it is left unset rather than forwarded.
 type DecryptOptions struct {
-	// URL, when set, loads the TDF over HTTP(S) range requests instead of from in.
-	URL                           string
 	AssertionVerificationKeysFile string
 	DisableAssertionCheck         bool
 	SessionKeyAlgorithm           ocrypto.KeyType
@@ -200,17 +198,13 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 
 	var r *sdk.Reader
 	var err error
-	if o.URL != "" {
-		r, err = h.sdk.LoadTDFFromURL(ctx, o.URL, opts...)
-	} else {
-		switch sdk.GetTdfType(in) {
-		case sdk.Standard:
-			r, err = h.sdk.LoadTDF(in, opts...)
-		case sdk.Invalid:
-			return errors.New("invalid TDF")
-		default:
-			return errors.New("unknown TDF type")
-		}
+	switch sdk.GetTdfType(in) {
+	case sdk.Standard:
+		r, err = h.sdk.LoadTDF(in, opts...)
+	case sdk.Invalid:
+		return errors.New("invalid TDF")
+	default:
+		return errors.New("unknown TDF type")
 	}
 	if err != nil {
 		return err

@@ -574,9 +574,21 @@ expected_range() {
 
 @test "partial decrypt, piped stdin" {
   partial_setup
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 < partial.txt.tdf > partial.out
+  cat partial.txt.tdf | ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 > partial.out
   expected_range 123 4567
   cmp partial.out expected.out
+}
+
+@test "partial decrypt, length 0 succeeds with empty output" {
+  partial_setup
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 0 partial.txt.tdf > partial.out
+  [ ! -s partial.out ]
+}
+
+@test "partial decrypt, length 0 still unwraps and fails with bad credentials" {
+  partial_setup
+  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify --with-client-creds '{\"clientId\":\"nobody\",\"clientSecret\":\"wrong\"}' --offset 123 --length 0 -o partial.out partial.txt.tdf"
+  assert_failure
 }
 
 @test "partial decrypt, offset beyond end fails without writing output" {

@@ -220,6 +220,11 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 		return fmt.Errorf("offset %d is beyond the end of the payload: %w", o.RangeOffset, err)
 	}
 	if o.RangeLimit == 0 {
+		// Unwrap the key and verify assertions even though no bytes are
+		// read, so a zero-length read fails and is audited like any other.
+		if err := r.Init(ctx); err != nil {
+			return formatDecryptError(ctx, r.Obligations, err)
+		}
 		return nil
 	}
 	if o.RangeLimit > 0 {

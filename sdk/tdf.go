@@ -1498,67 +1498,16 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
-	// Validate assertions
-	for _, assertion := range r.manifest.Assertions {
-		// Skip assertion verification if disabled
-		if r.config.disableAssertionVerification {
-			continue
-		}
-
-		assertionKey := AssertionKey{}
-		// Set default to HS256
-		assertionKey.Alg = AssertionKeyAlgHS256
-		assertionKey.Key = payloadKey[:]
-
-		if !r.config.verifiers.IsEmpty() {
-			// Look up the key for the assertion
-			foundKey, err := r.config.verifiers.Get(assertion.ID)
-
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-			} else if !foundKey.IsEmpty() {
-				assertionKey.Alg = foundKey.Alg
-				assertionKey.Key = foundKey.Key
-			}
-		}
-
-		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
-		if err != nil {
-			if errors.Is(err, errAssertionVerifyKeyFailure) {
-				return fmt.Errorf("assertion verification failed: %w", err)
-			}
-			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		// Get the hash of the assertion
-		hashOfAssertionAsHex, err := assertion.GetHash()
-		if err != nil {
-			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return fmt.Errorf("error decoding hex string: %w", err)
-		}
-
+	// Verify every assertion before any plaintext is released (spec Section
+	// 8). Each assertion is verified with exactly one key, selected from the
+	// reader's configuration by the assertion's exact id, or the payload key
+	// when none is configured; a failure is final.
+	if !r.config.disableAssertionVerification {
 		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
-		}
-
-		if assertionSig != string(base64Hash) {
-			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
+		for _, assertion := range r.manifest.Assertions {
+			if err := verifyManifestAssertion(r.config.verifiers, assertion, payloadKey[:], aggregateHash.Bytes(), isLegacyTDF); err != nil {
+				return err
+			}
 		}
 	}
 

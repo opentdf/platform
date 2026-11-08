@@ -10,9 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/cert"
 	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -219,59 +217,32 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	return nil
 }
 
-// Verify checks the binding signature of the assertion and
-// returns the hash and the signature. It returns an error if the verification fails.
+// Verify checks the assertion's binding with key, and only key, and returns
+// the binding's assertionHash and assertionSig claims.
+//
+// It follows the ZTDF assertions specification, Section 8, steps 3.3 to 3.7:
+// the binding must be a JWS binding (Section 5.1), the JWS alg must equal
+// key's algorithm, and the signature must verify under key. A jwk or x5c in
+// the JWS header never replaces key: it is accepted only if it holds the same
+// public key, and refused when key is an HMAC secret. Verify does not check
+// the claims against the assertion or the payload; the TDF reader does, by
+// comparing them with GetHash and the aggregate segment hash. Errors are
+// ErrAssertionFailure values.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
-	parseOptions := []jwt.ParseOption{
-		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
-	}
-
-	// Try to get a key from the JWS protected header if it exists
-	if decodedSig, err := jws.Parse([]byte(a.Binding.Signature)); err == nil && len(decodedSig.Signatures()) > 0 { //nolint:nestif // many keys
-		sig := decodedSig.Signatures()[0]
-		// First, try to get a JWK from the header
-		if jwkKey := sig.ProtectedHeaders().JWK(); jwkKey != nil {
-			var rawKey interface{}
-			if err := jwkKey.Raw(&rawKey); err == nil {
-				parseOptions = append(parseOptions, jwt.WithKey(sig.ProtectedHeaders().Algorithm(), rawKey))
-			}
-		}
-		// Also try to get a key from x5c (certificate chain) header
-		if x5cChain := sig.ProtectedHeaders().X509CertChain(); x5cChain != nil && x5cChain.Len() > 0 {
-			// Get the first certificate (the signing certificate)
-			certBytes, ok := x5cChain.Get(0)
-			if ok {
-				// Parse the certificate to extract the public key
-				x509Cert, err := cert.Parse(certBytes)
-				if err == nil && x509Cert != nil {
-					parseOptions = append(parseOptions, jwt.WithKey(sig.ProtectedHeaders().Algorithm(), x509Cert.PublicKey))
-				}
-			}
-		}
-	}
-
-	tok, err := jwt.Parse([]byte(a.Binding.Signature), parseOptions...)
+	w, err := a.wire()
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+		return "", "", err
 	}
-	hashClaim, found := tok.Get(kAssertionHash)
-	if !found {
-		return "", "", errors.New("hash claim not found")
+	id := w.knownID()
+	v, err := newConfiguredVerifier(key)
+	if err != nil {
+		return "", "", assertionFailureCause(id, AssertionReasonConfigurationError, "verification key", err)
 	}
-	hash, ok := hashClaim.(string)
-	if !ok {
-		return "", "", errors.New("hash claim is not a string")
+	compact, err := w.jwsBinding(id)
+	if err != nil {
+		return "", "", err
 	}
-
-	sigClaim, found := tok.Get(kAssertionSignature)
-	if !found {
-		return "", "", errors.New("signature claim not found")
-	}
-	sig, ok := sigClaim.(string)
-	if !ok {
-		return "", "", errors.New("signature claim is not a string")
-	}
-	return hash, sig, nil
+	return verifyBindingJWS(id, compact, v)
 }
 
 // GetHash returns the assertion's assertionHash in lowercase hex, computed
@@ -302,8 +273,6 @@ func (a Assertion) wire() (*assertionWire, error) {
 	}
 	return parseAssertionWire(raw)
 }
-
-var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 func (s *Statement) UnmarshalJSON(data []byte) error {
 	// encoding/json passes null to non-pointer fields; by convention, a no-op.
@@ -449,23 +418,45 @@ func (k AssertionKey) IsEmpty() bool {
 }
 
 // AssertionVerificationKeys represents the verification keys for assertions.
+//
+// The reader selects one key per assertion, using its exact id, as the ZTDF
+// assertions specification (Section 6.1) requires: the entry in Keys for that
+// id; otherwise DefaultKey, if it is set; otherwise the payload key with
+// HS256. A failure with the selected key is final: no other key, algorithm,
+// or key embedded in the assertion is tried.
 type AssertionVerificationKeys struct {
-	// Default key to use if the key for the assertion ID is not found.
+	// DefaultKey verifies assertions whose id has no entry in Keys. The zero
+	// value means no default key; a partly set key is a configuration error.
+	//
+	// It applies to every such assertion, including ones bound with the
+	// payload key, such as the system-metadata assertion that Java writers
+	// add, so a file carrying one fails verification. To check only some
+	// assertions with a configured key, set per-ID keys in Keys instead.
 	DefaultKey AssertionKey
-	// Map of assertion ID to key.
+	// Keys maps an exact assertion id to the key that verifies it.
 	Keys map[string]AssertionKey
 }
 
-// Get returns the key for the given assertion ID or the default key if the key is not found.
-// If the default key is not set, it returns an empty key.
+// Get returns the configured key for the assertion with the exact
+// assertionID: its entry in Keys, or else DefaultKey. It returns an empty key
+// and no error when neither is configured, in which case the reader verifies
+// with the payload key. A selected entry that is empty or cannot verify with
+// its algorithm is an ErrAssertionFailure with reason configuration-error;
+// Get never falls through to the next source.
 func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error) {
-	if key, ok := k.Keys[assertionID]; ok {
-		return key, nil
+	key, ok := k.Keys[assertionID]
+	source := "verification key for this id"
+	if !ok {
+		if k.DefaultKey.IsEmpty() {
+			return AssertionKey{}, nil
+		}
+		key = k.DefaultKey
+		source = "default verification key"
 	}
-	if k.DefaultKey.IsEmpty() {
-		return AssertionKey{}, nil
+	if _, err := newConfiguredVerifier(key); err != nil {
+		return AssertionKey{}, assertionFailureCause(assertionID, AssertionReasonConfigurationError, source, err)
 	}
-	return k.DefaultKey, nil
+	return key, nil
 }
 
 // IsEmpty returns true if the default key and the keys map are empty.

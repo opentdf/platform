@@ -574,7 +574,7 @@ expected_range() {
 
 @test "partial decrypt, piped stdin" {
   partial_setup
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 < partial.txt.tdf > partial.out
+  cat partial.txt.tdf | ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 > partial.out
   expected_range 123 4567
   cmp partial.out expected.out
 }

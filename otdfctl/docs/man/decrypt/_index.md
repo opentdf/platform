@@ -97,4 +97,14 @@ Where my_assertion_verification_keys.json looks like:
 {"keys":{"assertion1":{ "alg":"HS256","key":"k0cn4xBcY+49z5gs4OHUs/kbQ3/T8p+uUW9pIQ/9aqE="},"assertion2":{ "alg":"RS256","key":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCsgKCAQEAmr0wRsdXN0O9NiltxoGy\nC6ZYwHbdiPVzvOnm9ven5g7Fpm3HOmygdi021WX1OlSua+OSrXGPjM2xbY3LTrFH\nQXQEITjraXQRp5vlKDbBnOrtjYDaKazBXgTYVdelE4AIAuQaGoTudMasHBGiLPEW\niTL4ySec0NzHn2s72Q4hn5/KJpIJOGqj0SlNViufdNylkjrJ3apoYFv1Mhwi3EF/\niFZQ5encDDJmcG/UYF3msbuHRzArJJQ733BNRvicWF/nqixKxprvm8Ts8a54tr8N\nZ7cEu1u5G6AY/pZFGk4ml8q3v5o1ja7xw2dgpJlS8Tl88tUzs+7GG8Ib8n7mHqeP\nTQIDAQAB\n-----END PUBLIC KEY-----\n"}}}
 ```
 
+Each entry under `keys` verifies only the assertion whose `id` is exactly that name. To verify every other assertion with one key, add a `defaultKey` of the same form:
+
+```json
+{"keys":{"assertion1":{"alg":"HS256","key":"k0cn4xBcY+49z5gs4OHUs/kbQ3/T8p+uUW9pIQ/9aqE="}},"defaultKey":{"alg":"RS256","key":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n"}}
+```
+
+A `defaultKey` applies to every assertion without its own entry, including assertions bound with the payload key, such as the `system-metadata` assertion that Java writers add, so such files fail verification. To check only specific assertions with a configured key, list them under `keys` instead.
+
+Each assertion is verified with one key: its entry under `keys`, otherwise `defaultKey`, otherwise the payload key. Any other top-level member is an error. A key that cannot be used, including an HS256 key given as PEM text, is reported with `reason=configuration-error`.
+
 If no verification keys are provided, the SDK will default to verifying using the payload key. If the assertions were not signed with the payload key, the decrypt call will fail.

@@ -19,7 +19,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -92,7 +91,6 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	if !cfg.Enabled {
 		logger.Info("tracing disabled.")
 		otel.SetTracerProvider(noop.NewTracerProvider())
-		otel.SetMeterProvider(metricnoop.NewMeterProvider())
 		otel.SetTextMapPropagator(propagation.TraceContext{})
 		otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 			logger.ErrorContext(ctx, "otel SDK Error", slog.Any("error", err))
@@ -181,8 +179,6 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 			sdkmetric.WithResource(res),
 		)
 		otel.SetMeterProvider(mp)
-	} else {
-		otel.SetMeterProvider(metricnoop.NewMeterProvider())
 	}
 
 	// 4. Create Tracer Provider

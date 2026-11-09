@@ -42,6 +42,12 @@ var (
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
 	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 
+	// ErrNoKeyAccessObjects is returned when decrypting a TDF whose
+	// encryptionInformation.keyAccess is empty or absent, so no payload key
+	// can be obtained. The reader refuses before any KAS call, integrity
+	// check, or assertion check. Loading and inspecting the TDF still work.
+	ErrNoKeyAccessObjects = fmt.Errorf("[%w] tdf: manifest has no key access objects", ErrTampered)
+
 	// ErrUnsupportedRootIntegrityAlgorithm rejects any root signature algorithm
 	// other than HS256, on both the write and the read path.
 	ErrUnsupportedRootIntegrityAlgorithm = errors.New("tdf: unsupported root integrity algorithm")

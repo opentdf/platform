@@ -1461,6 +1461,12 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		}
 	}
 
+	// Never continue with a key no split contributed to: it would be all
+	// zeros.
+	if len(foundSplits) == 0 && len(skippedSplits) == 0 {
+		return fmt.Errorf("%w: no key split was returned", ErrNoKeyAccessObjects)
+	}
+
 	if len(knownSplits) > len(foundSplits) {
 		v := make([]error, 1, len(skippedSplits))
 		v[0] = fmt.Errorf("splitKey.unable to reconstruct split key: %v", skippedSplits)
@@ -1523,6 +1529,12 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
+	// Without a key access object there is no key to obtain. Refuse before
+	// any KAS call, integrity check, or assertion check.
+	if len(r.manifest.KeyAccessObjs) == 0 {
+		return ErrNoKeyAccessObjects
+	}
+
 	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult

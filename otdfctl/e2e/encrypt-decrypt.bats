@@ -90,7 +90,7 @@ setup() {
 }
 
 teardown() {
-    rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT algorithm-*.txt algorithm-*.txt.tdf legacy-*.txt legacy-*.txt.tdf
+    rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT algorithm-*.txt algorithm-*.txt.tdf legacy-*.txt legacy-*.txt.tdf partial.txt partial.txt.tdf partial.out expected.out
 }
 
 teardown_file(){
@@ -536,4 +536,52 @@ assert_algorithm_roundtrip() {
 
   assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-no-kid.txt.tdf)" "Hello Legacy Config"
   assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-with-kid.txt.tdf)" "Hello Legacy Config with KID"
+}
+
+# Partial decrypt. The plaintext is distinct per byte position (seq) and spans
+# three 2 MiB segments, so ranges can cross a segment boundary.
+partial_setup() {
+  seq 1 700000 > partial.txt
+  ./otdfctl encrypt -o partial.txt.tdf --host $HOST --tls-no-verify $WITH_CREDS partial.txt
+}
+
+# expected_range OFFSET LENGTH: the matching plaintext bytes, via tail/head.
+expected_range() {
+  tail -c +$(($1 + 1)) partial.txt | head -c $2 > expected.out
+}
+
+@test "partial decrypt, range spanning a segment boundary" {
+  partial_setup
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 2097000 --length 400 partial.txt.tdf > partial.out
+  expected_range 2097000 400
+  cmp partial.out expected.out
+}
+
+@test "partial decrypt, offset to end of payload" {
+  partial_setup
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 4000000 -o partial.out partial.txt.tdf
+  tail -c +4000001 partial.txt > expected.out
+  cmp partial.out expected.out
+}
+
+@test "partial decrypt, length past end is clamped" {
+  partial_setup
+  size=$(wc -c < partial.txt | tr -d ' ')
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset $((size - 10)) --length 1000 partial.txt.tdf > partial.out
+  tail -c 10 partial.txt > expected.out
+  cmp partial.out expected.out
+}
+
+@test "partial decrypt, piped stdin" {
+  partial_setup
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 < partial.txt.tdf > partial.out
+  expected_range 123 4567
+  cmp partial.out expected.out
+}
+
+@test "partial decrypt, offset beyond end fails without writing output" {
+  partial_setup
+  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 999999999 -o partial.out partial.txt.tdf"
+  assert_failure
+  [ ! -e partial.out ]
 }

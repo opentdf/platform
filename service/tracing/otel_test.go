@@ -2,8 +2,12 @@ package tracing
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -58,4 +62,52 @@ func Test_InitTracer_ShutdownFlushesAfterContextCancellation(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	require.Contains(t, string(data), `"Name":"pending-at-shutdown"`)
+}
+
+func Test_InitTracer_OTLPExportsTracesAndMetrics_Succeeds(t *testing.T) {
+	previousTracerProvider := otel.GetTracerProvider()
+	previousMeterProvider := otel.GetMeterProvider()
+	previousPropagator := otel.GetTextMapPropagator()
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previousTracerProvider)
+		otel.SetMeterProvider(previousMeterProvider)
+		otel.SetTextMapPropagator(previousPropagator)
+	})
+
+	var (
+		mu    sync.Mutex
+		paths []string
+	)
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		paths = append(paths, r.URL.Path)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(collector.Close)
+
+	shutdown, err := InitTracer(t.Context(), Config{
+		Enabled: true,
+		Provider: ProviderConfig{
+			Name: "OTLP",
+			OTLP: &OTLPConfig{
+				Endpoint: strings.TrimPrefix(collector.URL, "http://"),
+				Insecure: true,
+				Protocol: "http",
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	_, span := otel.Tracer(ServiceName).Start(t.Context(), "test-span")
+	span.End()
+	counter, err := otel.Meter(ServiceName).Int64Counter("test.counter")
+	require.NoError(t, err)
+	counter.Add(t.Context(), 1)
+	shutdown()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Contains(t, paths, "/v1/traces")
+	require.Contains(t, paths, "/v1/metrics")
 }

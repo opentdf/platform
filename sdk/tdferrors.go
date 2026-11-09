@@ -191,8 +191,21 @@ func renderAssertionID(id string) string {
 	return b.String()
 }
 
+// ErrInvalidAssertion is returned by a TDF writer asked to write an assertion
+// that readers would reject while parsing it: one with an empty id, or whose
+// JSON breaks the parsing rules of the ZTDF assertions specification, such as
+// a string holding a Unicode noncharacter. It is a configuration error, not a
+// tamper error.
+var ErrInvalidAssertion = errors.New("tdf: invalid assertion configuration")
+
 // assertionFailure returns an ErrAssertionFailure for id and reason, followed
 // in the message by detail. The detail never holds key material.
 func assertionFailure(id string, reason AssertionFailureReason, detail string) error {
 	return fmt.Errorf("%w: %s", ErrAssertionFailure{ID: id, Reason: reason}, detail)
+}
+
+// assertionFailureCause is assertionFailure with an underlying error, which
+// stays reachable through errors.Is and errors.As.
+func assertionFailureCause(id string, reason AssertionFailureReason, detail string, cause error) error {
+	return fmt.Errorf("%w: %s: %w", ErrAssertionFailure{ID: id, Reason: reason}, detail, cause)
 }

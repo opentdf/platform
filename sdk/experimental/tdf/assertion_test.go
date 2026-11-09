@@ -14,6 +14,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,4 +269,13 @@ func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "testhash", hash)
 	require.Equal(t, "testsig", sig)
+}
+
+func TestComputeAssertionHashMatchesSDK(t *testing.T) {
+	wire := []byte(`{"id":"a","type":"other","scope":"tdo","statement":{"value":{"k":"v"}},"ext":1,"binding":{"signature":"x"}}`)
+	want, err := sdk.ComputeAssertionHash(wire)
+	require.NoError(t, err)
+	got, err := ComputeAssertionHash(wire)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }

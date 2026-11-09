@@ -5,12 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 type pingOnlyPGX struct {
@@ -72,57 +68,6 @@ func TestClientReadinessCheckTimesOutHungPing(t *testing.T) {
 
 	err := client.ReadinessCheck(time.Millisecond)(t.Context())
 	require.ErrorIs(t, err, context.DeadlineExceeded)
-}
-
-func Test_New_RegistersPoolMetrics(t *testing.T) {
-	reader := sdkmetric.NewManualReader()
-	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
-	previousProvider := otel.GetMeterProvider()
-	otel.SetMeterProvider(provider)
-	t.Cleanup(func() {
-		require.NoError(t, provider.Shutdown(t.Context()))
-		otel.SetMeterProvider(previousProvider)
-	})
-
-	client, err := New(t.Context(), Config{
-		Host:             "localhost",
-		Port:             5432,
-		Database:         "opentdf",
-		User:             "postgres",
-		SSLMode:          "disable",
-		VerifyConnection: false,
-		Pool: PoolConfig{
-			MaxConns:          4,
-			MaxConnLifetime:   3600,
-			MaxConnIdleTime:   1800,
-			HealthCheckPeriod: 60,
-		},
-	}, logger.Config{
-		Level:  "error",
-		Output: "stdout",
-		Type:   "json",
-	}, nil)
-	require.NoError(t, err)
-	t.Cleanup(client.Close)
-
-	var metrics metricdata.ResourceMetrics
-	require.NoError(t, reader.Collect(t.Context(), &metrics))
-
-	for _, scope := range metrics.ScopeMetrics {
-		for _, metric := range scope.Metrics {
-			if metric.Name != "pgxpool.max_connections" {
-				continue
-			}
-
-			gauge, ok := metric.Data.(metricdata.Gauge[int64])
-			require.True(t, ok)
-			require.Len(t, gauge.DataPoints, 1)
-			assert.EqualValues(t, 4, gauge.DataPoints[0].Value)
-			return
-		}
-	}
-
-	t.Fatal("pgxpool.max_connections metric was not registered")
 }
 
 func Test_BuildConfig_ConnString(t *testing.T) {

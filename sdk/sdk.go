@@ -499,6 +499,12 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	// A manifest that every reader rejects under spec Section 3 is not valid,
+	// whatever the schema says.
+	if err := checkManifestSection3([]byte(manifest)); err != nil {
+		return false, err
+	}
+
 	return isValidManifest(manifest, Lax)
 }
 

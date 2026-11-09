@@ -333,7 +333,7 @@ Root level key `server.trace`
 
 | Field                        | Description                     | Default | Environment Variable               |
 | ---------------------------- | ------------------------------- | ------- | ---------------------------------- |
-| `server.trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
+| `server.trace.enabled`       | Enable OpenTelemetry export      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
 | `server.trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
 
 For file provider:
@@ -350,11 +350,17 @@ For OTLP provider:
 - `server.trace.provider.otlp.insecure`: Whether to use an insecure connection
 - `server.trace.provider.otlp.headers`: Headers to include in OTLP requests
 
+The OTLP provider sends traces and metrics to the same collector. The file
+provider writes traces only. Set `OTEL_METRIC_EXPORT_INTERVAL` to control the
+metric export interval in milliseconds. The default interval is 60000.
+
 Tracing covers incoming Connect RPCs, outbound IPC/ERS/external-core RPCs,
 and PostgreSQL queries and connection-pool acquisition under recorded requests.
 Database spans include SQL statements but do not include bind parameter values.
 Query duration includes reading the result rows, not just database execution.
-Setting `server.trace.enabled` to `false` disables span export for these paths.
+The database metrics use the `pgxpool.*` prefix. They describe pool capacity,
+usage, connection creation, and acquisition waits. Setting `server.trace.enabled`
+to `false` disables span and metric export for these paths.
 
 Example:
 

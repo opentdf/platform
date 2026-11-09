@@ -207,6 +207,10 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
+	if err := otelpgx.RecordStats(pool); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to register pgxpool metrics: %w", err)
+	}
 	c.Pgx = pool
 	// We need to create a stdlib connection for transactions
 	c.SQLDB = stdlib.OpenDBFromPool(pool)

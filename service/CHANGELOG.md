@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/opentdf/platform/compare/service/v0.29.0...service/v0.29.1) (2026-11-09)
+
+
+### Features
+
+* **core:** export pgx pool metrics over OTLP [backport to release/service/v0.29] ([#4310](https://github.com/opentdf/platform/issues/4310)) ([d336a63](https://github.com/opentdf/platform/commit/d336a639b1ac217300f9ce696aee4c91f9208152))
+
 ## [0.29.0](https://github.com/opentdf/platform/compare/service/v0.28.0...service/v0.29.0) (2026-10-15)
 
 

@@ -173,7 +173,10 @@ func parseKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 		if len(expanded) != key.expandedSize() {
 			return nil, nil, fmt.Errorf("ML-KEM both expandedKey length: got %d want %d", len(expanded), key.expandedSize())
 		}
-		expected := key.expandSeed(seed)
+		expected, err := key.expandSeed(seed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("ML-KEM both validation failed: %w", err)
+		}
 		if subtle.ConstantTimeCompare(expected, expanded) != 1 {
 			return nil, nil, errors.New("ML-KEM both seed and expandedKey disagree")
 		}

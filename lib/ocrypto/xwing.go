@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto/fips140"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/pem"
@@ -37,6 +38,9 @@ type XWingKeyPair struct {
 }
 
 func NewXWingKeyPair() (XWingKeyPair, error) {
+	if fips140.Enabled() {
+		return XWingKeyPair{}, errCIRCLInFIPSMode
+	}
 	sk, pk, err := xwing.GenerateKeyPair(rand.Reader)
 	if err != nil {
 		return XWingKeyPair{}, fmt.Errorf("xwing.GenerateKeyPair failed: %w", err)
@@ -89,6 +93,9 @@ func (xwingKEM) encapsulate(pub []byte) ([]byte, []byte, error) {
 }
 
 func (xwingKEM) decapsulate(priv, ct []byte) ([]byte, error) {
+	if fips140.Enabled() {
+		return nil, errCIRCLInFIPSMode
+	}
 	return xwing.Decapsulate(ct, priv), nil
 }
 
@@ -109,6 +116,9 @@ func (xwingKEM) wrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 // XWingEncapsulate performs the X-Wing KEM encapsulation, returning the shared
 // secret and ciphertext without applying KDF or encryption.
 func XWingEncapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
+	if fips140.Enabled() {
+		return nil, nil, errCIRCLInFIPSMode
+	}
 	if len(publicKeyRaw) != XWingPublicKeySize {
 		return nil, nil, fmt.Errorf("invalid X-Wing public key size: got %d want %d", len(publicKeyRaw), XWingPublicKeySize)
 	}

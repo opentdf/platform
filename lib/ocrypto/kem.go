@@ -1,9 +1,11 @@
 package ocrypto
 
 import (
+	"crypto/fips140"
 	"crypto/mlkem"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	circl1024 "github.com/cloudflare/circl/kem/mlkem/mlkem1024"
@@ -119,6 +121,8 @@ type mlkemKEM struct {
 	variant mlkemVariant
 }
 
+var errCIRCLInFIPSMode = errors.New("CIRCL operations are unavailable in FIPS mode")
+
 func (m mlkemKEM) keyType() KeyType {
 	if m.variant == mlkem1024 {
 		return MLKEM1024Key
@@ -149,20 +153,26 @@ func (m mlkemKEM) expandedSize() int {
 	return MLKEM768ExpandedKeySize
 }
 
-func (m mlkemKEM) expandSeed(seed []byte) []byte {
+func (m mlkemKEM) expandSeed(seed []byte) ([]byte, error) {
+	if fips140.Enabled() {
+		return nil, errCIRCLInFIPSMode
+	}
 	if m.variant == mlkem1024 {
 		_, sk := circl1024.NewKeyFromSeed(seed)
 		buf := make([]byte, m.expandedSize())
 		sk.Pack(buf)
-		return buf
+		return buf, nil
 	}
 	_, sk := circl768.NewKeyFromSeed(seed)
 	buf := make([]byte, m.expandedSize())
 	sk.Pack(buf)
-	return buf
+	return buf, nil
 }
 
 func (m mlkemKEM) validateExpanded(priv []byte) error {
+	if fips140.Enabled() {
+		return errCIRCLInFIPSMode
+	}
 	if len(priv) != m.expandedSize() {
 		return fmt.Errorf("invalid %s expandedKey length: got %d want %d", m.keyType(), len(priv), m.expandedSize())
 	}
@@ -254,9 +264,11 @@ func (m mlkemKEM) decapsulate(priv, ct []byte) ([]byte, error) {
 }
 
 // CIRCL supplies the import and decapsulation path for expanded-only keys.
-// This software path is not a FIPS-validated module by itself; strict-FIPS
-// deployments must assess it before enabling such keys.
+// FIPS mode rejects this path because CIRCL is outside Go's FIPS module.
 func (m mlkemKEM) decapsulateExpanded(priv, ct []byte) ([]byte, error) {
+	if fips140.Enabled() {
+		return nil, errCIRCLInFIPSMode
+	}
 	if len(ct) != m.ctSize() {
 		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d", m.keyType(), len(ct), m.ctSize())
 	}
@@ -431,6 +443,9 @@ type kemDecryptor struct {
 }
 
 func newKEMDecryptor(k kem, privateKey, salt, info []byte) (*kemDecryptor, error) {
+	if _, ok := k.(xwingKEM); ok && fips140.Enabled() {
+		return nil, errCIRCLInFIPSMode
+	}
 	// A negative privSize signals a variable-length encoding (the NIST hybrid's
 	// mlkemSeed||ECPrivateKey DER), whose exact length is validated inside
 	// decapsulate. ML-KEM accepts its seed or expanded size; X-Wing keeps the

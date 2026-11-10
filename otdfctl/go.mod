@@ -13,8 +13,13 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/creasty/defaults v1.8.0
 	github.com/evertras/bubble-table v0.19.2
+<<<<<<< HEAD
 	github.com/gabriel-vasile/mimetype v1.4.11
 	github.com/go-jose/go-jose/v3 v3.0.4
+=======
+	github.com/gabriel-vasile/mimetype v1.4.13
+	github.com/go-jose/go-jose/v4 v4.1.6
+>>>>>>> 4a44e06 (fix(cli): migrate go-jose from v3 to v4 (#4278))
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jrschumacher/go-osprofiles v0.0.0-20251201220924-3d077c5481e5
@@ -56,8 +61,11 @@ require (
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
+<<<<<<< HEAD
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+=======
+>>>>>>> 4a44e06 (fix(cli): migrate go-jose from v3 to v4 (#4278))
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect

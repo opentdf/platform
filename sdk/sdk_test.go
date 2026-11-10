@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,6 +70,37 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	assert.NotNil(t, s.ResourceMapping)
 	assert.NotNil(t, s.SubjectMapping)
 	assert.NotNil(t, s.KeyAccessServerRegistry)
+}
+
+func TestNewUnauthenticatedHTTPClient(t *testing.T) {
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer": "https://example.org",
+			},
+		}),
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
+	)
+	require.NoError(t, err)
+
+	serviceClient := s.NewUnauthenticatedHTTPClient()
+	require.NotNil(t, serviceClient)
+	require.NotSame(t, s.Conn().Client, serviceClient)
+	_, wrapped := serviceClient.Transport.(*auth.DPoPTransport)
+	assert.False(t, wrapped)
+	assert.IsType(t, &auth.DPoPTransport{}, s.Conn().Client.Transport)
+	assert.NotNil(t, serviceClient.CheckRedirect)
+
+	serviceClient.Timeout = time.Hour
+	assert.NotEqual(t, serviceClient.Timeout, s.Conn().Client.Timeout)
+
+	custom, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithIPC(),
+		sdk.WithCustomCoreConnection(&sdk.ConnectRPCConnection{Client: http.DefaultClient}),
+	)
+	require.NoError(t, err)
+	assert.Nil(t, custom.NewUnauthenticatedHTTPClient())
 }
 
 func Test_PlatformConfiguration_BadCases(t *testing.T) {

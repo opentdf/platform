@@ -406,6 +406,23 @@ func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
 }
 
+// NewUnauthenticatedHTTPClient returns a separate client using the SDK's
+// configured HTTP settings before the SDK adds resource authentication. It
+// shares the underlying transport and connection pool, but callers can set
+// per-service client options without changing the SDK's client. The caller is
+// responsible for authenticating requests made through the returned client.
+//
+// It returns nil when the SDK uses WithCustomCoreConnection: that connection
+// owns its HTTP settings, so this method cannot safely reconstruct its
+// unauthenticated client.
+func (s SDK) NewUnauthenticatedHTTPClient() *http.Client {
+	if s.httpClient == nil || s.coreConn != nil {
+		return nil
+	}
+	client := *s.httpClient
+	return &client
+}
+
 // IsHealthy reports whether the platform's gRPC Health v1 endpoint is reachable and SERVING.
 // The check honors ctx for deadline and cancellation; OTEL tracing works automatically when
 // otelconnect.NewInterceptor is registered via WithExtraClientOptions at SDK construction.

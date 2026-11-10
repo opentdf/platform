@@ -734,6 +734,11 @@ func TestDPoPTransport_ClosesBodyOnProofError(t *testing.T) {
 	require.NoError(t, err)
 	req.Body = body
 	req.ContentLength = int64(len("upload part"))
+	// A GetBody skips bufferRequestBody, which would otherwise close body itself;
+	// only RoundTrip's deferred close can then mark it closed.
+	req.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(strings.NewReader("upload part")), nil
+	}
 	_, err = transport.RoundTrip(req)
 	require.ErrorContains(t, err, "failed to add DPoP proof")
 	require.True(t, body.closed)

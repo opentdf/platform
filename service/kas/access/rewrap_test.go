@@ -1689,6 +1689,66 @@ func TestTDF3RewrapEmitsAuditEventForAuthorizationDecision(t *testing.T) {
 	}
 }
 
+func TestTDF3RewrapOpenSSLMLKEMKeys(t *testing.T) {
+	for _, tc := range []struct {
+		size string
+		alg  string
+	}{
+		{"768", security.AlgorithmMLKEM768},
+		{"1024", security.AlgorithmMLKEM1024},
+	} {
+		t.Run(tc.size, func(t *testing.T) {
+			base := filepath.Join("..", "..", "..", "lib", "ocrypto", "testdata", "mlkem-openssl")
+			kid := "openssl-" + tc.size
+			cryptoProvider, err := security.NewStandardCrypto(security.StandardConfig{
+				Keys: []security.KeyPairInfo{{
+					Algorithm:   tc.alg,
+					KID:         kid,
+					Private:     filepath.Join(base, tc.size+"-private.pem"),
+					Certificate: filepath.Join(base, tc.size+"-public.pem"),
+				}},
+			})
+			require.NoError(t, err)
+			t.Cleanup(cryptoProvider.Close)
+			inProcess := security.NewSecurityProviderAdapter(cryptoProvider, []string{kid}, []string{kid})
+			log := logger.CreateTestLogger()
+			delegator := trust.NewDelegatingKeyService(inProcess, log, nil)
+			delegator.RegisterKeyManagerCtxWithAlgorithms(inProcess.Name(), func(context.Context, *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+				return inProcess, nil
+			}, security.InProcessSupportedAlgorithms)
+			delegator.SetDefaultMode(inProcess.Name(), "", nil)
+			provider := &Provider{
+				SDK:          &otdf.SDK{AuthorizationV2: rewrapAuthorizationV2Stub{decision: authzV2.Decision_DECISION_PERMIT}},
+				KeyDelegator: delegator,
+				Logger:       log,
+				Tracer:       otel.Tracer("openssl-mlkem-rewrap-test"),
+				KASConfig:    KASConfig{Preview: Preview{MLKEMTDFEnabled: true}},
+			}
+			pubPEM, err := os.ReadFile(filepath.Join(base, tc.size+"-public.pem"))
+			require.NoError(t, err)
+			enc, err := ocrypto.FromPublicPEM(string(pubPEM))
+			require.NoError(t, err)
+			wrapped, err := enc.Encrypt([]byte(plainKey))
+			require.NoError(t, err)
+			requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+			kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+			kao.KeyType = "mlkem-wrapped"
+			kao.Kid = kid
+			kao.WrappedKey = wrapped
+			_, results, err := provider.tdf3Rewrap(t.Context(), requests, rsaPublicAlt, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			require.NoError(t, err)
+			result := results["123"]["123"]
+			require.NoError(t, result.Error)
+			require.NotEmpty(t, result.Encapped)
+			clientDec, err := ocrypto.FromPrivatePEM(rsaPrivateAlt)
+			require.NoError(t, err)
+			got, err := clientDec.Decrypt(result.Encapped)
+			require.NoError(t, err)
+			require.Equal(t, plainKey, string(got))
+		})
+	}
+}
+
 func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -5,6 +5,9 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
+
+	circl1024 "github.com/cloudflare/circl/kem/mlkem/mlkem1024"
+	circl768 "github.com/cloudflare/circl/kem/mlkem/mlkem768"
 )
 
 // kem is the post-quantum KEM contract implemented by every KEM family: the
@@ -139,6 +142,61 @@ func (m mlkemKEM) privSize() int {
 	return MLKEM768PrivateKeySize
 }
 
+func (m mlkemKEM) expandedSize() int {
+	if m.variant == mlkem1024 {
+		return MLKEM1024ExpandedKeySize
+	}
+	return MLKEM768ExpandedKeySize
+}
+
+func (m mlkemKEM) expandSeed(seed []byte) []byte {
+	if m.variant == mlkem1024 {
+		_, sk := circl1024.NewKeyFromSeed(seed)
+		buf := make([]byte, m.expandedSize())
+		sk.Pack(buf)
+		return buf
+	}
+	_, sk := circl768.NewKeyFromSeed(seed)
+	buf := make([]byte, m.expandedSize())
+	sk.Pack(buf)
+	return buf
+}
+
+func (m mlkemKEM) validateExpanded(priv []byte) error {
+	if len(priv) != m.expandedSize() {
+		return fmt.Errorf("invalid %s expandedKey length: got %d want %d", m.keyType(), len(priv), m.expandedSize())
+	}
+	if m.variant == mlkem1024 {
+		_, err := circl1024.Scheme().UnmarshalBinaryPrivateKey(priv)
+		return err
+	}
+	_, err := circl768.Scheme().UnmarshalBinaryPrivateKey(priv)
+	return err
+}
+
+func (m mlkemKEM) validatePrivateKey(priv []byte) error {
+	switch len(priv) {
+	case m.privSize():
+		var err error
+		if m.variant == mlkem1024 {
+			_, err = mlkem.NewDecapsulationKey1024(priv)
+		} else {
+			_, err = mlkem.NewDecapsulationKey768(priv)
+		}
+		if err != nil {
+			return fmt.Errorf("invalid %s seed: %w", m.keyType(), err)
+		}
+		return nil
+	case m.expandedSize():
+		if err := m.validateExpanded(priv); err != nil {
+			return fmt.Errorf("invalid %s expandedKey: %w", m.keyType(), err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("invalid %s private key size: got %d want %d or %d", m.keyType(), len(priv), m.privSize(), m.expandedSize())
+	}
+}
+
 func (m mlkemKEM) ctSize() int {
 	if m.variant == mlkem1024 {
 		return MLKEM1024CiphertextSize
@@ -167,8 +225,11 @@ func (m mlkemKEM) encapsulate(pub []byte) ([]byte, []byte, error) {
 }
 
 func (m mlkemKEM) decapsulate(priv, ct []byte) ([]byte, error) {
+	if len(priv) == m.expandedSize() {
+		return m.decapsulateExpanded(priv, ct)
+	}
 	if len(priv) != m.privSize() {
-		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", m.keyType(), len(priv), m.privSize())
+		return nil, fmt.Errorf("invalid %s private key size: got %d want %d or %d", m.keyType(), len(priv), m.privSize(), m.expandedSize())
 	}
 	if m.variant == mlkem1024 {
 		dk, err := mlkem.NewDecapsulationKey1024(priv)
@@ -190,6 +251,27 @@ func (m mlkemKEM) decapsulate(priv, ct []byte) ([]byte, error) {
 		return nil, fmt.Errorf("mlkem768 decapsulate failed: %w", err)
 	}
 	return ss, nil
+}
+
+// CIRCL supplies the import and decapsulation path for expanded-only keys.
+// This software path is not a FIPS-validated module by itself; strict-FIPS
+// deployments must assess it before enabling such keys.
+func (m mlkemKEM) decapsulateExpanded(priv, ct []byte) ([]byte, error) {
+	if len(ct) != m.ctSize() {
+		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d", m.keyType(), len(ct), m.ctSize())
+	}
+	if m.variant == mlkem1024 {
+		sk, err := circl1024.Scheme().UnmarshalBinaryPrivateKey(priv)
+		if err != nil {
+			return nil, fmt.Errorf("ML-KEM-1024 expandedKey invalid: %w", err)
+		}
+		return circl1024.Scheme().Decapsulate(sk, ct)
+	}
+	sk, err := circl768.Scheme().UnmarshalBinaryPrivateKey(priv)
+	if err != nil {
+		return nil, fmt.Errorf("ML-KEM-768 expandedKey invalid: %w", err)
+	}
+	return circl768.Scheme().Decapsulate(sk, ct)
 }
 
 func (m mlkemKEM) publicKeyPEM(pub []byte) (string, error) {
@@ -351,8 +433,13 @@ type kemDecryptor struct {
 func newKEMDecryptor(k kem, privateKey, salt, info []byte) (*kemDecryptor, error) {
 	// A negative privSize signals a variable-length encoding (the NIST hybrid's
 	// mlkemSeed||ECPrivateKey DER), whose exact length is validated inside
-	// decapsulate. Fixed-size schemes (ML-KEM, X-Wing) keep the strict check.
-	if k.privSize() >= 0 && len(privateKey) != k.privSize() {
+	// decapsulate. ML-KEM accepts its seed or expanded size; X-Wing keeps the
+	// exact fixed-size check.
+	if m, ok := k.(mlkemKEM); ok {
+		if err := m.validatePrivateKey(privateKey); err != nil {
+			return nil, err
+		}
+	} else if k.privSize() >= 0 && len(privateKey) != k.privSize() {
 		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", k.keyType(), len(privateKey), k.privSize())
 	}
 	return &kemDecryptor{

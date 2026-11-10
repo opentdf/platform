@@ -1,0 +1,246 @@
+package cukes
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/cucumber/godog"
+	otdf "github.com/opentdf/platform/sdk"
+	"golang.org/x/oauth2"
+)
+
+const (
+	userTokenClientID     = "opentdf-sdk" //nolint:gosec // Test credential.
+	userTokenClientSecret = "secret"      //nolint:gosec // Test credential.
+	bddUserPassword       = "testuser123"
+
+	tokenEndpointTimeout = 10 * time.Second
+)
+
+// decryptResult captures whether a decrypt attempt succeeded, and if not,
+// whether it was denied (rewrap forbidden) or failed for another reason.
+type decryptResult struct {
+	plaintext []byte
+	err       error
+	denied    bool
+}
+
+type EncryptionStepDefinitions struct{}
+
+// userTokenForStoredAs mints a user-scoped SDK via password grant against
+// the BDD fixture user. Stashes the resulting SDK under the given reference
+// key.
+func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, username, ref string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
+	if !ok {
+		return ctx, errors.New("failed to load local platform glue")
+	}
+
+	kcHostPort := net.JoinHostPort(localPlatformGlue.Options.Hostname, strconv.Itoa(localPlatformGlue.Options.keycloakPort))
+	tokenURL := fmt.Sprintf(
+		"http://%s/auth/realms/%s/protocol/openid-connect/token",
+		kcHostPort,
+		scenarioContext.ScenarioOptions.KeycloakRealm,
+	)
+
+	token, err := fetchUserAccessToken(ctx, tokenURL, username)
+	if err != nil {
+		return ctx, fmt.Errorf("fetch access token for user %q: %w", username, err)
+	}
+
+	userSDK, err := otdf.New(
+		scenarioContext.ScenarioOptions.PlatformEndpoint,
+		otdf.WithInsecureSkipVerifyConn(),
+		otdf.WithOAuthAccessTokenSource(oauth2.StaticTokenSource(token)),
+	)
+	if err != nil {
+		return ctx, fmt.Errorf("build user SDK for %q: %w", username, err)
+	}
+	scenarioContext.RecordObject(ref, userSDK)
+	return ctx, nil
+}
+
+// encryptPlaintextStoredAs encrypts the given text using the admin SDK, binds
+// it to the comma-separated attribute FQNs, and stashes the resulting TDF bytes
+// under the given reference key. The platform's own KAS is used as the default;
+// its public key is fetched on demand by the SDK.
+func (s *EncryptionStepDefinitions) encryptPlaintextStoredAs(ctx context.Context, plaintext, attributeFQNs, ref string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	fqns := splitAndTrim(attributeFQNs, ",")
+
+	kasURL := scenarioContext.ScenarioOptions.PlatformEndpoint
+	var tdfBuf bytes.Buffer
+	_, err := scenarioContext.SDK.CreateTDFContext(
+		ctx,
+		&tdfBuf,
+		strings.NewReader(plaintext),
+		otdf.WithKasInformation(otdf.KASInfo{URL: kasURL, Default: true}),
+		otdf.WithDataAttributes(fqns...),
+	)
+	if err != nil {
+		return ctx, fmt.Errorf("encrypt: %w", err)
+	}
+	scenarioContext.RecordObject(ref, tdfBuf.Bytes())
+	return ctx, nil
+}
+
+// userDecryptsStoredAs pulls the user SDK and TDF bytes from scenario state,
+// attempts decrypt, and stashes a decryptResult under the plaintext ref.
+func (s *EncryptionStepDefinitions) userDecryptsStoredAs(ctx context.Context, tokenRef, tdfRef, plainRef string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	userSDKAny := scenarioContext.GetObject(tokenRef)
+	userSDK, ok := userSDKAny.(*otdf.SDK)
+	if !ok || userSDK == nil {
+		return ctx, fmt.Errorf("no user SDK stored under %q; did you run `a user token for ... stored as %q`?", tokenRef, tokenRef)
+	}
+
+	tdfBytesAny := scenarioContext.GetObject(tdfRef)
+	tdfBytes, ok := tdfBytesAny.([]byte)
+	if !ok {
+		return ctx, fmt.Errorf("no TDF bytes stored under %q", tdfRef)
+	}
+
+	// LoadTDF only parses the ZIP/manifest — it does not contact KAS, so
+	// access-denied (rewrap-forbidden) cannot surface here. KAS rewrap
+	// happens during io.Copy / Reader.Read below.
+	reader, err := userSDK.LoadTDF(bytes.NewReader(tdfBytes))
+	if err != nil {
+		scenarioContext.RecordObject(plainRef, &decryptResult{err: err})
+		return ctx, nil //nolint:nilerr // error is captured on decryptResult for the assertion step
+	}
+
+	var plainBuf bytes.Buffer
+	if _, err := io.Copy(&plainBuf, reader); err != nil {
+		scenarioContext.RecordObject(plainRef, &decryptResult{err: err, denied: errors.Is(err, otdf.ErrRewrapForbidden)})
+		return ctx, nil
+	}
+	scenarioContext.RecordObject(plainRef, &decryptResult{plaintext: plainBuf.Bytes()})
+	return ctx, nil
+}
+
+func (s *EncryptionStepDefinitions) decryptionShouldSucceedWithPlaintext(ctx context.Context, plainRef, expected string) (context.Context, error) {
+	result, err := getDecryptResult(ctx, plainRef)
+	if err != nil {
+		return ctx, err
+	}
+	if result.err != nil {
+		return ctx, fmt.Errorf("decryption %q failed: %w", plainRef, result.err)
+	}
+	if got := string(result.plaintext); got != expected {
+		return ctx, fmt.Errorf("decryption %q plaintext mismatch: got %q, want %q", plainRef, got, expected)
+	}
+	return ctx, nil
+}
+
+func (s *EncryptionStepDefinitions) decryptionShouldBeDenied(ctx context.Context, plainRef string) (context.Context, error) {
+	result, err := getDecryptResult(ctx, plainRef)
+	if err != nil {
+		return ctx, err
+	}
+	if result.err == nil {
+		return ctx, fmt.Errorf("decryption %q unexpectedly succeeded (plaintext: %q)", plainRef, string(result.plaintext))
+	}
+	if !result.denied {
+		return ctx, fmt.Errorf("decryption %q failed but not with access-denied: %w", plainRef, result.err)
+	}
+	return ctx, nil
+}
+
+func getDecryptResult(ctx context.Context, ref string) (*decryptResult, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	v := scenarioContext.GetObject(ref)
+	if v == nil {
+		return nil, fmt.Errorf("no decryption result stored under %q", ref)
+	}
+	result, ok := v.(*decryptResult)
+	if !ok {
+		return nil, fmt.Errorf("object stored under %q is not a decryptResult (%T)", ref, v)
+	}
+	return result, nil
+}
+
+// fetchUserAccessToken mints a token for a BDD fixture user through the
+// regular direct-access password grant. Keycloak standard token exchange
+// intentionally does not support requested_subject impersonation.
+func fetchUserAccessToken(ctx context.Context, tokenURL, username string) (*oauth2.Token, error) {
+	form := url.Values{
+		"grant_type":    {"password"},
+		"client_id":     {userTokenClientID},
+		"client_secret": {userTokenClientSecret},
+		"username":      {username},
+		"password":      {bddUserPassword},
+	}
+	return postForTokenEndpoint(ctx, tokenURL, form, "password")
+}
+
+// postForTokenEndpoint POSTs a token-endpoint form and decodes the standard
+// access_token response.
+func postForTokenEndpoint(ctx context.Context, tokenURL string, form url.Values, kind string) (*oauth2.Token, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	httpClient := &http.Client{Timeout: tokenEndpointTimeout}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: token endpoint returned %d: %s", kind, resp.StatusCode, string(body))
+	}
+	var payload struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		ExpiresIn   int    `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("%s: decode token response: %w", kind, err)
+	}
+	if payload.AccessToken == "" {
+		return nil, fmt.Errorf("%s: token endpoint response missing access_token", kind)
+	}
+	return &oauth2.Token{
+		AccessToken: payload.AccessToken,
+		TokenType:   payload.TokenType,
+		Expiry:      time.Now().Add(time.Duration(payload.ExpiresIn) * time.Second),
+	}, nil
+}
+
+func splitAndTrim(s, sep string) []string {
+	parts := strings.Split(s, sep)
+	out := parts[:0]
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+func RegisterEncryptionStepDefinitions(ctx *godog.ScenarioContext) {
+	stepDefs := EncryptionStepDefinitions{}
+	ctx.Step(`^a user token for "([^"]*)" stored as "([^"]*)"$`, stepDefs.userTokenForStoredAs)
+	ctx.Step(`^I encrypt plaintext "([^"]*)" with attributes "([^"]*)" stored as "([^"]*)"$`, stepDefs.encryptPlaintextStoredAs)
+	ctx.Step(`^using token "([^"]*)", decrypt "([^"]*)" stored as "([^"]*)"$`, stepDefs.userDecryptsStoredAs)
+	ctx.Step(`^the decryption stored as "([^"]*)" should succeed with plaintext "([^"]*)"$`, stepDefs.decryptionShouldSucceedWithPlaintext)
+	ctx.Step(`^the decryption stored as "([^"]*)" should be denied$`, stepDefs.decryptionShouldBeDenied)
+}

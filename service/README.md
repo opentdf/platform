@@ -72,7 +72,7 @@ For convenience, the `make toolcheck` script checks if you have the necessary de
 
 ### Provisioning Custom Keycloak and Policy Data
 
-To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak -f <path-to-your-yaml-file>`.
+To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. The `token_exchanges` entries enable Keycloak standard token exchange on the requester clients. Run the provisioning with `go run ./service provision keycloak -f <path-to-your-yaml-file>`.
 
 ## Developing a new platform service
 
@@ -133,3 +133,30 @@ services:
     enabled: true
     foo: bar
 ```
+
+### Connect Handlers
+
+A service exposes its RPCs by setting one of these `serviceregistry.ServiceOptions` fields:
+
+- `ConnectRPCRegisterFunc` registers the service on a connect-go v2 server, usually with the generated `Register<Service>Handler` function. Platform services use connect-go v2.
+- `ConnectRPCFunc` builds a connect-go v1 handler. It is supported while services move to connect-go v2.
+
+The platform mounts each service on the external and in-process servers with the shared authentication, authorization, validation, audit, and tracing interceptors for its version.
+
+External services accept request messages up to `server.grpc.maxRecvMsgSize`. A connect-go v2 service sets other limits with `ConnectRPCMountOptions`:
+
+```go
+ConnectRPCRegisterFunc: myservicev1connectv2.RegisterMyServiceHandler,
+ConnectRPCMountOptions: func(myservicev1connectv2.MyServiceHandler) []connecthttp.Option {
+    return append(
+        serviceregistry.ConnectReadLimitOptions(1<<20),
+        serviceregistry.ConnectProcedureReadLimits(map[string]int{
+            myservicev1connectv2.MyServiceUploadProcedure: 64 << 20,
+        }),
+    )
+},
+```
+
+Each limit also bounds gzip decompression. Mount options apply to both servers.
+
+connect-go v2 sends only errors created with `connect.NewError` as written. The platform keeps the code and message of other errors, including errors from SDK calls, as connect-go v1 sent them.

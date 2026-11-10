@@ -3,7 +3,6 @@ package integration
 import (
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
@@ -61,7 +60,7 @@ func TestEntityChainComparison(t *testing.T) {
 
 		// This will fail because we don't have a real Keycloak instance
 		// But the test structure shows what Keycloak SHOULD return
-		_, err := keycloakService.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+		_, err := keycloakService.CreateEntityChainsFromTokens(ctx, req)
 		if err != nil {
 			t.Logf("⚠️  Keycloak test failed (expected without real Keycloak): %v", err)
 			t.Logf("🎯 Keycloak SHOULD create 2-entity chains:")
@@ -145,16 +144,16 @@ func TestEntityChainComparison(t *testing.T) {
 			Tokens: []*entity.Token{testToken},
 		}
 
-		resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+		resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 		if err != nil {
 			t.Fatalf("Multi-strategy CreateEntityChainsFromTokens failed: %v", err)
 		}
 
-		if len(resp.Msg.GetEntityChains()) != 1 {
-			t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+		if len(resp.GetEntityChains()) != 1 {
+			t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 		}
 
-		chain := resp.Msg.GetEntityChains()[0]
+		chain := resp.GetEntityChains()[0]
 		actualEntityCount := len(chain.GetEntities())
 
 		t.Logf("🔍 Multi-Strategy Result:")

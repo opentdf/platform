@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/protohelper"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -43,9 +44,9 @@ func NewERS(ctx context.Context, config types.MultiStrategyConfig, logger *logge
 // ResolveEntities implements the EntityResolutionServiceHandler interface
 func (ers *ERS) ResolveEntities(
 	ctx context.Context,
-	req *connect.Request[entityresolution.ResolveEntitiesRequest],
-) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	payload := req.Msg.GetEntities()
+	req *entityresolution.ResolveEntitiesRequest,
+) (*entityresolution.ResolveEntitiesResponse, error) {
+	payload := req.GetEntities()
 	resolvedEntities := make([]*entityresolution.EntityRepresentation, 0, len(payload))
 	for _, entity := range payload {
 		entityID := entity.GetId()
@@ -54,6 +55,7 @@ func (ers *ERS) ResolveEntities(
 			continue
 		}
 
+		resolveCtx := ctx
 		var claimsMap types.JWTClaims
 		switch entity.GetEntityType().(type) {
 		case *authorization.Entity_Claims:
@@ -63,10 +65,12 @@ func (ers *ERS) ResolveEntities(
 				var claimsStruct structpb.Struct
 				err := claims.UnmarshalTo(&claimsStruct)
 				if err != nil {
-					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+					cause := fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err)
+					return nil, connect.NewError(connect.CodeInvalidArgument, cause.Error()).WithCause(cause)
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
+				resolveCtx = context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
 			}
 		default:
 			entityBytes, err := protojson.Marshal(entity)
@@ -80,7 +84,7 @@ func (ers *ERS) ResolveEntities(
 		}
 
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
+		result, err := ers.service.ResolveEntity(resolveCtx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -109,12 +113,12 @@ func (ers *ERS) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+			resultData[claimName] = protohelper.StructPBCompatibleValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = metaValue
+			resultData[("metadata_" + metaKey)] = protohelper.StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -132,39 +136,39 @@ func (ers *ERS) ResolveEntities(
 		})
 	}
 
-	return connect.NewResponse(&entityresolution.ResolveEntitiesResponse{
+	return &entityresolution.ResolveEntitiesResponse{
 		EntityRepresentations: resolvedEntities,
-	}), nil
+	}, nil
 }
 
 // CreateEntityChainFromJwt implements the EntityResolutionServiceHandler interface
 func (ers *ERS) CreateEntityChainFromJwt(
 	ctx context.Context,
-	req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest],
-) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	req *entityresolution.CreateEntityChainFromJwtRequest,
+) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	// Skip tracing for now to avoid nil pointer issues
 	// TODO: Initialize tracer properly in constructor
 
-	entityChains := make([]*authorization.EntityChain, 0, len(req.Msg.GetTokens()))
+	entityChains := make([]*authorization.EntityChain, 0, len(req.GetTokens()))
 
 	// FAIL-SAFE: If ANY token fails to create a complete entity chain, fail the entire request
 	// This ensures authorization decisions are made with complete identity context
-	for _, token := range req.Msg.GetTokens() {
+	for _, token := range req.GetTokens() {
 		entityChain, err := ers.createEntityChainFromSingleToken(ctx, token)
 		if err != nil {
 			ers.logger.ErrorContext(ctx, "failed to create entity chain from token - FAILING REQUEST for security",
 				slog.String("token_id", token.GetId()),
 				slog.String("error", err.Error()))
 			return nil, connect.NewError(connect.CodeInternal,
-				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetId(), err))
+				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetId(), err).Error())
 		}
 
 		// Validate that we have at least one entity in the chain
 		if len(entityChain.GetEntities()) == 0 {
 			ers.logger.ErrorContext(ctx, "entity chain is empty - FAILING REQUEST for security",
 				slog.String("token_id", token.GetId()))
-			return nil, connect.NewError(connect.CodeInternal,
-				fmt.Errorf("entity chain for token %s is empty - incomplete identity context", token.GetId()))
+			return nil, connect.Errorf(connect.CodeInternal,
+				"entity chain for token %s is empty - incomplete identity context", token.GetId())
 		}
 
 		entityChains = append(entityChains, entityChain)
@@ -174,9 +178,9 @@ func (ers *ERS) CreateEntityChainFromJwt(
 		slog.Int("chain_count", len(entityChains)),
 		slog.Int("total_entities", ers.countEntitiesInChains(entityChains)))
 
-	return connect.NewResponse(&entityresolution.CreateEntityChainFromJwtResponse{
+	return &entityresolution.CreateEntityChainFromJwtResponse{
 		EntityChains: entityChains,
-	}), nil
+	}, nil
 }
 
 // createEntityChainFromSingleToken processes a single JWT token using multi-strategy resolution

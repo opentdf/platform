@@ -127,6 +127,48 @@ func validateAttribute(attribute *policy.Attribute) error {
 	return nil
 }
 
+// validateDynamicValueMapping validates a dynamic value entitlement mapping
+// is usable for an entitlement decision.
+//
+// mapping:
+//
+//   - must not be nil
+//   - must reference an attribute definition with a non-empty FQN
+//   - the definition must not be HIERARCHY (ordered static values are incompatible)
+//   - must have a value resolver with a selector and a specified operator
+//   - must have at least one action
+func validateDynamicValueMapping(mapping *policy.DynamicValueMapping) error {
+	if mapping == nil {
+		return fmt.Errorf("dynamic value mapping is nil: %w", ErrInvalidDynamicValueMapping)
+	}
+	def := mapping.GetAttributeDefinition()
+	if def.GetFqn() == "" {
+		return fmt.Errorf("mapping's attribute definition is missing: %w", ErrInvalidDynamicValueMapping)
+	}
+	if def.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		return fmt.Errorf("HIERARCHY definitions are not supported for dynamic value entitlement: %w", ErrInvalidDynamicValueMapping)
+	}
+	resolver := mapping.GetValueResolver()
+	if resolver.GetSubjectExternalSelectorValue() == "" {
+		return fmt.Errorf("mapping's value resolver selector is empty: %w", ErrInvalidDynamicValueMapping)
+	}
+	switch resolver.GetOperator() {
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		// supported existential operators
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
+		return fmt.Errorf("NOT_IN is unsupported for dynamic value resolution: %w", ErrInvalidDynamicValueMapping)
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
+		return fmt.Errorf("mapping's value resolver operator is unspecified: %w", ErrInvalidDynamicValueMapping)
+	default:
+		return fmt.Errorf("mapping's value resolver operator is unsupported: %w", ErrInvalidDynamicValueMapping)
+	}
+	if len(mapping.GetActions()) == 0 {
+		return fmt.Errorf("mapping's actions are empty: %w", ErrInvalidDynamicValueMapping)
+	}
+	return nil
+}
+
 // validateRegisteredResource validates the registered resource is valid for an entitlement decision
 //
 // registered resource:

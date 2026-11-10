@@ -13,14 +13,17 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc/metadata"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -30,6 +33,7 @@ const (
 	ServiceName           = "opentdf-platform"
 	ProviderOTLP          = "otlp"
 	ProviderFile          = "file"
+	protocolGRPC          = "grpc"
 	DefaultFileMaxSize    = 20
 	DefaultFileMaxBackups = 10
 	DefaultFileMaxAge     = 30
@@ -105,7 +109,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 		if cfg.Provider.OTLP == nil {
 			return nil, errors.New("OTLP provider selected but config missing")
 		}
-		exporter, err = createOTLPExporter(ctx, cfg.Provider.OTLP)
+		exporter, err = createOTLPTraceExporter(ctx, cfg.Provider.OTLP)
 		if err != nil {
 			return nil, fmt.Errorf("create OTLP exporter failed: %w", err)
 		}
@@ -163,6 +167,20 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 
 	logger.InfoContext(ctx, "initialized resource with attributes", slog.String("attributes", res.Encoded(attribute.DefaultEncoder())))
 
+	var mp *sdkmetric.MeterProvider
+	if strings.EqualFold(cfg.Provider.Name, ProviderOTLP) {
+		metricExporter, metricErr := createOTLPMetricExporter(ctx, cfg.Provider.OTLP)
+		if metricErr != nil {
+			_ = exporter.Shutdown(ctx)
+			return nil, fmt.Errorf("create OTLP metric exporter failed: %w", metricErr)
+		}
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+
 	// 4. Create Tracer Provider
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
@@ -182,10 +200,15 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	// 6. Return Shutdown Function
 	return func() {
 		logger.InfoContext(ctx, "shutting down tracing...")
-		// Use a separate context for shutdown, typically context.Background() or a context with a timeout
-		shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout) // Example timeout
+		// Flush queued spans even if the initialization context was canceled.
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ShutdownTimeout)
 		defer cancel()
 
+		if mp != nil {
+			if err := mp.Shutdown(shutdownCtx); err != nil {
+				logger.ErrorContext(ctx, "error shutting down meter provider", slog.Any("error", err))
+			}
+		}
 		if err := tp.Shutdown(shutdownCtx); err != nil {
 			logger.ErrorContext(ctx, "error shutting down tracer provider", slog.Any("error", err))
 		}
@@ -200,7 +223,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 
 // --- Exporter Creation Helpers ---
 
-func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExporter, error) {
+func createOTLPTraceExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExporter, error) {
 	logger := slog.Default()
 
 	if cfg.Endpoint == "" {
@@ -209,7 +232,7 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 
 	protocol := strings.ToLower(cfg.Protocol)
 	if protocol == "" {
-		protocol = "grpc" // Default to gRPC
+		protocol = protocolGRPC // Default to gRPC
 	}
 	logger.InfoContext(ctx,
 		"configuring OTLP exporter",
@@ -219,7 +242,7 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 	)
 
 	switch protocol {
-	case "grpc":
+	case protocolGRPC:
 		grpcOpts := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(cfg.Endpoint)}
 		if cfg.Insecure {
 			grpcOpts = append(grpcOpts, otlptracegrpc.WithInsecure())
@@ -248,6 +271,40 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 		client := otlptracehttp.NewClient(httpOpts...)
 		return otlptrace.New(ctx, client)
 
+	default:
+		return nil, fmt.Errorf("unsupported OTLP protocol: '%s'", cfg.Protocol)
+	}
+}
+
+func createOTLPMetricExporter(ctx context.Context, cfg *OTLPConfig) (sdkmetric.Exporter, error) {
+	if cfg.Endpoint == "" {
+		return nil, errors.New("OTLP endpoint is required")
+	}
+
+	protocol := strings.ToLower(cfg.Protocol)
+	if protocol == "" {
+		protocol = protocolGRPC
+	}
+
+	switch protocol {
+	case protocolGRPC:
+		opts := []otlpmetricgrpc.Option{otlpmetricgrpc.WithEndpoint(cfg.Endpoint)}
+		if cfg.Insecure {
+			opts = append(opts, otlpmetricgrpc.WithInsecure())
+		}
+		if len(cfg.Headers) > 0 {
+			opts = append(opts, otlpmetricgrpc.WithHeaders(cfg.Headers))
+		}
+		return otlpmetricgrpc.New(ctx, opts...)
+	case "http/protobuf", "http":
+		opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(cfg.Endpoint)}
+		if cfg.Insecure {
+			opts = append(opts, otlpmetrichttp.WithInsecure())
+		}
+		if len(cfg.Headers) > 0 {
+			opts = append(opts, otlpmetrichttp.WithHeaders(cfg.Headers))
+		}
+		return otlpmetrichttp.New(ctx, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported OTLP protocol: '%s'", cfg.Protocol)
 	}

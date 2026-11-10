@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
@@ -13,6 +15,8 @@ import (
 	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
+	authn "github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
@@ -36,6 +40,9 @@ var (
 	ServiceEntityResolution ServiceName = "entityresolution"
 	ServiceAuthorization    ServiceName = "authorization"
 )
+
+// Keep the database check below the deployed readiness probe's three-second timeout.
+const databaseReadinessTimeout = 2 * time.Second
 
 // getServiceConfigurations returns fresh service configurations each time it's called.
 // This prevents state sharing between test runs by creating new service instances.
@@ -125,14 +132,19 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
+	authzResolverRegistry  *authz.ResolverRegistry
+	newDBClient            newServiceDBClientFunc
+	registerReadinessCheck func(string, func(context.Context) error) error
 }
+
+type newServiceDBClientFunc func(context.Context, logging.Config, db.Config, trace.Tracer, string, *embed.FS) (*db.Client, error)
 
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
-// and a database client if required. It registers the services with the gRPC server,
-// in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, params startServicesParams) (func(), error) {
-	var gatewayCleanup func()
+// and a database client if required. It registers the services with the external
+// and in-process Connect RPC servers plus any extra HTTP handlers.
+func startServices(ctx context.Context, params startServicesParams) error {
+	health.ResetReadinessChecks()
 
 	cfg := params.cfg
 	otdf := params.otdf
@@ -141,6 +153,14 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	reg := params.reg
 	cacheManager := params.cacheManager
 	keyManagerCtxFactories := params.keyManagerCtxFactories
+	newDBClient := params.newDBClient
+	if newDBClient == nil {
+		newDBClient = newServiceDBClient
+	}
+	registerReadinessCheck := params.registerReadinessCheck
+	if registerReadinessCheck == nil {
+		registerReadinessCheck = health.RegisterReadinessCheck
+	}
 
 	// Iterate through the registered namespaces
 	for _, nsInfo := range reg.GetNamespaces() {
@@ -152,7 +172,8 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
-			logger.Info("skipping namespace",
+			logger.Info(
+				"skipping namespace",
 				slog.String("namespace", ns),
 				slog.String("mode", namespace.Mode),
 			)
@@ -164,15 +185,9 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 		// If ns has log_level in config, create new logger with that level
 		if err == nil {
-			if extractedLogLevel != cfg.Logger.Level {
-				slog.Debug("configuring logger")
-				newLoggerConfig := cfg.Logger
-				newLoggerConfig.Level = extractedLogLevel
-				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
-				// only assign if logger successfully created
-				if err == nil {
-					svcLogger = newSvcLogger.With("namespace", ns)
-				}
+			svcLogger, err = buildNamespaceLogger(svcLogger, cfg, ns, extractedLogLevel)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -184,9 +199,12 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			if svc.IsDBRequired() && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
+				svcDBClient, err = newDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
-					return func() {}, err
+					return err
+				}
+				if err := registerReadinessCheck(ns, svcDBClient.ReadinessCheck(databaseReadinessTimeout)); err != nil {
+					return fmt.Errorf("failed to register database readiness check for %s: %w", ns, err)
 				}
 			}
 			if svc.GetVersion() != "" {
@@ -195,7 +213,8 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			// Function to create a cache given cache options
 			createCacheClient := func(options cache.Options) (*cache.Cache, error) {
-				slog.Info("creating cache client for",
+				slog.Info(
+					"creating cache client for",
 					slog.String("namespace", ns),
 					slog.String("service", svc.GetServiceDesc().ServiceName),
 				)
@@ -206,6 +225,18 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				return cacheClient, nil
 			}
 
+			// Create a scoped authz resolver registry for this service
+			// This ensures services can only register resolvers for their own methods
+			var scopedAuthzRegistry *authz.ScopedResolverRegistry
+			if params.authzResolverRegistry != nil {
+				scopedAuthzRegistry = params.authzResolverRegistry.ScopedForService(svc.GetServiceDesc())
+			}
+
+			var accessTokenVerifier authn.AccessTokenVerifier
+			if otdf != nil && otdf.AuthN != nil {
+				accessTokenVerifier = otdf.AuthN.AccessTokenVerifier()
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Security:               &cfg.Security,
@@ -213,47 +244,34 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				DBClient:               svcDBClient,
 				SDK:                    client,
 				WellKnownConfig:        wellknown.RegisterConfiguration,
-				RegisterReadinessCheck: health.RegisterReadinessCheck,
+				RegisterReadinessCheck: registerReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				AccessTokenVerifier:    accessTokenVerifier,
 				NewCacheClient:         createCacheClient,
 				KeyManagerCtxFactories: keyManagerCtxFactories,
+				AuthzResolverRegistry:  scopedAuthzRegistry,
 			})
 			if err != nil {
-				return func() {}, err
+				return err
 			}
 
 			if err := svc.RegisterConfigUpdateHook(ctx, cfg.AddOnConfigChangeHook); err != nil {
-				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
+				return fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
 			// Register Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+			if err := registerConnectRPCHandler(ctx, svc, otdf.ConnectRPC, logger); err != nil {
+				return err
 			}
 
 			// Register In Process Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
-			}
-
-			// Register GRPC Gateway Handler using the in-process connect rpc
-			grpcConn := otdf.ConnectRPCInProcess.GrpcConn()
-			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.GrpcConn())
-			if err != nil {
-				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
-			} else if gatewayCleanup == nil {
-				gatewayCleanup = func() {
-					slog.Debug("executing cleanup")
-					if grpcConn != nil {
-						grpcConn.Close()
-					}
-					slog.Info("cleanup complete")
-				}
+			if err := registerConnectRPCHandler(ctx, svc, otdf.ConnectRPCInProcess.ConnectRPC, logger); err != nil {
+				return err
 			}
 
 			// Register Extra Handlers
-			if err := svc.RegisterHTTPHandlers(ctx, otdf.GRPCGatewayMux); err != nil {
+			if err := svc.RegisterHTTPHandlers(ctx, otdf.HTTPMux); err != nil {
 				logger.Info("service did not register extra http handlers", slog.String("namespace", ns))
 			}
 
@@ -261,18 +279,16 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				"service running",
 				slog.String("namespace", ns),
 				slog.String("service", svc.GetServiceDesc().ServiceName),
-				slog.Group("database",
+				slog.Group(
+					"database",
 					slog.Any("required", svcDBClient != nil),
-					slog.Any("migrationStatus", determineStatusOfMigration(svcDBClient)),
+					slog.Any("migration_status", determineStatusOfMigration(svcDBClient)),
 				),
 			)
 		}
 	}
 
-	if gatewayCleanup == nil {
-		gatewayCleanup = func() {}
-	}
-	return gatewayCleanup, nil
+	return nil
 }
 
 func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
@@ -287,13 +303,36 @@ func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 	return "", fmt.Errorf("could not decode service log level: %w", err)
 }
 
+func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, level string) (*logging.Logger, error) {
+	if level == cfg.Logger.Level {
+		return baseLogger, nil
+	}
+
+	slog.Debug("configuring logger")
+	newLoggerConfig := cfg.Logger
+	newLoggerConfig.Level = level
+
+	newLoggerConfig.AuditTimeout = baseLogger.Audit.RecordTimeout()
+	newLoggerConfig.AuditProcessor = baseLogger.Audit.Processor()
+	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig)
+	if loggerErr != nil {
+		return nil, fmt.Errorf("invalid namespace logger config for %s: %w", ns, loggerErr)
+	}
+
+	if err := namespaceLogger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return nil, fmt.Errorf("could not apply audit config for namespace %s: %w", ns, err)
+	}
+	return namespaceLogger.With("namespace", ns), nil
+}
+
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
 func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, trace trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
-	client, err := db.New(ctx, dbCfg, logCfg, &trace,
+	client, err := db.New(
+		ctx, dbCfg, logCfg, &trace,
 		db.WithService(ns),
 		db.WithMigrations(migrations),
 	)
@@ -324,4 +363,20 @@ func determineStatusOfMigration(client *db.Client) string {
 		reason = "migrations are disabled"
 	}
 	return reason
+}
+
+// registerConnectRPCHandler mounts svc on connectRPC. A registration that
+// cannot be mounted or that would run without an extra interceptor stops
+// startup; a service without a Connect handler is logged and skipped.
+func registerConnectRPCHandler(ctx context.Context, svc serviceregistry.IService, connectRPC *server.ConnectRPC, logger *logging.Logger) error {
+	err := svc.RegisterConnectRPCServiceHandler(ctx, connectRPC)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, serviceregistry.ErrInvalidConnectRPCRegistration), errors.Is(err, serviceregistry.ErrMissingInterceptorForm):
+		return fmt.Errorf("register connect-rpc handler for %s: %w", svc.GetNamespace(), err)
+	default:
+		logger.Info("service did not register a connect-rpc handler", slog.String("namespace", svc.GetNamespace()))
+		return nil
+	}
 }

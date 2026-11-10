@@ -22,7 +22,7 @@ type PolicyDBClientSuite struct {
 }
 
 func (s *PolicyDBClientSuite) SetupSuite() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "text_opentdf_policy_db_client"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

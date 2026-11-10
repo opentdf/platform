@@ -3,8 +3,10 @@ package claims_test
 import (
 	"testing"
 
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	ent "github.com/opentdf/platform/service/entity"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +24,7 @@ func Test_ClientResolveEntity(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), false)
 
 	require.NoError(t, reserr)
 
@@ -44,7 +46,7 @@ func Test_EmailResolveEntity(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), false)
 
 	require.NoError(t, reserr)
 
@@ -78,7 +80,7 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), false)
 
 	require.NoError(t, reserr)
 
@@ -91,6 +93,209 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bar", propMap["foo"])
 	assert.EqualValues(t, 42, propMap["baz"])
+}
+
+func Test_ClaimsResolveEntityDirectEntitlements(t *testing.T) {
+	customclaims := map[string]interface{}{
+		"direct_entitlements": []interface{}{
+			map[string]interface{}{
+				"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+				"actions":             []interface{}{"read", "update"},
+			},
+		},
+	}
+	structClaims, err := structpb.NewStruct(customclaims)
+	require.NoError(t, err)
+
+	anyClaims, err := anypb.New(structClaims)
+	require.NoError(t, err)
+
+	var validBody []*entity.Entity
+	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}})
+
+	req := entityresolutionV2.ResolveEntitiesRequest{Entities: validBody}
+
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), true)
+	require.NoError(t, reserr)
+
+	entityRepresentations := resp.GetEntityRepresentations()
+	require.Len(t, entityRepresentations, 1)
+
+	entitlements := entityRepresentations[0].GetDirectEntitlements()
+	require.Len(t, entitlements, 1)
+	assert.Equal(t, "https://example.com/attr/department/value/eng", entitlements[0].GetAttributeValueFqn())
+	assert.ElementsMatch(t, []string{"read", "update"}, entitlements[0].GetActions())
+}
+
+func Test_ClaimsResolveEntityDirectEntitlementsDisabled(t *testing.T) {
+	customclaims := map[string]interface{}{
+		"direct_entitlements": []interface{}{
+			map[string]interface{}{
+				"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+				"actions":             []interface{}{"read"},
+			},
+		},
+	}
+	structClaims, err := structpb.NewStruct(customclaims)
+	require.NoError(t, err)
+
+	anyClaims, err := anypb.New(structClaims)
+	require.NoError(t, err)
+
+	req := entityresolutionV2.ResolveEntitiesRequest{Entities: []*entity.Entity{
+		{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}},
+	}}
+
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), false)
+	require.NoError(t, reserr)
+
+	entityRepresentations := resp.GetEntityRepresentations()
+	require.Len(t, entityRepresentations, 1)
+	assert.Empty(t, entityRepresentations[0].GetDirectEntitlements())
+
+	// The claim is ordinary subject data when direct entitlements are disabled.
+	additionalProps := entityRepresentations[0].GetAdditionalProps()
+	require.Len(t, additionalProps, 1)
+	assert.Contains(t, additionalProps[0].GetFields(), "direct_entitlements")
+}
+
+func Test_ClaimsResolveEntityDirectEntitlementsAreNotSubjectProperties(t *testing.T) {
+	testCases := []struct {
+		name      string
+		claimKeys []string
+	}{
+		{name: "snake case", claimKeys: []string{"direct_entitlements"}},
+		{name: "camel case", claimKeys: []string{"directEntitlements"}},
+		{name: "both aliases", claimKeys: ent.DirectEntitlementClaimKeys},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			customClaims := map[string]interface{}{
+				"sub":        "alice",
+				"department": "engineering",
+			}
+			for _, claimKey := range tc.claimKeys {
+				customClaims[claimKey] = []interface{}{
+					map[string]interface{}{
+						"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+						"actions":             []interface{}{"read"},
+					},
+				}
+			}
+			structClaims, err := structpb.NewStruct(customClaims)
+			require.NoError(t, err)
+			anyClaims, err := anypb.New(structClaims)
+			require.NoError(t, err)
+
+			resp, err := claims.EntityResolution(t.Context(), &entityresolutionV2.ResolveEntitiesRequest{
+				Entities: []*entity.Entity{{
+					EphemeralId: "alice",
+					EntityType:  &entity.Entity_Claims{Claims: anyClaims},
+				}},
+			}, logger.CreateTestLogger(), true)
+			require.NoError(t, err)
+			require.Len(t, resp.GetEntityRepresentations(), 1)
+
+			representation := resp.GetEntityRepresentations()[0]
+			require.Len(t, representation.GetDirectEntitlements(), 1)
+			assert.Equal(t, "https://example.com/attr/department/value/eng", representation.GetDirectEntitlements()[0].GetAttributeValueFqn())
+
+			require.Len(t, representation.GetAdditionalProps(), 1)
+			fields := representation.GetAdditionalProps()[0].GetFields()
+			for _, claimKey := range ent.DirectEntitlementClaimKeys {
+				assert.NotContains(t, fields, claimKey)
+			}
+			assert.Contains(t, fields, "sub")
+			assert.Contains(t, fields, "department")
+		})
+	}
+}
+
+func Test_ClaimsResolveEntityDirectEntitlementsFQNNormalized(t *testing.T) {
+	customclaims := map[string]interface{}{
+		"direct_entitlements": []interface{}{
+			map[string]interface{}{
+				"attribute_value_fqn": "https://Example.com/attr/Department/value/ENG",
+				"actions":             []interface{}{"Read"},
+			},
+		},
+	}
+	structClaims, err := structpb.NewStruct(customclaims)
+	require.NoError(t, err)
+	anyClaims, err := anypb.New(structClaims)
+	require.NoError(t, err)
+
+	req := entityresolutionV2.ResolveEntitiesRequest{Entities: []*entity.Entity{
+		{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}},
+	}}
+
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), true)
+	require.NoError(t, reserr)
+
+	entitlements := resp.GetEntityRepresentations()[0].GetDirectEntitlements()
+	require.Len(t, entitlements, 1)
+	// FQN is lowercased to match how the PDP normalizes resource FQNs; actions are lowercased too.
+	assert.Equal(t, "https://example.com/attr/department/value/eng", entitlements[0].GetAttributeValueFqn())
+	assert.ElementsMatch(t, []string{"read"}, entitlements[0].GetActions())
+}
+
+func Test_ClaimsResolveEntityDirectEntitlementsMalformed(t *testing.T) {
+	testCases := []struct {
+		name   string
+		claims map[string]interface{}
+	}{
+		{
+			name:   "direct_entitlements not an array",
+			claims: map[string]interface{}{"direct_entitlements": "not-an-array"},
+		},
+		{
+			name: "entry missing attribute_value_fqn",
+			claims: map[string]interface{}{"direct_entitlements": []interface{}{
+				map[string]interface{}{"actions": []interface{}{"read"}},
+			}},
+		},
+		{
+			name: "entry missing actions",
+			claims: map[string]interface{}{"direct_entitlements": []interface{}{
+				map[string]interface{}{"attribute_value_fqn": "https://example.com/attr/department/value/eng"},
+			}},
+		},
+		{
+			name: "entry with empty actions",
+			claims: map[string]interface{}{"direct_entitlements": []interface{}{
+				map[string]interface{}{
+					"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+					"actions":             []interface{}{},
+				},
+			}},
+		},
+		{
+			name: "entry with non-string action",
+			claims: map[string]interface{}{"direct_entitlements": []interface{}{
+				map[string]interface{}{
+					"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+					"actions":             []interface{}{42},
+				},
+			}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			structClaims, err := structpb.NewStruct(tc.claims)
+			require.NoError(t, err)
+			anyClaims, err := anypb.New(structClaims)
+			require.NoError(t, err)
+
+			req := entityresolutionV2.ResolveEntitiesRequest{Entities: []*entity.Entity{
+				{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}},
+			}}
+
+			_, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), true)
+			require.Error(t, reserr)
+			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(reserr))
+		})
+	}
 }
 
 func Test_JWTToEntityChainClaims(t *testing.T) {

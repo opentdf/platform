@@ -1,7 +1,6 @@
 package fixtures
 
 import (
-	"context"
 	"testing"
 	"time"
 )
@@ -13,7 +12,7 @@ func TestTokenManager_InitialLogin(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -50,7 +49,7 @@ func TestTokenManager_CustomTokenBuffer(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -80,7 +79,7 @@ func TestTokenManager_GetToken(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -114,7 +113,7 @@ func TestTokenManager_GetClient(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -140,7 +139,7 @@ func TestTokenManager_PreemptiveRefresh(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -190,7 +189,7 @@ func TestTokenManager_ConcurrentAccess(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://localhost:8888/auth",
 		Username:         "admin",
@@ -231,7 +230,7 @@ func TestTokenManager_ConcurrentAccess(t *testing.T) {
 
 // TestTokenManager_RefreshFailure tests error handling when refresh fails
 func TestTokenManager_RefreshFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	connectParams := &KeycloakConnectParams{
 		BasePath:         "http://invalid-keycloak-url:9999/auth",
 		Username:         "admin",
@@ -248,7 +247,7 @@ func TestTokenManager_RefreshFailure(t *testing.T) {
 
 // TestTokenManager_NilConnectParams tests error handling for nil connect params
 func TestTokenManager_NilConnectParams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewTokenManager(ctx, nil, nil)
 	if err == nil {

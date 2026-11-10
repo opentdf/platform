@@ -142,16 +142,18 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		if _, err := uuid.Parse(namespace); err == nil {
 			namespaceID = namespace
 		} else {
-			namespaceName = strings.ToLower(namespace)
+			namespaceName = normalizeNamespaceFQN(namespace)
 		}
 	}
 
 	sortField, sortDirection := GetAttributesSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   pgtypeUUID(namespaceID),
 		NamespaceName: pgtypeText(namespaceName),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -461,6 +463,20 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		}
 	}
 
+	// Guard the reverse of validateDynamicValueMappingAttribute: a definition
+	// with a dynamic value entitlement mapping cannot be changed to HIERARCHY, which requires
+	// statically ordered values incompatible with pass-through dynamic values.
+	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		dynamicCount, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if dynamicCount > 0 {
+			return nil, errors.Join(db.ErrRestrictViolation,
+				fmt.Errorf("attribute definition [%s] has a dynamic value mapping; its rule cannot be changed to HIERARCHY", id))
+		}
+	}
+
 	// Handle case where rule is not actually being updated
 	ruleString := ""
 	if rule != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
@@ -566,7 +582,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
 	}
 
-	if existing.GetFqn() != fqn {
+	if !strings.EqualFold(existing.GetFqn(), fqn) {
 		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
 

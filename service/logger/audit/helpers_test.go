@@ -27,16 +27,13 @@ var TestRequestID = uuid.New()
 func createTestContext(t *testing.T) context.Context {
 	ctx := t.Context()
 
-	tx := auditTransaction{
-		ContextData: ContextData{
-			RequestID: TestRequestID,
-			UserAgent: TestUserAgent,
-			RequestIP: TestRequestIP.String(),
-			ActorID:   TestActorID,
-		},
-		events: make([]pendingEvent, 0),
+	data := ContextData{
+		RequestID: TestRequestID,
+		UserAgent: TestUserAgent,
+		RequestIP: TestRequestIP.String(),
+		ActorID:   TestActorID,
 	}
-	ctx = context.WithValue(ctx, contextKey{}, &tx)
+	ctx = context.WithValue(ctx, contextKey{}, data)
 
 	return ctx
 }
@@ -49,4 +46,11 @@ func validateRecentEventTimestamp(t *testing.T, event *EventObject) {
 	eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
 	require.NoError(t, err, "error parsing timestamp [%v]", event.Timestamp)
 	assert.Greater(t, time.Second, time.Since(eventTime), "event timestamp is not recent: got %v, want less than 1 second", eventTime)
+}
+
+func requireMap(t *testing.T, value any) map[string]any {
+	t.Helper()
+	mapped, ok := value.(map[string]any)
+	require.True(t, ok)
+	return mapped
 }

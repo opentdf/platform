@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
@@ -12,9 +13,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
+	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	ent "github.com/opentdf/platform/service/entity"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
@@ -30,26 +34,40 @@ var (
 	ErrResourceDecisionLengthMismatch           = errors.New("access: resource decision length mismatch")
 	ErrResourceDecisionIDMismatch               = errors.New("access: resource decision ID mismatch")
 
-	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
+	errResolvedTokenChainRequiresHydration = errors.New("access: resolved token chain requires ERS hydration")
+	requestAuthTokenEphemeralID            = "with-request-token-auth-entity"
 )
 
 type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
-	// embedded entitlement PDP
-	pdp *PolicyDecisionPoint
 	// embedded obligations PDP
 	obligationsPDP *obligations.ObligationsPolicyDecisionPoint
+
+	// fullPolicyPDP retains the cache-backed path. Uncached decisions fetch only
+	// the policy referenced by their resources.
+	fullPolicyPDP *PolicyDecisionPoint
+	policyStore   EntitlementPolicyStore
+
+	// Registered resources and obligations remain fully loaded at construction.
+	// Uncached definitions and their mappings are fetched per request via
+	// GetEntitleableAttributesByFqns and used to build a request-scoped inner PolicyDecisionPoint.
+	registeredResources           []*policy.RegisteredResource
+	registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue
+	allowDirectEntitlements       bool
+	allowDynamicValueMappings     bool
+	namespacedPolicy              bool
 }
 
-// NewJustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
-// via authenticated SDK, then fetches all entitlement policy from provided store interface or policy services directly.
+// NewJustInTimePDP loads registered resources and obligations, then uses either
+// cached policy or resource-scoped policy reads for decisions.
 func NewJustInTimePDP(
 	ctx context.Context,
 	log *logger.Logger,
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
 	allowDirectEntitlements bool,
+	allowDynamicValueMappings bool,
 	namespacedPolicy bool,
 ) (*JustInTimePDP, error) {
 	var err error
@@ -65,24 +83,23 @@ func NewJustInTimePDP(
 	}
 
 	p := &JustInTimePDP{
-		sdk:    sdk,
-		logger: log,
+		sdk:                       sdk,
+		logger:                    log,
+		allowDirectEntitlements:   allowDirectEntitlements,
+		allowDynamicValueMappings: allowDynamicValueMappings,
+		namespacedPolicy:          namespacedPolicy,
 	}
 
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
-	if !store.IsEnabled() || !store.IsReady(ctx) {
+	cacheReady := store != nil && store.IsEnabled() && store.IsReady(ctx)
+	if !cacheReady {
 		log.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
 
-	allAttributes, err := store.ListAllAttributes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
-	}
-	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
-	}
+	p.policyStore = store
+
+	// Registered resources and obligations are not yet covered by the targeted policy read.
 	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
@@ -91,24 +108,35 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
+	p.registeredResources = allRegisteredResources
 
-	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy)
+	registeredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
+		return nil, fmt.Errorf("failed to index registered resources: %w", err)
 	}
-	p.pdp = pdp
+	p.registeredResourceValuesByFQN = registeredResourceValuesByFQN
 
+	// Obligations are triggered by (action, attribute value FQN, PEP client) against a trigger graph
+	// built from all obligations; the attributes-by-value map is unused by the obligations PDP, so an
+	// empty map is passed.
 	obligationsPDP, err := obligations.NewObligationsPolicyDecisionPoint(
 		ctx,
 		log,
-		pdp.allEntitleableAttributesByValueFQN,
-		pdp.allRegisteredResourceValuesByFQN,
+		make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
+		registeredResourceValuesByFQN,
 		allObligations,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new obligations policy decision point: %w", err)
 	}
 	p.obligationsPDP = obligationsPDP
+
+	if cacheReady && (allowDirectEntitlements || allowDynamicValueMappings) {
+		p.fullPolicyPDP, err = p.buildFullPolicyPDP(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return p, nil
 }
@@ -163,18 +191,22 @@ func (p *JustInTimePDP) GetDecision(
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		entityRepresentations, _, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
+		entityRepresentations, _, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
+		entityRepresentations, _, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
-		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
+		innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+		}
+		decision, entitlements, err := innerPDP.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
 		}
@@ -215,8 +247,14 @@ func (p *JustInTimePDP) GetDecision(
 	var resourceDecisionsAcrossAllEntityReps []ResourceDecision
 	allPermitted := true
 
+	// Build a request-scoped PDP from only the attributes needed to decide these resources.
+	innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+	}
+
 	for _, entityRep := range entityRepresentations {
-		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+		entityRepresentationDecision, entitlements, err := innerPDP.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
@@ -273,25 +311,30 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	var (
 		entityRepresentations   []*entityresolutionV2.EntityRepresentation
+		entityCategories        map[string]entity.Entity_Category
 		err                     error
 		skipEnvironmentEntities = false
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
-		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+		innerPDP, err := p.buildEntitlementsPDP(ctx, p.registeredResourceActionAttributeValueFQNs(regResValueFQN))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+		}
+		return innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, entityCategories, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -310,11 +353,134 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, nil
 	}
 
-	entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
+	// Enumeration keeps the full-policy path when direct or dynamic entitlements are enabled.
+	innerPDP, err := p.buildEntitlementsPDP(ctx, valueFQNsFromSubjectMappings(matchedSubjectMappings))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+	}
+
+	entitlements, err := innerPDP.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
+	for _, entitlement := range entitlements {
+		entitlement.EntityCategory = entityCategories[entitlement.GetEphemeralId()]
+	}
 	return entitlements, nil
+}
+
+// buildFullPolicyPDP preserves full-policy evaluation for cached decisions and entitlement
+// enumeration. Enumeration has no resource FQNs to bound its policy read.
+func (p *JustInTimePDP) buildFullPolicyPDP(ctx context.Context) (*PolicyDecisionPoint, error) {
+	var dynamicValueMappings []*policy.DynamicValueMapping
+	if p.allowDynamicValueMappings {
+		var err error
+		dynamicValueMappings, err = p.policyStore.ListAllDynamicValueMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
+		}
+	}
+	allAttributes, err := p.policyStore.ListAllAttributes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list attributes: %w", err)
+	}
+	allSubjectMappings, err := p.policyStore.ListAllSubjectMappings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list subject mappings: %w", err)
+	}
+	pdp, err := NewPolicyDecisionPoint(ctx, p.logger, allAttributes, allSubjectMappings,
+		p.registeredResources, p.allowDirectEntitlements, p.namespacedPolicy,
+		WithDynamicValueMappings(dynamicValueMappings, p.allowDynamicValueMappings))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create full-policy decision point: %w", err)
+	}
+	return pdp, nil
+}
+
+func (p *JustInTimePDP) buildEntitlementsPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+	if p.fullPolicyPDP == nil && (p.allowDirectEntitlements || p.allowDynamicValueMappings) {
+		return p.buildFullPolicyPDP(ctx)
+	}
+	return p.buildInnerPDP(ctx, valueFQNs)
+}
+
+// buildInnerPDP fetches the entitleable attributes for the provided value FQNs and constructs a
+// request-scoped PolicyDecisionPoint from them plus the fully-loaded registered resources.
+func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+	// Preserve the full-policy path for ready caches.
+	if p.fullPolicyPDP != nil {
+		return p.fullPolicyPDP, nil
+	}
+	// Unknown parents are omitted from the policy read and denied per resource.
+	definitions, subjectMappings, dynamicValueMappings, err := fetchEntitleableAttributes(ctx, p.sdk, valueFQNs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch entitleable attributes: %w", err)
+	}
+	// Disabled mappings must not make missing policy values decisionable.
+	// Remove this guard when allow_dynamic_value_mappings is retired.
+	if !p.allowDynamicValueMappings {
+		dynamicValueMappings = nil
+	}
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		p.logger,
+		definitions,
+		subjectMappings,
+		p.registeredResources,
+		p.allowDirectEntitlements,
+		p.namespacedPolicy,
+		WithDynamicValueMappings(dynamicValueMappings, p.allowDynamicValueMappings),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request-scoped policy decision point: %w", err)
+	}
+	return pdp, nil
+}
+
+// resourceValueFQNs collects the lower-cased attribute value FQNs needed to decide the provided
+// resources: attribute-value resources contribute their FQNs directly, and registered-resource
+// resources contribute the attribute value FQNs of their action-attribute-values.
+func (p *JustInTimePDP) resourceValueFQNs(resources []*authzV2.Resource) []string {
+	fqns := make([]string, 0, len(resources))
+	for _, resource := range resources {
+		switch resource.GetResource().(type) {
+		case *authzV2.Resource_AttributeValues_:
+			for _, fqn := range resource.GetAttributeValues().GetFqns() {
+				fqns = append(fqns, strings.ToLower(fqn))
+			}
+		case *authzV2.Resource_RegisteredResourceValueFqn:
+			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+			fqns = append(fqns, p.registeredResourceActionAttributeValueFQNs(regResValueFQN)...)
+		}
+	}
+	return fqns
+}
+
+// registeredResourceActionAttributeValueFQNs returns the lower-cased attribute value FQNs entitled
+// by the action-attribute-values of the given registered resource value.
+func (p *JustInTimePDP) registeredResourceActionAttributeValueFQNs(registeredResourceValueFQN string) []string {
+	rrValue, ok := p.registeredResourceValuesByFQN[registeredResourceValueFQN]
+	if !ok {
+		return nil
+	}
+	fqns := make([]string, 0, len(rrValue.GetActionAttributeValues()))
+	for _, aav := range rrValue.GetActionAttributeValues() {
+		fqns = append(fqns, strings.ToLower(aav.GetAttributeValue().GetFqn()))
+	}
+	return fqns
+}
+
+// valueFQNsFromSubjectMappings collects the lower-cased attribute value FQNs referenced by the
+// provided subject mappings.
+func valueFQNsFromSubjectMappings(subjectMappings []*policy.SubjectMapping) []string {
+	fqns := make([]string, 0, len(subjectMappings))
+	for _, sm := range subjectMappings {
+		fqn := strings.ToLower(sm.GetAttributeValue().GetFqn())
+		if fqn != "" {
+			fqns = append(fqns, fqn)
+		}
+	}
+	return fqns
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations
@@ -352,43 +518,108 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 	return rsp.GetSubjectMappings(), nil
 }
 
-// resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
-// and optionally skips environment entities (which is expected behavior in decision flow)
+// resolveEntitiesFromEntityChain roundtrips caller-provided entity chains through ERS.
 func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
-	p.logger.DebugContext(ctx,
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
+	p.logger.DebugContext(
+		ctx,
 		"resolving entities from entity chain",
 		slog.String("entity_chain_id", entityChain.GetEphemeralId()),
 		slog.Bool("skip_environment_entities", skipEnvironmentEntities),
 	)
 
-	var filteredEntities []*entity.Entity
-	if skipEnvironmentEntities {
-		for _, chained := range entityChain.GetEntities() {
-			if chained.GetCategory() == entity.Entity_CATEGORY_ENVIRONMENT {
-				continue
-			}
-			filteredEntities = append(filteredEntities, chained)
-		}
-	} else {
-		filteredEntities = entityChain.GetEntities()
-	}
+	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
 	if len(filteredEntities) == 0 {
-		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+		return nil, nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
 	}
 
 	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: filteredEntities})
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve entities: %w", err)
+		return nil, nil, fmt.Errorf("failed to resolve entities: %w", err)
 	}
 	entityRepresentations := ersResp.GetEntityRepresentations()
 	if entityRepresentations == nil {
-		return nil, fmt.Errorf("failed to get entity representations: %w", err)
+		return nil, nil, errors.New("failed to get entity representations")
 	}
-	return entityRepresentations, nil
+	return entityRepresentations, entityCategoriesByID(filteredEntities), nil
+}
+
+// entityCategoriesByID uses the same fallback IDs as ERS for entities without an
+// ephemeral ID. Resolved representations and entitlement results may be reordered.
+func entityCategoriesByID(entities []*entity.Entity) map[string]entity.Entity_Category {
+	categories := make(map[string]entity.Entity_Category, len(entities))
+	for idx, chained := range entities {
+		entityID := chained.GetEphemeralId()
+		if entityID == "" {
+			entityID = ent.EntityIDPrefix + strconv.Itoa(idx)
+		}
+		categories[entityID] = chained.GetCategory()
+	}
+	return categories
+}
+
+func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) []*entity.Entity {
+	if !skipEnvironmentEntities {
+		return entityChain.GetEntities()
+	}
+
+	filteredEntities := make([]*entity.Entity, 0, len(entityChain.GetEntities()))
+	for _, chained := range entityChain.GetEntities() {
+		if chained.GetCategory() != entity.Entity_CATEGORY_ENVIRONMENT {
+			filteredEntities = append(filteredEntities, chained)
+		}
+	}
+	return filteredEntities
+}
+
+// directEntitlementClaimKey reports whether the resolved claims carry direct
+// entitlements, and under which claim name.
+func directEntitlementClaimKey(claimsStruct *structpb.Struct) (string, bool) {
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		if _, ok := claimsStruct.GetFields()[key]; ok {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
+	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
+	if len(filteredEntities) == 0 {
+		return nil, nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+	}
+
+	entityRepresentations := make([]*entityresolutionV2.EntityRepresentation, 0, len(filteredEntities))
+	for idx, chained := range filteredEntities {
+		claims := chained.GetClaims()
+		if claims == nil {
+			return nil, nil, fmt.Errorf("%w: entity %s does not contain claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId())
+		}
+
+		var claimsStruct structpb.Struct
+		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+			return nil, nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
+		}
+
+		// Direct entitlements are carried inline on the claims. Taking the no-rehydrate
+		// shortcut here would silently drop them, so defer to ERS whenever the claim is present.
+		if key, ok := directEntitlementClaimKey(&claimsStruct); ok {
+			return nil, nil, fmt.Errorf("%w: entity %s carries %q claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId(), key)
+		}
+
+		originalID := chained.GetEphemeralId()
+		if originalID == "" {
+			originalID = ent.EntityIDPrefix + strconv.Itoa(idx)
+		}
+		entityRepresentations = append(entityRepresentations, &entityresolutionV2.EntityRepresentation{
+			OriginalId:      originalID,
+			AdditionalProps: []*structpb.Struct{&claimsStruct},
+		})
+	}
+	return entityRepresentations, entityCategoriesByID(filteredEntities), nil
 }
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
@@ -398,18 +629,23 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	token *entity.Token,
 	skipEnvironmentEntities bool,
 	resources []*authzV2.Resource,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	// WARNING: do not log the token JWT, just its ID
 	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
 	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}, Resources: resources})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)
+		return nil, nil, fmt.Errorf("failed to create entity chains from token: %w", err)
 	}
 	entityChains := ersResp.GetEntityChains()
 	if len(entityChains) != 1 {
-		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
+		return nil, nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
-	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+
+	entityRepresentations, entityCategories, err := entityRepresentationsFromResolvedChain(entityChains[0], skipEnvironmentEntities)
+	if errors.Is(err, errResolvedTokenChainRequiresHydration) {
+		return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+	}
+	return entityRepresentations, entityCategories, err
 }
 
 // resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream
@@ -419,13 +655,13 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	withRequestToken *wrapperspb.BoolValue,
 	skipEnvironmentEntities bool,
 	resources []*authzV2.Resource,
-) ([]*entityresolutionV2.EntityRepresentation, error) {
+) ([]*entityresolutionV2.EntityRepresentation, map[string]entity.Entity_Category, error) {
 	if !withRequestToken.GetValue() {
-		return nil, ErrInvalidWithRequestTokenEntityIdentifier
+		return nil, nil, ErrInvalidWithRequestTokenEntityIdentifier
 	}
 	rawToken := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
 	if rawToken == "" {
-		return nil, ErrFailedToWithRequestTokenEntityIdentifier
+		return nil, nil, ErrFailedToWithRequestTokenEntityIdentifier
 	}
 	token := &entity.Token{
 		Jwt:         rawToken,
@@ -454,7 +690,7 @@ func (p *JustInTimePDP) auditDecision(
 		auditDecision = audit.GetDecisionResultPermit
 	}
 
-	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
+	if err := p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
 		EntityID:                       entityID,
 		ActionName:                     action.GetName(),
 		Decision:                       auditDecision,
@@ -462,5 +698,9 @@ func (p *JustInTimePDP) auditDecision(
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
 		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              auditResourceDecisions,
-	})
+	}); err != nil {
+		p.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record authorization audit event",
+			slog.String("entity_id", entityID),
+			slog.Any("error", err))
+	}
 }

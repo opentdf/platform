@@ -95,11 +95,13 @@ The logger configuration is used to define how the application logs its output.
 
 Root level key `logger`
 
-| Field    | Description                              | Default  | Environment Variable  |
-| -------- | ---------------------------------------- | -------- | --------------------- |
-| `level`  | The logging level.                       | `info`   | OPENTDF_LOGGER_LEVEL  |
-| `type`   | The format of the log output.            | `json`   | OPENTDF_LOGGER_TYPE   |
-| `output` | Stream output for logs, stderr or stdout | `stdout` | OPENTDF_LOGGER_OUTPUT |
+| Field               | Description                                                | Default  | Environment Variable             |
+| ------------------- | ---------------------------------------------------------- | -------- | -------------------------------- |
+| `level`             | The logging level.                                           | `info`   | OPENTDF_LOGGER_LEVEL             |
+| `type`              | The format of the log output.                                | `json`   | OPENTDF_LOGGER_TYPE              |
+| `output`            | Stream output for logs, stderr or stdout                     | `stdout` | OPENTDF_LOGGER_OUTPUT            |
+| `audit_timeout` | Audit processing budget; non-positive values use the default | `5s` | OPENTDF_LOGGER_AUDIT_TIMEOUT |
+| `trace_correlation` | Add the active trace and span IDs to log and audit records   | `true`   | OPENTDF_LOGGER_TRACE_CORRELATION |
 
 Example:
 
@@ -108,13 +110,20 @@ logger:
   level: debug
   type: text
   output: stderr
+  audit_timeout: 5s
 ```
+
+`trace_correlation` emits fields only when the request carries trace context; see
+[Tracing Configuration](#tracing-configuration).
 
 ## Server Configuration
 
 The server configuration is used to define how the application runs its server.
 
 Root level key `server`
+
+> [!NOTE]
+> `server.auth` configures OpenTDF as an OIDC token consumer, not as the identity provider itself. See [OpenTDF and OpenID Connect (OIDC)](./OIDC.md) for the deployment boundary and end-to-end flow.
 
 | Field                   | Description                                                                                                   | Default | Environment Variable                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
@@ -125,16 +134,23 @@ Root level key `server`
 | `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
 | `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | [DEPRECATED] The oidc client id. This is leveraged by otdfctl.                                                |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
-| `auth.enforceDPoP`      | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
+| `auth.dpop.enforce`     | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE     |
+| `auth.enforceDPoP`      | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.              | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
-| `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
+| `enable_pprof`          | Enable Go performance profiling under `/debug/pprof/`; uses HTTP authentication and authorization when server authentication is enabled, with collection durations capped at 30 seconds | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
+| `grpc.maxRecvMsgSize`   | Maximum size in bytes of a request message from external Connect, gRPC, and gRPC-Web clients, measured after decompression. Larger messages fail with `resource_exhausted` (HTTP 429 for Connect). Values of zero or less use the default. Services can raise or lower their own limits. In-process calls between platform services are not limited. | `4194304` | OPENTDF_SERVER_GRPC_MAXRECVMSGSIZE |
+| `grpc.maxCallRecvMsgSize` | Maximum size in bytes of a response message the in-process client accepts when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLRECVMSGSIZE |
+| `grpc.maxCallSendMsgSize` | Maximum size in bytes of a request message the in-process client sends when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLSENDMSGSIZE |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
+| `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |
 | `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
 | `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
 | `tls.key`               | The path to the tls key.                                                                                      |         | OPENTDF_SERVER_TLS_KEY               |
+
+OpenTDF expects the configured `auth.issuer` and the discovery document's `issuer` value to agree. If they differ, the discovery document's issuer value is used for token validation.
 
 Example:
 
@@ -162,6 +178,32 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+```
+
+Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list.
+Surrounding whitespace and empty entries are ignored; invalid nonempty CIDRs prevent startup.
+
+With no trusted proxies, Platform records the direct socket peer. When the peer
+matches a trusted CIDR, it scans `X-Forwarded-For` from right to left, skipping
+trusted hops. Entries can be bare IPs, `IPv4:port`, or `[IPv6]:port`. An absent
+header or an invalid entry encountered during the scan falls back to the socket
+peer. `X-Real-IP` and `True-Client-IP` are not used.
+
+Trust only proxies that overwrite XFF or append their observed client address,
+not proxies that merely preserve client-supplied headers. For [AWS ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html), use XFF
+`append` mode. Broad private-network ranges weaken audit attribution.
+
+[Google Application Load Balancers](https://docs.cloud.google.com/load-balancing/docs/https#x-forwarded-for_header) append `client-ip,frontend-ip`. Include the
+specific frontend IP as a `/32` or `/128`, along with the connecting proxy ranges,
+or the scan will stop at the frontend IP. For CDN/proxy chains, configure every
+trusted hop between Platform and the client.
+
+```yaml
+server:
+  http:
+    trustedProxies:
+      - 10.20.0.0/24 # Example connecting proxy subnet; replace for your deployment
+      - 192.0.2.20/32 # Example Google frontend IP, if applicable
 ```
 
 ### CORS Configuration
@@ -236,27 +278,31 @@ All layers are additive. Deduplication is handled automatically (case-insensitiv
 
 Applications that embed the OpenTDF platform can inject custom [Connect interceptors](https://connectrpc.com/docs/go/interceptors/) into the server at startup. These interceptors run on every RPC after the built-in auth, validation, and audit interceptors.
 
-Two option functions are available:
+Platform services run on connect-go v2, and services an application registers can run on connect-go v1 or v2. Each service runs the interceptor form for its connect-go version, so an interceptor takes both forms:
 
 | Option | Description |
 | --- | --- |
-| `WithConnectInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to all external Connect RPCs. |
-| `WithIPCInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+| `WithConnectInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to all external RPCs. |
+| `WithIPCInterceptors(interceptors ...server.ConnectServerInterceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+| `WithExternalInterceptorFactories(factories ...server.InterceptorFactory)` | Builds external interceptors after the SDK is created. `Factory` returns both forms, and the factory's `Name` names the interceptor. |
 
-Both options are variadic and additive: calling them multiple times accumulates interceptors in order.
+All options are variadic and additive: calling them multiple times accumulates interceptors in order.
+
+The platform fails to start when an interceptor has no form for the connect-go version of a registered service, so an interceptor never silently skips a service. An interceptor without a v1 form is fine when every service runs on v2.
 
 ```go
 import (
-    "connectrpc.com/connect"
     "github.com/opentdf/platform/service/pkg/server"
 )
 
 err := server.Start(
     server.WithConfigFile("opentdf.yaml"),
     // Add a logging interceptor to all external RPCs
-    server.WithConnectInterceptors(loggingInterceptor),
-    // Add a metrics interceptor to in-process IPC calls
-    server.WithIPCInterceptors(metricsInterceptor),
+    server.WithConnectInterceptors(server.ConnectServerInterceptor{
+        Name: "logging",
+        V1:   loggingInterceptor,       // connect.Interceptor
+        V2:   loggingServerInterceptor, // connectv2.ServerInterceptor
+    }),
 )
 ```
 
@@ -287,7 +333,7 @@ Root level key `server.trace`
 
 | Field                        | Description                     | Default | Environment Variable               |
 | ---------------------------- | ------------------------------- | ------- | ---------------------------------- |
-| `server.trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
+| `server.trace.enabled`       | Enable OpenTelemetry export      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
 | `server.trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
 
 For file provider:
@@ -304,6 +350,18 @@ For OTLP provider:
 - `server.trace.provider.otlp.insecure`: Whether to use an insecure connection
 - `server.trace.provider.otlp.headers`: Headers to include in OTLP requests
 
+The OTLP provider sends traces and metrics to the same collector. The file
+provider writes traces only. Set `OTEL_METRIC_EXPORT_INTERVAL` to control the
+metric export interval in milliseconds. The default interval is 60000.
+
+Tracing covers incoming Connect RPCs, outbound IPC/ERS/external-core RPCs,
+and PostgreSQL queries and connection-pool acquisition under recorded requests.
+Database spans include SQL statements but do not include bind parameter values.
+Query duration includes reading the result rows, not just database execution.
+The database metrics use the `pgxpool.*` prefix. They describe pool capacity,
+usage, connection creation, and acquisition waits. Setting `server.trace.enabled`
+to `false` disables span and metric export for these paths.
+
 Example:
 
 ```yaml
@@ -317,6 +375,30 @@ server:
         endpoint: "localhost:4317"
         insecure: true
 ```
+
+While tracing is enabled, every log and audit record emitted during a traced
+request also carries the trace context of the active span, so a backend can
+link a span to the logs it produced:
+
+```json
+{
+  "level": "AUDIT",
+  "msg": "rewrap",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
+  "audit": { "...": "..." }
+}
+```
+
+`trace_id` and `span_id` are lowercase hex, 32 and 16 characters respectively,
+following the OpenTelemetry logging convention. Records emitted outside a
+request (startup, background work) have no active span and carry no trace
+fields. Set `logger.trace_correlation` to `false` to disable this; see
+[Logger Configuration](#logger-configuration).
+
+Backends generally also require the log's service tag to match the span's
+`service.name`, which defaults to `opentdf-platform` and can be overridden with
+`OTEL_SERVICE_NAME` or `OTEL_RESOURCE_ATTRIBUTES`.
 
 ## Database Configuration
 
@@ -386,16 +468,23 @@ Root level key `services`
 
 Root level key `kas`
 
-Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
+Environment Variables:
+
+```shell
+OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'
+```
 
 | Field                    | Description                                                                     | Default  |
 | ------------------------ | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `key_management`         | Whether stable, policy-backed key management is enabled.                        | `false`  |
+| `keyring.*.kid`          | Which static key id this is binding.                                            |          |
 | `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
 | `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
 | `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
+| `preview.key_management` | Deprecated alias for `key_management`.                                          |          |
+| `root_key`               | Key needed when key management uses the built-in basic key manager.             |          |
+
+The deprecated `preview.key_management` setting remains supported and logs a warning whenever it is configured. A value of `true` enables key management even if the top-level `key_management` field is `false`; a value of `false` does not override the top-level setting.
 
 Example:
 
@@ -407,6 +496,7 @@ security:
 
 services:
   kas:
+    key_management: false
     keyring:
       - kid: e2
         alg: ec:secp256r1
@@ -445,6 +535,11 @@ Root level key `authorization`
 | ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
 | `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
 | `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                       |
+| `request_limits.resource_attribute_values_fqns_max` | Maximum attribute value FQNs allowed in Decision Requests | `20` | |
+| `request_limits.entity_identifier_entity_chain_entities_max` | Maximum entities allowed in Decision Request entity chains | `10` | |
+| `request_limits.decision_request_fulfillable_obligation_fqns_max` | Maximum fulfillable obligation FQNs allowed per Decision Request | `50` | |
+| `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
+| `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
 
 #### Example: Authorization v1
 
@@ -464,6 +559,12 @@ services:
     entitlement_policy_cache:
       enabled: false
       refresh_interval: 30s
+    request_limits:
+      resource_attribute_values_fqns_max: 20
+      entity_identifier_entity_chain_entities_max: 10
+      decision_request_fulfillable_obligation_fqns_max: 50
+      get_decision_multi_resource_resources_max: 1000
+      get_decision_bulk_decision_requests_max: 200
 ```
 
 ### Entity Resolution
@@ -542,6 +643,10 @@ Root level key `policy`
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
 | `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. When disabled (default), namespace fields are accepted but not enforced — objects may be created without a namespace (legacy behavior). Non-namespaced versions are deprecated and this flag will become the default in a future version. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
 
+New dynamic value mappings always require a namespace, regardless of `namespaced_policy`. Existing
+dynamic value mappings with a null `namespace_id` remain readable and removable for backward
+compatibility.
+
 Example:
 
 ```yaml
@@ -574,7 +679,8 @@ opentdf-example.yaml:
 server:
   auth:
     enabled: true
-    enforceDPoP: false
+    dpop:
+      enforce: false
     # public_client_id: 'opentdf-public' # DEPRECATED
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
@@ -588,7 +694,7 @@ server:
       username_claim: "email"
 
       ## Dot notation is used to access the groups claim
-      group_claim: "realm_access.roles"
+      groups_claim: "realm_access.roles"
 
       # Dot notation is used to access the claim the represents the idP client ID 
       client_id_claim: # azp

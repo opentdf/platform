@@ -9,14 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
+	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
+	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnectv2"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -26,6 +27,7 @@ import (
 	policies "github.com/opentdf/platform/service/authorization/policies"
 	ent "github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/internal/access"
+	"github.com/opentdf/platform/service/internal/connectcompat"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
@@ -39,6 +41,11 @@ import (
 )
 
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
+
+// maxEntitleableFQNsPerRequest mirrors the proto max_items limit on
+// GetEntitleableAttributesByFqnsRequest.fqns, so batches never exceed what the
+// server-side request validation accepts.
+const maxEntitleableFQNsPerRequest = 250
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
@@ -78,18 +85,17 @@ func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook
 	}
 }
 
-func NewRegistration() *serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler] {
+func NewRegistration() *serviceregistry.Service[authorizationconnectv2.AuthorizationServiceHandler] {
 	as := new(AuthorizationService)
 	onUpdateConfig := OnConfigUpdate(as)
 
-	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
-		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
-			Namespace:       "authorization",
-			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
-			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
-			OnConfigUpdate:  onUpdateConfig,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
+	return &serviceregistry.Service[authorizationconnectv2.AuthorizationServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnectv2.AuthorizationServiceHandler]{
+			Namespace:              "authorization",
+			ServiceDesc:            &authorization.AuthorizationService_ServiceDesc,
+			ConnectRPCRegisterFunc: authorizationconnectv2.RegisterAuthorizationServiceHandler,
+			OnConfigUpdate:         onUpdateConfig,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnectv2.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
 				logger := srp.Logger
@@ -151,14 +157,14 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 	return nil
 }
 
-func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
+func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error) {
 	ctx, span := as.Start(ctx, "GetDecisionsByToken")
 	defer span.End()
 
 	decisionsRequests := []*authorization.DecisionRequest{}
 
 	// for each token decision request
-	for _, tdr := range req.Msg.GetDecisionRequests() {
+	for _, tdr := range req.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
 			as.logger.ErrorContext(ctx, "error calling ERS to get entity chains from jwts")
@@ -173,20 +179,18 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 		})
 	}
 
-	resp, err := as.GetDecisions(ctx, &connect.Request[authorization.GetDecisionsRequest]{
-		Msg: &authorization.GetDecisionsRequest{
-			DecisionRequests: decisionsRequests,
-		},
+	resp, err := as.GetDecisions(ctx, &authorization.GetDecisionsRequest{
+		DecisionRequests: decisionsRequests,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&authorization.GetDecisionsByTokenResponse{
-		DecisionResponses: resp.Msg.GetDecisionResponses(),
-	}), err
+	return &authorization.GetDecisionsByTokenResponse{
+		DecisionResponses: resp.GetDecisionResponses(),
+	}, err
 }
 
-func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
+func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	as.logger.DebugContext(ctx, "getting decisions")
 
 	ctx, span := as.Start(ctx, "GetDecisions")
@@ -196,7 +200,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 	rsp := &authorization.GetDecisionsResponse{
 		DecisionResponses: make([]*authorization.DecisionResponse, 0),
 	}
-	for _, dr := range req.Msg.GetDecisionRequests() {
+	for _, dr := range req.GetDecisionRequests() {
 		resp, err := as.getDecisions(ctx, dr)
 		if err != nil {
 			return nil, err
@@ -204,7 +208,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 		rsp.DecisionResponses = append(rsp.DecisionResponses, resp...)
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
@@ -285,102 +289,144 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	return scopeMap
 }
 
-func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
-	as.logger.DebugContext(ctx, "getting entitlements")
-
-	ctx, span := as.Start(ctx, "GetEntitlements")
-	defer span.End()
-
+func retrieveFullAttributeMappings(ctx context.Context, scope *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var nextOffset int32
 	attrsList := make([]*policy.Attribute, 0)
 	subjectMappingsList := make([]*policy.SubjectMapping, 0)
 
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
 	for {
-		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
+		listed, err := sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
 		})
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+			return nil, fmt.Errorf("failed to list attributes: %w", err)
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
 		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
 			break
 		}
 	}
 
-	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
 	nextOffset = 0
 	for {
-		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+		listed, err := sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
 		})
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
 		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
-
-		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
 			break
 		}
 	}
-	// create a lookup map of attribute value FQNs (based on request scope)
-	scopeMap := makeScopeMap(req.Msg.GetScope())
-	// create a lookup map of subject mappings by attribute value ID
+
+	scopeMap := makeScopeMap(scope)
 	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
-	// create a lookup map of attribute values by FQN (for rego query)
-	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
-	avf := &attr.GetAttributeValuesByFqnsResponse{
-		FqnAttributeValues: fqnAttrVals,
+	return makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap), nil
+}
+
+func subjectPropertiesFromEntityRepresentations(ersResp *entityresolution.ResolveEntitiesResponse) ([]*policy.SubjectProperty, error) {
+	properties := make([]*policy.SubjectProperty, 0)
+	seen := make(map[string]struct{})
+	for _, entityRepresentation := range ersResp.GetEntityRepresentations() {
+		for _, additionalProps := range entityRepresentation.GetAdditionalProps() {
+			flattened, err := flattening.Flatten(additionalProps.AsMap())
+			if err != nil {
+				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
+			}
+			for _, item := range flattened.Items {
+				if _, ok := seen[item.Key]; ok {
+					continue
+				}
+				seen[item.Key] = struct{}{}
+				properties = append(properties, &policy.SubjectProperty{ExternalSelectorValue: item.Key})
+			}
+		}
 	}
-	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
+	return properties, nil
+}
+
+func matchedAttributeFQNs(mappings []*policy.SubjectMapping, scope *authorization.ResourceAttribute) []string {
+	scopeMap := makeScopeMap(scope)
+	seen := make(map[string]struct{})
+	fqns := make([]string, 0, len(mappings))
+	for _, mapping := range mappings {
+		fqn := strings.ToLower(mapping.GetAttributeValue().GetFqn())
+		if fqn == "" {
+			continue
+		}
+		if scopeMap != nil && !scopeMap[fqn] {
+			continue
+		}
+		if _, ok := seen[fqn]; ok {
+			continue
+		}
+		seen[fqn] = struct{}{}
+		fqns = append(fqns, fqn)
+	}
+	return fqns
+}
+
+func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+	as.logger.DebugContext(ctx, "getting entitlements")
+
+	ctx, span := as.Start(ctx, "GetEntitlements")
+	defer span.End()
 
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
-	if req.Msg.Entities == nil {
+	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires entities"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "requires entities")
 	}
 	rsp := &authorization.GetEntitlementsResponse{
-		Entitlements: make([]*authorization.EntityEntitlements, len(req.Msg.GetEntities())),
+		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 
 	// call ERS on all entities
-	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Msg.GetEntities()})
+	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.GetEntities()})
 	if err != nil {
-		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.Any("entities", req.Msg.GetEntities()))
+		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.Any("entities", req.GetEntities()))
 		return nil, err
 	}
+
+	var subjectMappings map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	if as.usesCustomRego() {
+		subjectMappings, err = retrieveFullAttributeMappings(ctx, req.GetScope(), as.sdk)
+	} else {
+		subjectMappings, err = as.retrieveMatchedAttributeMappings(ctx, ersResp, req.GetScope())
+	}
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to retrieve subject mappings", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, "failed to retrieve subject mappings")
+	}
+	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
+	avf := &attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: subjectMappings}
 
 	// call rego on all entities
 	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))
+		return nil, connect.NewError(connect.CodeInternal, "failed to build rego input")
 	}
 
 	results, err := as.eval.Eval(ctx,
 		rego.EvalInput(in),
 	)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to evaluate entitlements policy"))
+		return nil, connect.NewError(connect.CodeInternal, "failed to evaluate entitlements policy")
 	}
 
-	resp := connect.NewResponse(rsp)
+	resp := rsp
 
 	// If we get no results and no error then we assume that the entity is not entitled to anything
 	if len(results) == 0 {
@@ -406,7 +452,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		return resp, nil
 	}
 	as.logger.DebugContext(ctx, "rego results", slog.Any("results", results))
-	for idx, entity := range req.Msg.GetEntities() {
+	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
 		if entityID == "" {
@@ -436,20 +482,44 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 				continue
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
-			if req.Msg.GetWithComprehensiveHierarchy() {
+			if req.GetWithComprehensiveHierarchy() {
 				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
 		}
 		// Update the entity with its entitlements
-		resp.Msg.Entitlements[idx] = &authorization.EntityEntitlements{
+		resp.Entitlements[idx] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: entitlements,
 		}
 	}
 
 	return resp, nil
+}
+
+func (as *AuthorizationService) usesCustomRego() bool {
+	return as.config != nil && as.config.Rego.Path != ""
+}
+
+func (as *AuthorizationService) retrieveMatchedAttributeMappings(ctx context.Context, ersResp *entityresolution.ResolveEntitiesResponse, scope *authorization.ResourceAttribute) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	properties, err := subjectPropertiesFromEntityRepresentations(ersResp)
+	if err != nil {
+		return nil, err
+	}
+	if len(properties) == 0 {
+		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
+	}
+
+	matched, err := as.sdk.SubjectMapping.MatchSubjectMappings(ctx, &subjectmapping.MatchSubjectMappingsRequest{
+		SubjectProperties: properties,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
+	}
+
+	fqns := matchedAttributeFQNs(matched.GetSubjectMappings(), scope)
+	return retrieveAttributeDefinitions(ctx, fqns, as.sdk)
 }
 
 func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, error) {
@@ -517,6 +587,13 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	if err == nil {
 		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
 	}
+	// A resource_exhausted here means the attribute definitions for the requested FQNs are too large
+	// for v1 to page; surface the v2 upgrade hint. All other errors keep the generic fallback. (#3821)
+	if err != nil && connectcompat.CodeOf(err) == connect.CodeResourceExhausted {
+		return nil, db.StatusifyError(ctx, as.logger, err,
+			db.ErrTextGetRetrievalFailed+": attribute definitions for the requested FQNs are too large for the v1 authorization API; upgrade to the v2 authorization API (authorization.v2.AuthorizationService)",
+			slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+	}
 	if err != nil {
 		// if attribute an FQN does not exist
 		// return deny for all entity chains aginst this RAs
@@ -552,7 +629,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	}
 	allAttrDefs, err = populateAttrDefValueFqns(allAttrDefs)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	// get the relevant resource attribute fqns
 	for _, attrDef := range allAttrDefs {
@@ -563,20 +640,17 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		}
 	}
 
-	var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
+	var ecChainEntitlementsResponse []*authorization.GetEntitlementsResponse
 	for _, ec := range dr.GetEntityChains() {
 		entities := ec.GetEntities()
 		if len(entities) == 0 {
 			ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, nil)
 			continue
 		}
-		req := connect.Request[authorization.GetEntitlementsRequest]{
-			Msg: &authorization.GetEntitlementsRequest{
-				Entities: entities,
-				Scope:    allPertinentFQNS,
-			},
-		}
-		ecEntitlements, err := as.GetEntitlements(ctx, &req)
+		ecEntitlements, err := as.GetEntitlements(ctx, &authorization.GetEntitlementsRequest{
+			Entities: entities,
+			Scope:    allPertinentFQNS,
+		})
 		if err != nil {
 			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
 			return nil, db.StatusifyError(ctx, as.logger, err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
@@ -601,7 +675,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 
 		attrDefs, err = populateAttrDefValueFqns(attrDefs)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 
 		for ecIdx, ec := range dr.GetEntityChains() {
@@ -633,7 +707,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				decision = authorization.DecisionResponse_DECISION_PERMIT
 			default:
 				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
-				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
+				for entIdx, e := range ecEntitlements.GetEntitlements() {
 					entityID := e.GetEntityId()
 					if entityID == "" {
 						entityID = ent.EntityIDPrefix + strconv.Itoa(entIdx)
@@ -706,14 +780,18 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			if decision == authorization.DecisionResponse_DECISION_PERMIT {
 				auditDecision = audit.GetDecisionResultPermit
 			}
-			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+			if auditErr := as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
 				Decision:                auditDecision,
 				EntityChainEntitlements: auditECEntitlements,
 				EntityChainID:           decisionResp.GetEntityChainId(),
 				EntityDecisions:         auditEntityDecisions,
 				FQNs:                    fqns,
 				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
-			})
+			}); auditErr != nil {
+				as.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record authorization audit event",
+					slog.String("entity_chain_id", decisionResp.GetEntityChainId()),
+					slog.Any("error", auditErr))
+			}
 			response[responseIdx] = decisionResp
 		}
 	}
@@ -721,31 +799,71 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	if len(attrFqns) == 0 {
-		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
-	}
-
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		Fqns: attrFqns,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// If `allow_traversal` is true for an attribute definition
-	// it will return an attribute definition for a missing
-	// value. Where before you would receive a 404 error.
-	// Since v1 does not expect direct entitlements
-	// and expects a value, we fail if there is no
-	// value.
-	fqnAttrVals := resp.GetFqnAttributeValues()
+	normalizedFQNs := make([]string, 0, len(attrFqns))
+	seen := make(map[string]struct{}, len(attrFqns))
 	for _, fqn := range attrFqns {
 		normalized := strings.ToLower(fqn)
-		attributeAndValue, ok := fqnAttrVals[normalized]
-		if !ok || attributeAndValue == nil || attributeAndValue.GetValue() == nil {
-			return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		normalizedFQNs = append(normalizedFQNs, normalized)
+	}
+
+	result := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(normalizedFQNs))
+	for start := 0; start < len(normalizedFQNs); start += maxEntitleableFQNsPerRequest {
+		end := min(start+maxEntitleableFQNsPerRequest, len(normalizedFQNs))
+		batch := normalizedFQNs[start:end]
+		resp, err := sdk.Attributes.GetEntitleableAttributesByFqns(ctx, &attr.GetEntitleableAttributesByFqnsRequest{
+			Fqns: batch,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fqn := range batch {
+			entitleable, ok := resp.GetFqnEntitleableAttributes()[fqn]
+			if !ok || entitleable.GetValue().GetValueId() == "" {
+				return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+			}
+			if active := entitleable.GetValue().GetActive(); active != nil && !active.GetValue() {
+				return nil, connect.NewError(connect.CodeInvalidArgument, db.ErrAttributeValueInactive.Error()).WithCause(db.ErrAttributeValueInactive)
+			}
+
+			definitionFQN := entitleable.GetDefinitionFqn()
+			definition, ok := resp.GetDefinitions()[definitionFQN]
+			if definitionFQN == "" || !ok || definition == nil {
+				return nil, connect.Errorf(connect.CodeInternal, "entitleable attribute %q references missing definition %q", fqn, definitionFQN)
+			}
+
+			attribute := &policy.Attribute{
+				Fqn:       definitionFQN,
+				Namespace: definition.GetNamespace(),
+				Rule:      definition.GetRule(),
+			}
+			if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+				attribute.Values = make([]*policy.Value, 0, len(definition.GetValues()))
+				for _, value := range definition.GetValues() {
+					attribute.Values = append(attribute.Values, &policy.Value{
+						Id:              value.GetValueId(),
+						Fqn:             value.GetFqn(),
+						SubjectMappings: value.GetSubjectMappings(),
+					})
+				}
+			}
+
+			value := entitleable.GetValue()
+			result[fqn] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Attribute: attribute,
+				Value: &policy.Value{
+					Id:              value.GetValueId(),
+					Fqn:             value.GetFqn(),
+					SubjectMappings: value.GetSubjectMappings(),
+				},
+			}
 		}
 	}
-	return fqnAttrVals, nil
+	return result, nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {
@@ -753,7 +871,11 @@ func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *
 	if len(attributesMap) == 0 {
 		// Go through all attribute definitions
 		attrDefs := avf.GetFqnAttributeValues()
-		for _, attrDef := range attrDefs {
+		for fqn, attrDef := range attrDefs {
+			// map the requested value FQN directly; non-hierarchy definitions
+			// carry no sibling values, so without this they would miss the map
+			// and log a spurious "no attribute definition found" warning.
+			attributesMap[fqn] = attrDef.GetAttribute()
 			for _, attrVal := range attrDef.GetAttribute().GetValues() {
 				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
 			}

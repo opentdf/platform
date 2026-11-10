@@ -4,7 +4,6 @@ FROM golang:$GO_VERSION as builder
 
 WORKDIR /app
 
-COPY examples/ examples/
 COPY protocol/ protocol/
 COPY sdk/ sdk/
 COPY .github/scripts/ /scripts/

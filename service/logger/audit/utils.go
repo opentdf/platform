@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
 // Common Strings
@@ -12,38 +13,116 @@ const (
 	defaultNone = "None"
 )
 
-type auditEventMetadata map[string]any
+type EventMetaData map[string]any
 
-// event
-type EventObject struct {
+type auditEventMetadata = EventMetaData
+
+// EventObjectInfo describes the object an audited action was performed on.
+type EventObjectInfo struct {
+	Type       ObjectType            `json:"type"`
+	ID         string                `json:"id"`
+	Name       string                `json:"name,omitempty"`
+	Attributes EventObjectAttributes `json:"attributes,omitempty"`
+}
+
+type EventObjectAttributes struct {
+	Assertions  []string `json:"assertions,omitempty"`
+	Attrs       []string `json:"attrs,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
+}
+
+type EventObjectAction struct {
+	Type   ActionType   `json:"type" audit:"reserved"`
+	Result ActionResult `json:"result" audit:"reserved"`
+}
+
+type EventObjectActor struct {
+	ID         string `json:"id" audit:"reserved"`
+	Attributes []any  `json:"attributes"`
+}
+
+type EventClientInfo struct {
+	UserAgent string `json:"userAgent" audit:"reserved"`
+	Platform  string `json:"platform" audit:"reserved"`
+	RequestIP string `json:"requestIP" audit:"reserved"`
+}
+
+type EventObjectParams struct {
+	Object        EventObjectInfo
+	Action        EventObjectAction
+	Actor         EventObjectActor
+	EventMetaData EventMetaData
+	ClientInfo    EventClientInfo
+	Original      map[string]any
+	Updated       map[string]any
+	RequestID     uuid.UUID
+	Timestamp     string
+}
+
+// Event is the canonical audit event passed to a Processor. Recorder metadata
+// is excluded from the existing OpenTDF log payload.
+type Event struct {
+	Verb      Verb              `json:"-" audit:"-"`
+	ID        uuid.UUID         `json:"-" audit:"-"`
+	Principal ctxAuth.Principal `json:"-" audit:"-"`
+
 	Object        auditEventObject   `json:"object"`
 	Action        eventAction        `json:"action"`
 	Actor         auditEventActor    `json:"actor"`
-	EventMetaData auditEventMetadata `json:"eventMetaData"`
+	EventMetaData auditEventMetadata `json:"eventMetaData" audit:"extensible"`
 	ClientInfo    eventClientInfo    `json:"clientInfo"`
 
-	Original  map[string]any `json:"original,omitempty"`
-	Updated   map[string]any `json:"updated,omitempty"`
-	RequestID uuid.UUID      `json:"requestId"`
-	Timestamp string         `json:"timestamp"`
+	Original  map[string]any `json:"original,omitempty" audit:"extensible"`
+	Updated   map[string]any `json:"updated,omitempty" audit:"extensible"`
+	RequestID uuid.UUID      `json:"requestID" audit:"reserved"`
+	Timestamp string         `json:"timestamp" audit:"reserved"`
 }
 
-func (e EventObject) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.Any("object", e.Object),
-		slog.Any("action", e.Action),
-		slog.Any("actor", e.Actor),
-		slog.Any("eventMetaData", e.EventMetaData),
-		slog.Any("clientInfo", e.ClientInfo),
-		slog.Any("original", e.Original),
-		slog.Any("updated", e.Updated),
-		slog.String("requestID", e.RequestID.String()),
-		slog.String("timestamp", e.Timestamp))
+// EventObject is retained for compatibility with existing audit constructors.
+type EventObject = Event
+
+// NewEvent converts public DTOs into the internal log event type.
+func NewEvent(params EventObjectParams) *EventObject {
+	return &EventObject{
+		Object: auditEventObject{
+			Type: params.Object.Type,
+			ID:   params.Object.ID,
+			Name: params.Object.Name,
+			Attributes: eventObjectAttributes{
+				EventObjectAttributes: params.Object.Attributes,
+			},
+		},
+		Action: eventAction{
+			EventObjectAction: params.Action,
+		},
+		Actor: auditEventActor{
+			EventObjectActor: params.Actor,
+		},
+		EventMetaData: params.EventMetaData,
+		ClientInfo: eventClientInfo{
+			EventClientInfo: params.ClientInfo,
+		},
+		Original:  params.Original,
+		Updated:   params.Updated,
+		RequestID: params.RequestID,
+		Timestamp: params.Timestamp,
+	}
 }
 
-// event.object
+func (e Event) LogValue() slog.Value {
+	return slog.AnyValue(e.emittedPayloadMap())
+}
+
+func (e Event) emittedPayloadMap() map[string]any {
+	entry, ok := normalizeAuditValue(e).(map[string]any)
+	if !ok {
+		panic("normalized audit payload must be a map")
+	}
+	return entry
+}
+
 type auditEventObject struct {
-	Type       ObjectType            `json:"type"`
+	Type       ObjectType            `json:"type" audit:"reserved"`
 	ID         string                `json:"id"`
 	Name       string                `json:"name,omitempty"`
 	Attributes eventObjectAttributes `json:"attributes,omitempty"`
@@ -57,11 +136,8 @@ func (e auditEventObject) LogValue() slog.Value {
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.object.attributes
 type eventObjectAttributes struct {
-	Assertions  []string `json:"assertions,omitempty"`
-	Attrs       []string `json:"attrs,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	EventObjectAttributes
 }
 
 func (e eventObjectAttributes) LogValue() slog.Value {
@@ -71,10 +147,8 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 		slog.Any("permissions", e.Permissions))
 }
 
-// event.action
 type eventAction struct {
-	Type   ActionType   `json:"type"`
-	Result ActionResult `json:"result"`
+	EventObjectAction
 }
 
 func (e eventAction) LogValue() slog.Value {
@@ -83,10 +157,8 @@ func (e eventAction) LogValue() slog.Value {
 		slog.String("result", e.Result.String()))
 }
 
-// event.actor
 type auditEventActor struct {
-	ID         string `json:"id"`
-	Attributes []any  `json:"attributes"`
+	EventObjectActor
 }
 
 func (e auditEventActor) LogValue() slog.Value {
@@ -95,11 +167,8 @@ func (e auditEventActor) LogValue() slog.Value {
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.clientInfo
 type eventClientInfo struct {
-	UserAgent string `json:"userAgent"`
-	Platform  string `json:"platform"`
-	RequestIP string `json:"requestIp"`
+	EventClientInfo
 }
 
 func (e eventClientInfo) LogValue() slog.Value {
@@ -126,14 +195,22 @@ func (c ContextData) LogValue() slog.Value {
 
 // GetAuditDataFromContext gets relevant audit data from the context object
 func GetAuditDataFromContext(ctx context.Context) ContextData {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	actorID, _ := ctx.Value(actorContextKey{}).(string)
+	if principal, ok := ctxAuth.PrincipalFromContext(ctx); ok {
+		actorID = principal.Subject
+	}
+
+	data, ok := ctx.Value(contextKey{}).(ContextData)
 	if ok {
-		return tx.ContextData
+		if actorID != "" {
+			data.ActorID = actorID
+		}
+		return data
 	}
 	return ContextData{
 		RequestID: uuid.Nil,
 		UserAgent: defaultNone,
 		RequestIP: defaultNone,
-		ActorID:   defaultNone,
+		ActorID:   actorID,
 	}
 }

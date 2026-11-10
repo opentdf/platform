@@ -125,7 +125,7 @@ func (s *KeyIndexTestSuite) TestKeyDetails() {
 
 func (s *KeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {
 	// Export JWK format
-	jwkString, err := s.rsaKey.ExportPublicKey(context.Background(), trust.KeyTypeJWK)
+	jwkString, err := s.rsaKey.ExportPublicKey(s.T().Context(), trust.KeyTypeJWK)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(jwkString)
 
@@ -136,7 +136,7 @@ func (s *KeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {
 
 func (s *KeyIndexTestSuite) TestKeyExportPublicKey_PKCSFormat() {
 	// Export JWK format
-	pem, err := s.rsaKey.ExportPublicKey(context.Background(), trust.KeyTypePKCS8)
+	pem, err := s.rsaKey.ExportPublicKey(s.T().Context(), trust.KeyTypePKCS8)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(pem)
 
@@ -207,13 +207,13 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 	}, nil)
 
 	// Test with legacy flag set to true
-	keys, err := keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: true})
+	keys, err := keyIndexer.ListKeysWith(s.T().Context(), trust.ListKeyOptions{LegacyOnly: true})
 	s.Require().NoError(err)
 	s.Len(keys, 1)
 	s.Equal("legacy-key-id", string(keys[0].ID()))
 
 	// Test with legacy flag set to false
-	keys, err = keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: false})
+	keys, err = keyIndexer.ListKeysWith(s.T().Context(), trust.ListKeyOptions{LegacyOnly: false})
 	s.Require().NoError(err)
 	s.Len(keys, 2)
 	s.Equal("non-legacy-key-id", string(keys[0].ID()))
@@ -240,7 +240,7 @@ func (s *KeyIndexTestSuite) TestListKeys() {
 		},
 	}, nil)
 
-	keys, err := keyIndexer.ListKeys(context.Background())
+	keys, err := keyIndexer.ListKeys(s.T().Context())
 	s.Require().NoError(err)
 	s.Len(keys, 1)
 	s.Equal("test-key-id", string(keys[0].ID()))
@@ -289,12 +289,12 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 		},
 	}, nil)
 
-	key, err := keyIndexer.FindKeyByAlgorithm(context.Background(), string(ocrypto.RSA2048Key), false)
+	key, err := keyIndexer.FindKeyByAlgorithm(s.T().Context(), string(ocrypto.RSA2048Key), false)
 	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-key-id", string(key.ID()))
 
-	key, err = keyIndexer.FindKeyByAlgorithm(context.Background(), string(ocrypto.RSA2048Key), true)
+	key, err = keyIndexer.FindKeyByAlgorithm(s.T().Context(), string(ocrypto.RSA2048Key), true)
 	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-legacy-key-id", string(key.ID()))

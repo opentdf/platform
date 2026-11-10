@@ -2,11 +2,15 @@ package claims
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"strconv"
+	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -22,26 +26,38 @@ import (
 
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
-	logger *logger.Logger
+	logger                  *logger.Logger
+	allowDirectEntitlements bool
 	trace.Tracer
 }
 
-func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
-	claimsSVC := EntityResolutionServiceV2{logger: logger}
+type Config struct {
+	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements"`
+}
+
+func RegisterClaimsERS(cfg config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
+	var inputConfig Config
+	if err := mapstructure.Decode(cfg, &inputConfig); err != nil {
+		log.Fatalf("Failed to decode claims entity resolution configuration: %v", err)
+	}
+	claimsSVC := EntityResolutionServiceV2{
+		logger:                  logger,
+		allowDirectEntitlements: inputConfig.AllowDirectEntitlements,
+	}
 	return claimsSVC, nil
 }
 
-func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
-	resp, err := EntityResolution(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
+	resp, err := EntityResolution(ctx, req, s.logger, s.allowDirectEntitlements)
+	return &resp, err
 }
 
-func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+	resp, err := CreateEntityChainsFromTokens(ctx, req, s.logger)
+	return &resp, err
 }
 
 func CreateEntityChainsFromTokens(
@@ -63,27 +79,37 @@ func CreateEntityChainsFromTokens(
 }
 
 func EntityResolution(_ context.Context,
-	req *entityresolutionV2.ResolveEntitiesRequest, logger *logger.Logger,
+	req *entityresolutionV2.ResolveEntitiesRequest, logger *logger.Logger, allowDirectEntitlements bool,
 ) (entityresolutionV2.ResolveEntitiesResponse, error) {
 	payload := req.GetEntities()
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
 	for idx, ident := range payload {
 		entityStruct := &structpb.Struct{}
+		var directEntitlements []*entityresolutionV2.DirectEntitlement
 		switch ident.GetEntityType().(type) {
 		case *entity.Entity_Claims:
 			claims := ident.GetClaims()
 			if claims != nil {
 				err := claims.UnmarshalTo(entityStruct)
 				if err != nil {
-					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+					cause := fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err)
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, cause.Error()).WithCause(cause)
+				}
+			}
+			if allowDirectEntitlements {
+				var err error
+				directEntitlements, err = parseDirectEntitlementsFromClaims(entityStruct)
+				if err != nil {
+					return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 				}
 			}
 		default:
 			retrievedStruct, err := entityToStructPb(ident)
 			if err != nil {
 				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
+				cause := fmt.Errorf("unable to make entity struct: %w", err)
+				return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, cause.Error()).WithCause(cause)
 			}
 			entityStruct = retrievedStruct
 		}
@@ -95,12 +121,132 @@ func EntityResolution(_ context.Context,
 		resolvedEntities = append(
 			resolvedEntities,
 			&entityresolutionV2.EntityRepresentation{
-				OriginalId:      originialID,
-				AdditionalProps: []*structpb.Struct{entityStruct},
+				OriginalId:         originialID,
+				AdditionalProps:    []*structpb.Struct{entityStruct},
+				DirectEntitlements: directEntitlements,
 			},
 		)
 	}
 	return entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
+}
+
+func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entityresolutionV2.DirectEntitlement, error) {
+	if entityStruct == nil {
+		return nil, nil
+	}
+	claims := entityStruct.AsMap()
+	var rawEntitlements interface{}
+	found := false
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		if raw, ok := claims[key]; ok {
+			rawEntitlements = raw
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, nil
+	}
+
+	entitlementList, entitlementsOK := rawEntitlements.([]interface{})
+	if !entitlementsOK {
+		return nil, errors.New("direct_entitlements must be an array")
+	}
+
+	out := make([]*entityresolutionV2.DirectEntitlement, 0, len(entitlementList))
+	for idx, entry := range entitlementList {
+		entryMap, entryOK := entry.(map[string]interface{})
+		if !entryOK {
+			return nil, fmt.Errorf("direct_entitlements[%d] must be an object", idx)
+		}
+
+		fqn, err := parseDirectEntitlementFQN(entryMap)
+		if err != nil {
+			return nil, fmt.Errorf("direct_entitlements[%d] %w", idx, err)
+		}
+
+		rawActions, actionsOK := entryMap["actions"]
+		if !actionsOK {
+			return nil, fmt.Errorf("direct_entitlements[%d] missing actions", idx)
+		}
+		actions, err := parseDirectEntitlementActions(rawActions)
+		if err != nil {
+			return nil, fmt.Errorf("direct_entitlements[%d] invalid actions: %w", idx, err)
+		}
+
+		out = append(out, &entityresolutionV2.DirectEntitlement{
+			AttributeValueFqn: fqn,
+			Actions:           actions,
+		})
+	}
+
+	// These reserved claims have been projected onto DirectEntitlements. Do not also expose either
+	// alias through AdditionalProps, which is evaluated as subject-mapping input.
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		delete(entityStruct.GetFields(), key)
+	}
+
+	return out, nil
+}
+
+func parseDirectEntitlementFQN(entry map[string]interface{}) (string, error) {
+	// Attribute value FQNs are case-insensitive in policy and the PDP lowercases resource FQNs
+	// before matching, so normalize here to avoid a mixed-case claim being missed and denied.
+	if raw, ok := entry["attribute_value_fqn"]; ok {
+		if fqn, fqnOK := raw.(string); fqnOK {
+			fqn = strings.ToLower(strings.TrimSpace(fqn))
+			if fqn != "" {
+				return fqn, nil
+			}
+		}
+	}
+	if raw, ok := entry["attributeValueFqn"]; ok {
+		if fqn, fqnOK := raw.(string); fqnOK {
+			fqn = strings.ToLower(strings.TrimSpace(fqn))
+			if fqn != "" {
+				return fqn, nil
+			}
+		}
+	}
+	return "", errors.New("missing attribute_value_fqn")
+}
+
+func parseDirectEntitlementActions(raw interface{}) ([]string, error) {
+	actions := make([]string, 0)
+	switch typed := raw.(type) {
+	case []interface{}:
+		for _, action := range typed {
+			actionStr, ok := action.(string)
+			if !ok {
+				return nil, errors.New("action must be a string")
+			}
+			actionStr = strings.TrimSpace(strings.ToLower(actionStr))
+			if actionStr != "" {
+				actions = append(actions, actionStr)
+			}
+		}
+	case []string:
+		for _, action := range typed {
+			action = strings.TrimSpace(strings.ToLower(action))
+			if action != "" {
+				actions = append(actions, action)
+			}
+		}
+	case string:
+		for _, action := range strings.Split(typed, ",") {
+			action = strings.TrimSpace(strings.ToLower(action))
+			if action != "" {
+				actions = append(actions, action)
+			}
+		}
+	default:
+		return nil, errors.New("actions must be an array or string")
+	}
+
+	if len(actions) == 0 {
+		return nil, errors.New("no actions provided")
+	}
+	return actions, nil
 }
 
 func getEntitiesFromToken(jwtString string) ([]*entity.Entity, error) {

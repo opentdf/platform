@@ -2,6 +2,7 @@ package realip
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -18,45 +19,146 @@ const (
 
 type ClientIP struct{}
 
-func ConnectRealIPUnaryInterceptor() connect.UnaryInterceptorFunc {
-	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+type resolver struct {
+	trustedProxies []netip.Prefix
+}
+
+// ConnectRealIPUnaryInterceptor resolves the client IP from the socket peer and,
+// only when that peer is trusted, X-Forwarded-For.
+func ConnectRealIPUnaryInterceptor(trustedProxyCIDRs []string) (connect.UnaryInterceptorFunc, error) {
+	resolver, err := newResolver(trustedProxyCIDRs)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			ip := getIP(ctx, req.Peer(), req.Header())
-
-			ctx = context.WithValue(ctx, ClientIP{}, ip)
-
+			ctx = context.WithValue(ctx, ClientIP{}, resolver.resolve(req.Peer().Addr, req.Header()))
 			return next(ctx, req)
 		})
-	}
-	return connect.UnaryInterceptorFunc(interceptor)
+	}), nil
 }
 
-func getIP(_ context.Context, peer connect.Peer, headers http.Header) net.IP {
-	for _, header := range []string{XRealIP, XForwardedFor, TrueClientIP} {
-		if ip := headers.Get(header); ip != "" {
-			ips := strings.Split(ip, ",")
-			if ips[0] == "" || net.ParseIP(ips[0]) == nil {
-				continue
-			}
-			return net.ParseIP(ips[0])
+// ConnectTrustedRequestIPUnaryInterceptor accepts a single propagated IP from
+// an in-process transport. It must not be installed on a public listener.
+func ConnectTrustedRequestIPUnaryInterceptor(header string) connect.UnaryInterceptorFunc {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			ctx = context.WithValue(ctx, ClientIP{}, trustedRequestIP(req.Peer().Addr, req.Header().Values(header)))
+			return next(ctx, req)
+		})
+	})
+}
+
+// trustedRequestIP returns the single propagated IP in values, falling back to
+// the transport peer address.
+func trustedRequestIP(peerAddr string, values []string) net.IP {
+	ip := peerIP(peerAddr)
+	if len(values) == 1 {
+		if propagated, ok := parseIP(values[0]); ok {
+			ip = propagated
 		}
 	}
+	if !ip.IsValid() {
+		return nil
+	}
+	return ip.AsSlice()
+}
 
-	ip, err := netip.ParseAddrPort(peer.Addr)
-	if err != nil {
-		return net.IP{}
+func newResolver(trustedProxyCIDRs []string) (*resolver, error) {
+	trustedProxies := make([]netip.Prefix, 0, len(trustedProxyCIDRs))
+	for _, cidr := range trustedProxyCIDRs {
+		cidr = strings.TrimSpace(cidr)
+		if cidr == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(cidr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trusted proxy CIDR %q: %w", cidr, err)
+		}
+		trustedProxies = append(trustedProxies, prefix.Masked())
+	}
+	return &resolver{trustedProxies: trustedProxies}, nil
+}
+
+func (r *resolver) resolve(peer string, headers http.Header) net.IP {
+	peerAddr := peerIP(peer)
+	if !peerAddr.IsValid() {
+		return nil
+	}
+	if !r.isTrusted(peerAddr) {
+		return peerAddr.AsSlice()
 	}
 
-	return net.IP(ip.Addr().AsSlice())
+	if values := headers.Values(XForwardedFor); len(values) > 0 {
+		parts := strings.Split(strings.Join(values, ","), ",")
+		var leftmost netip.Addr
+		for i := len(parts) - 1; i >= 0; i-- {
+			ip, ok := parseForwardedIP(parts[i])
+			if !ok {
+				return peerAddr.AsSlice()
+			}
+			if !r.isTrusted(ip) {
+				return ip.AsSlice()
+			}
+			leftmost = ip
+		}
+		return leftmost.AsSlice()
+	}
+
+	return peerAddr.AsSlice()
+}
+
+func (r *resolver) isTrusted(ip netip.Addr) bool {
+	for _, prefix := range r.trustedProxies {
+		if prefix.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func parseForwardedIP(value string) (netip.Addr, bool) {
+	if ip, ok := parseIP(value); ok {
+		return ip, true
+	}
+	addrPort, err := netip.ParseAddrPort(strings.TrimSpace(value))
+	if err != nil || addrPort.Addr().Zone() != "" {
+		return netip.Addr{}, false
+	}
+	return addrPort.Addr().Unmap(), true
+}
+
+func parseIP(value string) (netip.Addr, bool) {
+	value = strings.TrimSpace(value)
+	ip, err := netip.ParseAddr(value)
+	if err != nil || ip.Zone() != "" {
+		return netip.Addr{}, false
+	}
+	return ip.Unmap(), true
+}
+
+func peerIP(addr string) netip.Addr {
+	if addrPort, err := netip.ParseAddrPort(strings.TrimSpace(addr)); err == nil {
+		return addrPort.Addr().Unmap()
+	}
+	ip, ok := parseIP(addr)
+	if !ok {
+		return netip.Addr{}
+	}
+	return ip
 }
 
 func FromContext(ctx context.Context) net.IP {
 	ip, ok := ctx.Value(ClientIP{}).(net.IP)
 	if !ok {
-		return net.IP{}
+		return nil
 	}
 	return ip
 }

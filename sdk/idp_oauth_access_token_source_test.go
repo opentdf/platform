@@ -15,7 +15,7 @@ import (
 func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	mockToken := "mockToken"
 	// Expected
-	mockSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: mockToken})
+	mockSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: mockToken, TokenType: "DPoP"})
 	mockScopes := []string{"scope1", "scope2"}
 	mockKey, _ := ocrypto.NewRSAKeyPair(dpopKeySize)
 	dpopPublicKeyPEM, dpopKey, asymDecryption, _ := getNewDPoPKey(&mockKey)
@@ -26,19 +26,37 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	assert.Equal(t, mockScopes, tokenSource.scopes)
 	// DPoP values
 	assert.Equal(t, asymDecryption, &tokenSource.asymDecryption)
 	assert.Equal(t, dpopPublicKeyPEM, tokenSource.dpopPEM)
+	// Guard the fix that switched dpopPEM to public material: comparing against
+	// getNewDPoPKey alone is tautological, so assert it is genuinely a public key
+	// block — a regression to the private PEM would leak signing material.
+	assert.Contains(t, tokenSource.dpopPEM, "PUBLIC KEY", "dpopPEM must hold the public key")
+	assert.NotContains(t, tokenSource.dpopPEM, "PRIVATE KEY", "dpopPEM must not hold private key material")
 	assert.Equal(t, dpopKey, tokenSource.dpopKey)
 	// Interface checks
-	tok, err := tokenSource.AccessToken(t.Context(), nil)
+	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
 	require.NoError(t, err)
-	assert.Equal(t, tok, auth.AccessToken(mockToken))
+	assert.Equal(t, credential.Token, auth.AccessToken(mockToken))
+	assert.Equal(t, auth.TokenTypeDPoP, credential.Type)
 	made, err := tokenSource.MakeToken(func(jwk.Key) ([]byte, error) { return []byte(mockToken), nil })
 	require.NoError(t, err)
 	assert.Equal(t, made, []byte(mockToken))
+}
+
+func TestOAuthAccessTokenSource_TokenTypeBearer(t *testing.T) {
+	mockSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "mockToken", TokenType: "Bearer"})
+	mockKey, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+	require.NoError(t, err)
+
+	tokenSource, err := NewOAuthAccessTokenSource(mockSource, nil, &mockKey)
+	require.NoError(t, err)
+
+	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
+	require.NoError(t, err)
+	assert.Equal(t, auth.TokenTypeBearer, credential.Type)
 }
 
 func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {
@@ -54,7 +72,6 @@ func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(t.Context(), nil)
 	require.Error(t, err)
@@ -74,11 +91,40 @@ func TestNewOAuthAccessTokenSource_InvalidTokenSource(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(t.Context(), nil)
 	require.Error(t, err)
 	assert.Empty(t, tok)
+}
+
+// countingTokenSource records how many times the underlying source is queried,
+// so tests can assert that valid tokens are cached rather than re-fetched.
+type countingTokenSource struct {
+	calls int
+	tok   *oauth2.Token
+}
+
+func (c *countingTokenSource) Token() (*oauth2.Token, error) {
+	c.calls++
+	return c.tok, nil
+}
+
+func TestNewOAuthAccessTokenSource_CachesValidToken(t *testing.T) {
+	counting := &countingTokenSource{
+		tok: &oauth2.Token{AccessToken: "mockToken", Expiry: time.Now().Add(time.Hour)},
+	}
+	mockKey, _ := ocrypto.NewRSAKeyPair(dpopKeySize)
+
+	tokenSource, err := NewOAuthAccessTokenSource(counting, []string{"scope1"}, &mockKey)
+	require.NoError(t, err)
+
+	for range 3 {
+		tok, err := tokenSource.AccessToken(t.Context(), nil)
+		require.NoError(t, err)
+		assert.Equal(t, auth.AccessToken("mockToken"), tok)
+	}
+
+	assert.Equal(t, 1, counting.calls, "valid token should be fetched once and reused")
 }
 
 func TestNewOAuthAccessTokenSource_InvalidKey(t *testing.T) {

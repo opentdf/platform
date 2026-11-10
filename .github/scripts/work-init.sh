@@ -8,7 +8,6 @@
 # This is intended to be used as part of a release please to validate the
 # internal go.mod deps are up to date and accurate.
 #
-#  examples -> protocol/go, sdk
 #  lib/crypto -> ∅
 #  lib/fixtures -> ∅
 #  lib/flattening -> ∅
@@ -36,36 +35,46 @@ if ! cd "$ROOT_DIR"; then
   exit 1
 fi
 
+# Preserve the toolchain directive from the original go.work so that CI steps
+# reading go-version-file: go.work (e.g. govulncheck) continue to use the
+# correct Go version after the workspace is regenerated.
+ORIG_TOOLCHAIN=$(awk '/^toolchain / {print $2; exit}' go.work 2>/dev/null)
+
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
 lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go)
   echo "[INFO] skipping for leaf package"
+  exit 0
   ;;
 sdk)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./sdk &&
-    go work use ./service &&
-    go work use ./examples
-  ;;
+    go work use ./service
+;;
 service)
   rm -f go.work go.work.sum &&
     go work init &&
-    go work use ./service &&
-    go work use ./examples
-  ;;
-examples)
-  rm -f go.work go.work.sum &&
-    go work init &&
-    go work use ./examples
+    go work use ./service
   ;;
 otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
-    go work use ./otdfctl
+    go work use ./otdfctl &&
+    # service is needed for release branch checks
+    go work use ./service
   ;;
 *)
   echo "[ERROR] unknown component [${component}]"
   exit 1
   ;;
 esac
+
+# Restore the toolchain directive if it was present in the original go.work.
+if [[ -n "${ORIG_TOOLCHAIN:-}" ]]; then
+  if ! go work edit -toolchain="$ORIG_TOOLCHAIN"; then
+    echo "[ERROR] unable to restore original toolchain [${ORIG_TOOLCHAIN}] in go.work"
+    exit 1
+  fi
+  echo "[INFO] Restored toolchain ${ORIG_TOOLCHAIN} in go.work"
+fi

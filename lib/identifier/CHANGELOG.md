@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.3.0...lib/identifier/v0.4.0) (2026-04-21)
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 3 directories with 2 updates ([#3153](https://github.com/opentdf/platform/issues/3153)) ([c832d89](https://github.com/opentdf/platform/commit/c832d89f0a61abbdf0969184437e172789466f5c))
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.2.0...lib/identifier/v0.3.0) (2026-03-13)
 
 

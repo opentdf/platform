@@ -12,21 +12,30 @@ import (
 )
 
 const (
-	tdf3KeySize            = 2048
-	defaultMaxManifestSize = 10 * 1024 * 1024 // 10 MB
-	defaultSegmentSize     = 2 * 1024 * 1024  // 2mb
-	maxSegmentSize         = defaultSegmentSize * 2
-	minSegmentSize         = 16 * 1024
-	DefaultRSAKeySize      = 2048
-	ECKeySize256           = 256
-	ECKeySize384           = 384
-	ECKeySize521           = 521
+	tdf3KeySize        = 2048
+	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	maxSegmentSize     = defaultSegmentSize * 2
+	minSegmentSize     = 16 * 1024
+	DefaultRSAKeySize  = 2048
+	ECKeySize256       = 256
+	ECKeySize384       = 384
+	ECKeySize521       = 521
+
+	// inputSizeUnknown marks a payload whose length cannot be established
+	// before it is read.
+	inputSizeUnknown = -1
 )
 
+// TDFFormat once selected a manifest serialization. Only JSON was ever
+// implemented, and nothing reads this.
+//
+// Deprecated: unused; the manifest is always JSON.
 type TDFFormat = int
 
 const (
+	// Deprecated: unused; the manifest is always JSON.
 	JSONFormat = iota
+	// Deprecated: never implemented.
 	XMLFormat
 )
 
@@ -35,12 +44,82 @@ const (
 	schemeSeperator = "://"
 )
 
+// IntegrityAlgorithm named an integrity algorithm without saying what it was
+// allowed to protect.
+//
+// Deprecated: the root signature and the segment hashes accept different sets
+// of algorithms, which one type cannot express. Use [RootIntegrityAlg] or
+// [SegmentIntegrityAlg].
 type IntegrityAlgorithm = int
 
 const (
+	// HS256 selects HMAC-SHA256.
+	//
+	// Deprecated: use [RootHS256] or [SegmentHS256].
 	HS256 = iota
+	// GMAC selects AES-GCM tag extraction.
+	//
+	// Deprecated: use [SegmentGMAC]. GMAC is not a legal root algorithm.
 	GMAC
 )
+
+// RootIntegrityAlg is the algorithm that signs a TDF's aggregate hash -- the
+// concatenation of every segment hash, in manifest order. The root signature is
+// the only thing that authenticates the manifest's description of the payload,
+// so a segment list that has been truncated, reordered, or duplicated is caught
+// here or not at all.
+//
+// HS256 is the only value, and this type exists to say so at compile time. The
+// aggregate hash is manifest data that never passed through the AEAD, so
+// tag extraction has nothing to extract: a "GMAC" root signature is just a copy
+// of the last segment hash, producible by an attacker with no key.
+type RootIntegrityAlg int
+
+// RootHS256 is an HMAC-SHA256 over the aggregate hash, keyed by the payload
+// key. It is the default, the only supported value, and what every TDF in the
+// wild already declares.
+const RootHS256 RootIntegrityAlg = iota
+
+// SegmentIntegrityAlg is the algorithm that authenticates a single segment's
+// bytes. Unlike the root, both values are genuine authenticators, because the
+// input is data the cipher itself produced.
+type SegmentIntegrityAlg int
+
+const (
+	// SegmentHS256 is an HMAC-SHA256 over the segment's bytes, keyed by the
+	// payload key. It is the only meaningful choice when those bytes are not
+	// AEAD output -- a plaintext segment has no tag to read out -- which the
+	// experimental writer can produce and the stable one cannot. Readers must
+	// keep accepting it either way.
+	SegmentHS256 SegmentIntegrityAlg = iota
+	// SegmentGMAC reads out the AES-GCM tag the cipher already computed over
+	// exactly this segment's ciphertext. It is the default, and what
+	// essentially every existing TDF declares.
+	SegmentGMAC
+)
+
+// String returns the manifest spelling of the algorithm. Out-of-range values
+// have no spelling: the type is int-backed, so they are representable, and
+// naming one "HS256" in a manifest would claim a signature that was never
+// computed.
+func (a RootIntegrityAlg) String() string {
+	if a == RootHS256 {
+		return hmacIntegrityAlgorithm
+	}
+	return fmt.Sprintf("RootIntegrityAlg(%d)", int(a))
+}
+
+// String returns the manifest spelling of the algorithm. See
+// [RootIntegrityAlg.String] on out-of-range values.
+func (a SegmentIntegrityAlg) String() string {
+	switch a {
+	case SegmentHS256:
+		return hmacIntegrityAlgorithm
+	case SegmentGMAC:
+		return gmacIntegrityAlgorithm
+	}
+	return fmt.Sprintf("SegmentIntegrityAlg(%d)", int(a))
+}
 
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
@@ -63,12 +142,9 @@ type TDFOption func(*TDFConfig) error
 type TDFConfig struct {
 	autoconfigure              bool
 	defaultSegmentSize         int64
-	enableEncryption           bool
-	tdfFormat                  TDFFormat
+	inputSize                  int64
 	metaData                   string
 	mimeType                   string
-	integrityAlgorithm         IntegrityAlgorithm
-	segmentIntegrityAlgorithm  IntegrityAlgorithm
 	assertions                 []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
@@ -79,17 +155,17 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
+	// maxSegmentEncryptions overrides maxAESGCMSegmentsPerDEK when non-zero.
+	// Only tests set it, through withMaxSegmentEncryptions.
+	maxSegmentEncryptions uint64
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
-		autoconfigure:             true,
-		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: GMAC,
-		addDefaultAssertion:       false,
+		autoconfigure:       true,
+		defaultSegmentSize:  defaultSegmentSize,
+		inputSize:           inputSizeUnknown,
+		addDefaultAssertion: false,
 	}
 
 	for _, o := range opt {
@@ -180,6 +256,15 @@ func WithMimeType(mimeType string) TDFOption {
 	}
 }
 
+// withMaxSegmentEncryptions lowers the AES-GCM segment encryption cap so tests
+// can reach ErrAESGCMExhausted without encrypting 2^32 segments.
+func withMaxSegmentEncryptions(n uint64) TDFOption {
+	return func(c *TDFConfig) error {
+		c.maxSegmentEncryptions = n
+		return nil
+	}
+}
+
 // WithSegmentSize returns an Option that set the default segment size within the TDF. Any excessively large or small
 // values will be replaced with a supported value.
 func WithSegmentSize(size int64) TDFOption {
@@ -190,6 +275,25 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithInputSize declares the payload length, in bytes, for the reader passed to
+// CreateTDF. Supply it when the reader cannot report its own length — a pipe, a
+// network stream — but the length is known anyway: it lets the archive keep the
+// compact ZIP32 layout that an unmeasurable payload has to give up. When the reader
+// is seekable the length is recovered automatically and this option is unnecessary.
+//
+// The declared length is exact, not an upper bound: reading stops after size bytes
+// even if the reader has more to give, and a reader that reaches EOF first fails the
+// call rather than producing a TDF that is silently short of the payload.
+func WithInputSize(size int64) TDFOption {
+	return func(c *TDFConfig) error {
+		if size < 0 {
+			return fmt.Errorf("WithInputSize: size must not be negative, got %d", size)
+		}
+		c.inputSize = size
 		return nil
 	}
 }
@@ -272,7 +376,7 @@ type TDFReaderConfig struct {
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
 	fulfillableObligationFQNs []string
-	maxManifestSize           int64
+	maxManifestSize           int64 // 0 means no limit; see WithMaxManifestSize
 }
 
 type AllowList map[string]bool
@@ -346,7 +450,6 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		maxManifestSize:              defaultMaxManifestSize,
 	}
 
 	for _, o := range opt {
@@ -367,11 +470,12 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	return c, nil
 }
 
-// WithMaxManifestSize sets the maximum allowed manifest size for the TDF reader.
-// By default, the maximum manifest size is 10 MB.
-// The manifest size is proportional to the sum of the sizes of the policy and the number of segments in the payload.
-// Setting this limit helps prevent denial of service attacks due to large policies or overly segmented files.
-// Use this option to override the default limit; the size parameter specifies the maximum size in bytes.
+// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for the TDF reader.
+// By default there is no limit: the manifest grows with the policy size and the number of
+// segments, so very large payloads legitimately carry very large manifests. A declared
+// manifest size is always bounded by the archive itself, so this option is not needed to
+// reject forged ZIP sizes; use it to cap how much memory a manifest read may allocate.
+// size must be greater than 0.
 func WithMaxManifestSize(size int64) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		if size <= 0 {
@@ -407,7 +511,7 @@ func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		kasSessionKey, err := ocrypto.NewKeyPair(keyType)
 		if err != nil {
-			return fmt.Errorf("failed to create RSA key pair: %w", err)
+			return fmt.Errorf("failed to create %v key pair: %w", keyType, err)
 		}
 		c.kasSessionKey = kasSessionKey
 		return nil

@@ -203,6 +203,11 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -229,6 +234,11 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
     policy.SourceType:
       type: string
       title: SourceType
@@ -720,6 +730,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -860,6 +874,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -883,6 +904,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata

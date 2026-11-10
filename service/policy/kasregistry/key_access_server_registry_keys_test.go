@@ -904,6 +904,21 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 	}
 }
 
+func Test_ListKeysRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&kasregistry.ListKeysRequest{
+		Search: &policy.Search{Term: "key"},
+	}))
+	require.NoError(t, v.Validate(&kasregistry.ListKeysRequest{}))
+
+	err := v.Validate(&kasregistry.ListKeysRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
+}
+
 func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 	testCases := []struct {
 		name         string

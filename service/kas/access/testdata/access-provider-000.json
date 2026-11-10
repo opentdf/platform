@@ -1,0 +1,141 @@
+{
+  "uri": {
+    "Scheme": "https",
+    "Opaque": "",
+    "User": null,
+    "Host": "access-provider-000.com",
+    "Path": "",
+    "RawPath": "",
+    "ForceQuery": false,
+    "RawQuery": "",
+    "Fragment": ""
+  },
+  "publicKey": {
+    "N": 21613427775220314589531911256901195394353579458741433710860038520655317640550880947487715252000989277740185603203158785372841658384717331675809445217739131326859042635843625118187291848572911680781695409218431669981449567499590393658105188835485395932519427288669380037559320628062827448810031460230657540445004476836771353898352407230022823421445802372469700805387565935325592152248349748820832907727604243428141630702984282558390621387977679790165063985714008430821138211703001439576188851636184023058558256739852720937640486135422716340901678197972664425977465370696678506629327053132965099868650210166870812793897,
+    "E": 65537
+  },
+  "certificate": {
+    "Raw": "MIICuDCCAaACCQDTf+2M+vRZyTANBgkqhkiG9w0BAQsFADAeMRwwGgYDVQQDDBNhY2Nlc3MtcHJvdmlkZXItMDAwMB4XDTE5MTIyNzAwMTQxNFoXDTIwMTIyNjAwMTQxNFowHjEcMBoGA1UEAwwTYWNjZXNzLXByb3ZpZGVyLTAwMDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKs2GY8yu7wIbm7GhSAMfj6bMQ7FgaZkR1qfh8Uz1jcDBIFWNKOxBZEz/oECbj45dmtT3LQw8Tgk+C4fb46StbRCNTinhgojgBfZYINy1+dikPYYRvMFVTWdZ9onkWNbSsdtTtnBQcSxaobvWOcdo21NCRADuNN6VvFleTqfu/4jx/DjmSATQ1QQbmlFP0QEGJv1amd7h9szdsfhmEYy9o1WsFJbe4Jw1LSH+gEhky/JsF+MoKjYfUZv+mAoPKhq0jfJaSfs9L3YrhLbx3BceHaJeQAuwjBudBEX8Y/5bJfy37cQtRDrK2k2LjoKzAOLb/CrmJlKBUaW58kJ/HPCHCkCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAPyfUDRpSquRb+NEgueQKDvcCzFyrmmdbBCEa64YiTT1CjSZSbVP34EdVpSSzY0QNQN5zdB6GkbM+3mHSG2zOvilXkZxZtPb/PMiBc6OgE2wtQEOinuAKnzCkL6vU8p4CaWFpn06kSiEWFPj9igGWXOTEJHLdNA/O9EVKcAQ3VGS/gxbQogwYNlu0PrKF4ZO6f7sFPSpQPl0eQpvOycEqb7L36zXqfQB2GtDleDrvlS5G0yqzKAnMc6G62AXlLMfKtVLsoZVIoMzgZhS5f9A2P+WWlalDGdH2zmZPd5Z0MlKg9BBAhwR1zc/3Krwt2G/DRLwCxY7iy2XBD/ApUfd4qw==",
+    "RawTBSCertificate": "MIIBoAIJANN/7Yz69FnJMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNVBAMME2FjY2Vzcy1wcm92aWRlci0wMDAwHhcNMTkxMjI3MDAxNDE0WhcNMjAxMjI2MDAxNDE0WjAeMRwwGgYDVQQDDBNhY2Nlc3MtcHJvdmlkZXItMDAwMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqzYZjzK7vAhubsaFIAx+PpsxDsWBpmRHWp+HxTPWNwMEgVY0o7EFkTP+gQJuPjl2a1PctDDxOCT4Lh9vjpK1tEI1OKeGCiOAF9lgg3LX52KQ9hhG8wVVNZ1n2ieRY1tKx21O2cFBxLFqhu9Y5x2jbU0JEAO403pW8WV5Op+7/iPH8OOZIBNDVBBuaUU/RAQYm/VqZ3uH2zN2x+GYRjL2jVawUlt7gnDUtIf6ASGTL8mwX4ygqNh9Rm/6YCg8qGrSN8lpJ+z0vdiuEtvHcFx4dol5AC7CMG50ERfxj/lsl/LftxC1EOsraTYuOgrMA4tv8KuYmUoFRpbnyQn8c8IcKQIDAQAB",
+    "RawSubjectPublicKeyInfo": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqzYZjzK7vAhubsaFIAx+PpsxDsWBpmRHWp+HxTPWNwMEgVY0o7EFkTP+gQJuPjl2a1PctDDxOCT4Lh9vjpK1tEI1OKeGCiOAF9lgg3LX52KQ9hhG8wVVNZ1n2ieRY1tKx21O2cFBxLFqhu9Y5x2jbU0JEAO403pW8WV5Op+7/iPH8OOZIBNDVBBuaUU/RAQYm/VqZ3uH2zN2x+GYRjL2jVawUlt7gnDUtIf6ASGTL8mwX4ygqNh9Rm/6YCg8qGrSN8lpJ+z0vdiuEtvHcFx4dol5AC7CMG50ERfxj/lsl/LftxC1EOsraTYuOgrMA4tv8KuYmUoFRpbnyQn8c8IcKQIDAQAB",
+    "RawSubject": "MB4xHDAaBgNVBAMME2FjY2Vzcy1wcm92aWRlci0wMDA=",
+    "RawIssuer": "MB4xHDAaBgNVBAMME2FjY2Vzcy1wcm92aWRlci0wMDA=",
+    "Signature": "PyfUDRpSquRb+NEgueQKDvcCzFyrmmdbBCEa64YiTT1CjSZSbVP34EdVpSSzY0QNQN5zdB6GkbM+3mHSG2zOvilXkZxZtPb/PMiBc6OgE2wtQEOinuAKnzCkL6vU8p4CaWFpn06kSiEWFPj9igGWXOTEJHLdNA/O9EVKcAQ3VGS/gxbQogwYNlu0PrKF4ZO6f7sFPSpQPl0eQpvOycEqb7L36zXqfQB2GtDleDrvlS5G0yqzKAnMc6G62AXlLMfKtVLsoZVIoMzgZhS5f9A2P+WWlalDGdH2zmZPd5Z0MlKg9BBAhwR1zc/3Krwt2G/DRLwCxY7iy2XBD/ApUfd4qw==",
+    "SignatureAlgorithm": 4,
+    "PublicKeyAlgorithm": 1,
+    "PublicKey": {
+      "N": 21613427775220314589531911256901195394353579458741433710860038520655317640550880947487715252000989277740185603203158785372841658384717331675809445217739131326859042635843625118187291848572911680781695409218431669981449567499590393658105188835485395932519427288669380037559320628062827448810031460230657540445004476836771353898352407230022823421445802372469700805387565935325592152248349748820832907727604243428141630702984282558390621387977679790165063985714008430821138211703001439576188851636184023058558256739852720937640486135422716340901678197972664425977465370696678506629327053132965099868650210166870812793897,
+      "E": 65537
+    },
+    "Version": 1,
+    "SerialNumber": 15240160853806569929,
+    "Issuer": {
+      "Country": null,
+      "Organization": null,
+      "OrganizationalUnit": null,
+      "Locality": null,
+      "Province": null,
+      "StreetAddress": null,
+      "PostalCode": null,
+      "SerialNumber": "",
+      "CommonName": "access-provider-000",
+      "Names": [
+        {
+          "Type": [
+            2,
+            5,
+            4,
+            3
+          ],
+          "Value": "access-provider-000"
+        }
+      ],
+      "ExtraNames": null
+    },
+    "Subject": {
+      "Country": null,
+      "Organization": null,
+      "OrganizationalUnit": null,
+      "Locality": null,
+      "Province": null,
+      "StreetAddress": null,
+      "PostalCode": null,
+      "SerialNumber": "",
+      "CommonName": "access-provider-000",
+      "Names": [
+        {
+          "Type": [
+            2,
+            5,
+            4,
+            3
+          ],
+          "Value": "access-provider-000"
+        }
+      ],
+      "ExtraNames": null
+    },
+    "NotBefore": "2019-12-27T00:14:14Z",
+    "NotAfter": "2020-12-26T00:14:14Z",
+    "KeyUsage": 0,
+    "Extensions": null,
+    "ExtraExtensions": null,
+    "UnhandledCriticalExtensions": null,
+    "ExtKeyUsage": null,
+    "UnknownExtKeyUsage": null,
+    "BasicConstraintsValid": false,
+    "IsCA": false,
+    "MaxPathLen": 0,
+    "MaxPathLenZero": false,
+    "SubjectKeyId": null,
+    "AuthorityKeyId": null,
+    "OCSPServer": null,
+    "IssuingCertificateURL": null,
+    "DNSNames": null,
+    "EmailAddresses": null,
+    "IPAddresses": null,
+    "URIs": null,
+    "PermittedDNSDomainsCritical": false,
+    "PermittedDNSDomains": null,
+    "ExcludedDNSDomains": null,
+    "PermittedIPRanges": null,
+    "ExcludedIPRanges": null,
+    "PermittedEmailAddresses": null,
+    "ExcludedEmailAddresses": null,
+    "PermittedURIDomains": null,
+    "ExcludedURIDomains": null,
+    "CRLDistributionPoints": null,
+    "PolicyIdentifiers": null
+  },
+  "attributes": [
+    {
+      "URI": {
+        "Scheme": "https",
+        "Opaque": "",
+        "User": null,
+        "Host": "access-provider-000.com",
+        "Path": "/tdf/3/attribute/medical/2/approve",
+        "RawPath": "",
+        "ForceQuery": false,
+        "RawQuery": "",
+        "Fragment": ""
+      },
+      "PublicKey": {
+        "N": 21613427775220314589531911256901195394353579458741433710860038520655317640550880947487715252000989277740185603203158785372841658384717331675809445217739131326859042635843625118187291848572911680781695409218431669981449567499590393658105188835485395932519427288669380037559320628062827448810031460230657540445004476836771353898352407230022823421445802372469700805387565935325592152248349748820832907727604243428141630702984282558390621387977679790165063985714008430821138211703001439576188851636184023058558256739852720937640486135422716340901678197972664425977465370696678506629327053132965099868650210166870812793897,
+        "E": 65537
+      },
+      "ProviderURI": {
+        "Scheme": "https",
+        "Opaque": "",
+        "User": null,
+        "Host": "access-provider-000.com",
+        "Path": "/tdf/3/attribute/",
+        "RawPath": "",
+        "ForceQuery": false,
+        "RawQuery": "",
+        "Fragment": ""
+      },
+      "SchemaVersion": "1.1.0"
+    }
+  ]
+}

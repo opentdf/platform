@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/authorization.AuthorizationService/GetDecisions"
+  },
+
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/get_decisions_1.json",
+    "transformers": ["response-template"]
+  }
+}

@@ -1,0 +1,46 @@
+name: 👋 Friendly Reminders
+
+on:
+  pull_request:
+    branches: main
+
+permissions: {}
+
+jobs:
+  friendly-reminder:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: "service/go.mod"
+
+      - name: Check Go Mod Tidy
+        id: go-mod-tidy
+        run: |
+          # iterate over work file, cd and run go mod tidy
+          while IFS="" read -r line || [ -n "$line" ]; do
+            (cd "$line" && go mod tidy)
+          done < <(go work edit --json | jq -r '.Use.[].DiskPath')
+          # check if any changes were made
+          git status --porcelain >>"$GITHUB_OUTPUT"
+
+      - name: Post comment if go.mod was changed
+        if: steps.go-mod-tidy.outputs.stdout != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '👋 Friendly reminder: go.mod was changed. Make sure to run `go mod tidy`!\n\n' +
+                    '```\n$GO_MOD_TIDY_OUTPUT\n```'
+            })
+        env:
+          GO_MOD_TIDY_OUTPUT: ${{ steps.go-mod-tidy.outputs.stdout }}

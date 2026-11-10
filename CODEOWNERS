@@ -1,7 +1,51 @@
 # CODEOWNERS
 
-* @opentdf/cli
+* @opentdf/maintainers
 
-# @opentdf/security added on 2025-02-04 go.mod,go.sum
-go.mod @opentdf/cli @opentdf/security
-go.sum @opentdf/cli @opentdf/security
+## Lib
+
+/.github/     @opentdf/architecture @opentdf/maintainers
+/lib/         @opentdf/architecture @opentdf/maintainers
+/lib/ocrypto  @opentdf/architecture
+
+## General
+
+.policy.yml   @opentdf/maintainers @opentdf/security
+.gitignore    @opentdf/maintainers
+*go.mod       @opentdf/maintainers @opentdf/security
+*.sum         @opentdf/maintainers @opentdf/security
+
+### Documentation
+
+*.md            @opentdf/maintainers
+/docs/          @opentdf/maintainers
+/examples/      @opentdf/maintainers
+/examples/go.*  @opentdf/maintainers @opentdf/security
+
+## Services
+
+/protocol/go/          @opentdf/architecture @opentdf/maintainers
+/protocol/go/go.*      @opentdf/architecture @opentdf/maintainers @opentdf/security
+
+### Policy
+
+/service/migrations/   @opentdf/cli @opentdf/architecture
+/service/policy/       @opentdf/cli @opentdf/architecture
+
+### Key Access Server
+
+/service/kas/           @opentdf/kas @opentdf/architecture
+
+## SDK
+
+/sdk/     @opentdf/go-sdk @opentdf/architecture
+/sdk/go.* @opentdf/go-sdk @opentdf/architecture @opentdf/security
+
+## CLI
+
+/otdfctl/ @opentdf/cli
+
+## High Security Area
+
+CODEOWNERS     @opentdf/architecture @opentdf/security
+LICENSE        @opentdf/architecture

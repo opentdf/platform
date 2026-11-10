@@ -1,0 +1,12 @@
+{
+  "uuid": "1111-2222-33333-44444-abddef-timestamp",
+  "body": {
+    "dataAttributes": [
+      {}
+    ],
+    "dissem": [
+      "user-id@domain.com"
+    ]
+  },
+  "schemaVersion:": "x.y.z"
+}

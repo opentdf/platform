@@ -9,22 +9,32 @@ linters:
     - canonicalheader
     - containedctx
     - contextcheck
-    - copyloopvar
     - durationcheck
+    - decorder
+    - dogsled
+    - durationcheck
+    # - err113
     - errcheck
     - errname
     - errorlint
+    # - errchkjson
     - exhaustive
+    - exptostd
+    - fatcontext
     - forbidigo
     - forcetypeassert
+    - funcorder
     - gocheckcompilerdirectives
+    # - gochecknoinits
     - goconst
     - gocritic
     - gomodguard
     - goprintffuncname
     - gosec
     - govet
+    - importas
     - ineffassign
+    # - intrange
     - loggercheck
     - makezero
     - mnd
@@ -33,18 +43,25 @@ linters:
     - nestif
     - nilerr
     - nilnil
+    # - nlreturn
     - noctx
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
+    - perfsprint
     - predeclared
     - promlinter
     - protogetter
     - reassign
+    - revive
+    # - recvcheck
     - rowserrcheck
     - sloglint
+    - spancheck
     - sqlclosecheck
     - staticcheck
+    # - tagalign
+    # - tagliatelle # maybe we want this to force consistent config to ensure consistent tag alignment across the codebase
     - testableexamples
     - testifylint
     - tparallel
@@ -52,6 +69,7 @@ linters:
     - unparam
     - unused
     - usestdlibvars
+    - usetesting
     - wastedassign
     - whitespace
   settings:
@@ -82,6 +100,9 @@ linters:
               recommendations:
                 - github.com/google/uuid
               reason: gofrs' package is not go module
+    gosec:
+      excludes:
+        - G115
     govet:
       disable:
         - fieldalignment
@@ -89,13 +110,46 @@ linters:
       settings:
         shadow:
           strict: true
+    mnd:
+      ignored-functions:
+        - os.Chmod
+        - os.Mkdir
+        - os.MkdirAll
+        - os.OpenFile
+        - os.WriteFile
+        - prometheus.ExponentialBuckets
+        - prometheus.ExponentialBucketsRange
+        - prometheus.LinearBuckets
     nolintlint:
       require-explanation: true
       require-specific: true
-    staticcheck:
-      checks:
-        - -ST1003
-        - all
+    rowserrcheck:
+      packages:
+        - github.com/jackc/pgx/v5
+    sloglint:
+      kv-only: false
+      no-mixed-args: true
+      static-msg: true
+      attr-only: true
+      no-raw-keys: false
+      msg-style: lowercased
+      key-naming-case: snake
+      forbidden-keys:
+        - time
+        - level
+        - msg
+        - source
+        - request
+        - req
+        - auth
+        - authorization
+        - token
+      args-on-sep-lines: true
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          mapstructure: snake
   exclusions:
     generated: lax
     presets:
@@ -104,6 +158,18 @@ linters:
       - legacy
       - std-error-handling
     rules:
+      - linters:
+          - lll
+        source: ^//\s*go:generate\s
+      - linters:
+          - godot
+        source: (noinspection|TODO)
+      - linters:
+          - gocritic
+        source: //noinspection
+      - linters:
+          - errorlint
+        source: ^\s+if _, ok := err\.\([^.]+\.InternalError\); ok {
       - linters:
           - bodyclose
           - dupl
@@ -117,22 +183,50 @@ linters:
       - linters:
           - govet
         text: 'shadow: declaration of "(err)" shadows declaration at'
+      - linters:
+          - goimport
+        text: http://www.apache.org/licenses/LICENSE-2.0
+      # otdfctl: defer refactoring-level lint fixes to follow-up
+      - path: otdfctl/
+        linters:
+          - contextcheck
+        text: should pass the context parameter
+      - path: otdfctl/
+        linters:
+          - revive
+        text: unused-parameter
+      - path: otdfctl/
+        linters:
+          - revive
+        text: unexported-return
+      - path: otdfctl/
+        linters:
+          - revive
+        text: var-naming
+      - path: otdfctl/
+        linters:
+          - nolintlint
+        text: "exhaustive"
     paths:
-      - tui
+      - .*\.pb\.go
+      - .*\.pb\.gw.go
+      - otdfctl/tui/  # excluded during migration, matching original otdfctl lint config
       - third_party$
       - builtin$
       - examples$
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  uniq-by-line: true
 formatters:
   enable:
-    - gofmt
-    - goimports
+    - gofumpt
   exclusions:
     generated: lax
     paths:
-      - tui
+      - .*\.pb\.go
+      - .*\.pb\.gw.go
+      - otdfctl/tui/
       - third_party$
       - builtin$
       - examples$

@@ -1,0 +1,497 @@
+syntax = "proto3";
+
+package policy.attributes;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+/*
+   Key Access Server Grants
+*/
+// Deprecated
+message AttributeKeyAccessServer {
+  option deprecated = true;
+  // Required
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  string key_access_server_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+/*
+   Key Maps
+*/
+
+message ValueKeyAccessServer {
+  option deprecated = true;
+  // Required
+  string value_id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  string key_access_server_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message AttributeKey {
+  // Required
+  string attribute_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required
+  string key_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+message ValueKey {
+  // Required
+  string value_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required (The id listed in the AsymmetricKeys object)
+  string key_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+/*
+   Attribute Service Definitions
+*/
+
+enum SortAttributesType {
+  SORT_ATTRIBUTES_TYPE_UNSPECIFIED = 0;
+  SORT_ATTRIBUTES_TYPE_NAME = 1;
+  SORT_ATTRIBUTES_TYPE_CREATED_AT = 2;
+  SORT_ATTRIBUTES_TYPE_UPDATED_AT = 3;
+}
+
+message AttributesSort {
+  SortAttributesType field = 1;
+  policy.SortDirection direction = 2;
+}
+
+message ListAttributesRequest {
+  // Optional
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 1;
+  // Optional
+  // Namespace ID or name
+  string namespace = 2;
+
+  // Optional
+  policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  repeated AttributesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+}
+message ListAttributesResponse {
+  repeated policy.Attribute attributes = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message GetAttributeRequest {
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.attribute_id) || has(this.fqn)))"
+    message: "Either use deprecated 'id' field or one of 'attribute_id' or 'fqn', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields"
+    expression: "has(this.id) || has(this.attribute_id) || has(this.fqn)"
+    message: "Either id or one of attribute_id or fqn must be set"
+  };
+
+  // Deprecated: utilize identifier
+  string id = 1 [
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  oneof identifier {
+    //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+    string attribute_id = 2 [(buf.validate.field).string.uuid = true];
+    string fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+}
+message GetAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+message CreateAttributeRequest {
+  // Required
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+  // Required
+  AttributeRuleTypeEnum rule = 3 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+  // Optional
+  // Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+  // The stored attribute value will be normalized to lower case.
+  repeated string values = 4 [(buf.validate.field).repeated = {
+    min_items: 0
+    unique: true
+    items: {
+      string: {
+        max_len: 253
+        pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+      }
+    }
+  }];
+
+  // Optional
+  // Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+  // can create encrypted content with an attribute definitions key mapping before
+  // creating the attribute values needed to decrypt.
+  // Content will be able to be encrypted with missing attribute values,
+  // but will not be able to be decrypted until such attribute values exist.
+  google.protobuf.BoolValue allow_traversal = 5;
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+message UpdateAttributeRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+message DeactivateAttributeRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeactivateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+///
+/// Value RPC messages
+///
+message GetAttributeValueRequest {
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.value_id) || has(this.fqn)))"
+    message: "Either use deprecated 'id' field or one of 'value_id' or 'fqn', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields"
+    expression: "has(this.id) || has(this.value_id) || has(this.fqn)"
+    message: "Either id or one of value_id or fqn must be set"
+  };
+
+  // Deprecated: utilize identifier
+  string id = 1 [
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  oneof identifier {
+    //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+    string value_id = 2 [(buf.validate.field).string.uuid = true];
+    string fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+}
+message GetAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+message ListAttributeValuesRequest {
+  // Required
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 2;
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListAttributeValuesResponse {
+  repeated policy.Value values = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message CreateAttributeValueRequest {
+  // Required
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "attribute_value_format"
+      message: "Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // deprecated members on values
+  reserved "members";
+  reserved 3;
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+message UpdateAttributeValueRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Deprecated
+  reserved "members";
+  reserved 4;
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+message DeactivateAttributeValueRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeactivateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+message GetAttributeValuesByFqnsRequest {
+  // Required
+  // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 250
+  }];
+
+  reserved 2;
+  reserved "with_value";
+}
+message GetAttributeValuesByFqnsResponse {
+  message AttributeAndValue {
+    policy.Attribute attribute = 1;
+    policy.Value value = 2;
+  }
+  // map of FQNs to complete attributes and the one selected value
+  map<string, AttributeAndValue> fqn_attribute_values = 1;
+}
+
+/*
+   Assign Key Access Server (KAS Grant) to Attribute and Value
+*/
+
+// Deprecated: utilize AssignPublicKeyToAttributeRequest
+message AssignKeyAccessServerToAttributeRequest {
+  option deprecated = true;
+
+  // Required
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToAttributeResponse {
+  option deprecated = true;
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+// Deprecated: utilize RemovePublicKeyFromAttributeRequest
+message RemoveKeyAccessServerFromAttributeRequest {
+  option deprecated = true;
+  // Required
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeResponse {
+  option deprecated = true;
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+// Deprecated: utilize AssignPublicKeyToValueRequest
+message AssignKeyAccessServerToValueRequest {
+  option deprecated = true;
+  // Required
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToValueResponse {
+  option deprecated = true;
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+// Deprecated: utilize RemovePublicKeyFromValueRequest
+message RemoveKeyAccessServerFromValueRequest {
+  option deprecated = true;
+  // Required
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueResponse {
+  option deprecated = true;
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+/*
+   Assign Key to Attribute and Value
+*/
+
+message AssignPublicKeyToAttributeRequest {
+  // Required
+  AttributeKey attribute_key = 1 [(buf.validate.field).required = true];
+}
+
+message AssignPublicKeyToAttributeResponse {
+  // Required
+  AttributeKey attribute_key = 1;
+}
+
+message RemovePublicKeyFromAttributeRequest {
+  // Required
+  AttributeKey attribute_key = 1 [(buf.validate.field).required = true];
+}
+
+message RemovePublicKeyFromAttributeResponse {
+  // Required
+  AttributeKey attribute_key = 1;
+}
+
+message AssignPublicKeyToValueRequest {
+  // Required
+  ValueKey value_key = 1 [(buf.validate.field).required = true];
+}
+
+message AssignPublicKeyToValueResponse {
+  // Required
+  ValueKey value_key = 1;
+}
+
+message RemovePublicKeyFromValueRequest {
+  // Required
+  ValueKey value_key = 1 [(buf.validate.field).required = true];
+}
+
+message RemovePublicKeyFromValueResponse {
+  // Required
+  ValueKey value_key = 1;
+}
+
+///
+/// Attribute Service
+///
+service AttributesService {
+  /*--------------------------------------*
+   * Attribute RPCs
+   *---------------------------------------*/
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Deprecated
+  // Use GetAttribute
+  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option deprecated = true;
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
+    option (google.api.http) = {get: "/attributes/*/fqn"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {}
+
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {}
+
+  rpc DeactivateAttribute(DeactivateAttributeRequest) returns (DeactivateAttributeResponse) {}
+
+  /*--------------------------------------*
+   * Value RPCs
+   *---------------------------------------*/
+  rpc GetAttributeValue(GetAttributeValueRequest) returns (GetAttributeValueResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {}
+
+  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {}
+
+  rpc DeactivateAttributeValue(DeactivateAttributeValueRequest) returns (DeactivateAttributeValueResponse) {}
+
+  /*--------------------------------------*
+   * Attribute <> Key Access Server RPCs
+   *---------------------------------------*/
+  // Deprecated: utilize AssignPublicKeyToAttribute
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option deprecated = true;
+  }
+
+  // Deprecated: utilize RemovePublicKeyFromAttribute
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option deprecated = true;
+  }
+
+  // Deprecated: utilize AssignPublicKeyToValue
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option deprecated = true;
+  }
+
+  // Deprecated: utilize RemovePublicKeyFromValue
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option deprecated = true;
+  }
+
+  /*--------------------------------------*
+   * Attribute <> Key RPCs
+   *---------------------------------------*/
+
+  rpc AssignPublicKeyToAttribute(AssignPublicKeyToAttributeRequest) returns (AssignPublicKeyToAttributeResponse) {}
+
+  rpc RemovePublicKeyFromAttribute(RemovePublicKeyFromAttributeRequest) returns (RemovePublicKeyFromAttributeResponse) {}
+
+  rpc AssignPublicKeyToValue(AssignPublicKeyToValueRequest) returns (AssignPublicKeyToValueResponse) {}
+
+  rpc RemovePublicKeyFromValue(RemovePublicKeyFromValueRequest) returns (RemovePublicKeyFromValueResponse) {}
+}

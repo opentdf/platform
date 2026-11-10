@@ -1,0 +1,305 @@
+syntax = "proto3";
+
+package authorization;
+
+import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+
+import "policy/objects.proto";
+
+
+message Token {
+  string id = 1; // ephemeral id for tracking between request and response
+  string jwt = 2; // the token
+}
+
+// PE (Person Entity) or NPE (Non-Person Entity)
+message Entity {
+  string id = 1; // ephemeral id for tracking between request and response
+  // Standard entity types supported by the platform
+  oneof entity_type {
+    // one of the entity options must be set
+    string email_address = 2;
+    string user_name = 3;
+    string remote_claims_url = 4;
+    string uuid = 5;
+    google.protobuf.Any claims = 6;
+    EntityCustom custom = 7;
+    string client_id = 8;
+  }
+  enum Category {
+    CATEGORY_UNSPECIFIED = 0;
+    CATEGORY_SUBJECT = 1;
+    CATEGORY_ENVIRONMENT = 2;
+  }
+  Category category = 9;
+}
+
+// Entity type for custom entities beyond the standard types
+message EntityCustom {
+  google.protobuf.Any extension = 1;
+}
+
+// A set of related PE and NPE
+message EntityChain {
+  string id = 1; // ephemeral id for tracking between request and response
+  repeated Entity entities = 2;
+}
+
+/*
+   Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
+   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "entityChains": [
+    {
+      "id": "ec1",
+      "entities": [
+        {
+          "emailAddress": "bob@example.org"
+        }
+      ]
+    },
+    {
+      "id": "ec2",
+      "entities": [
+        {
+          "userName": "alice@example.org"
+        }
+      ]
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "resourceAttributeId":  "attr-set-1",
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "resourceAttributeId":  "attr-set-2",
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
+
+*/
+message DecisionRequest {
+  repeated policy.Action actions = 1;
+  repeated EntityChain entity_chains = 2;
+  repeated ResourceAttribute resource_attributes = 3;
+}
+
+/*
+
+   Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
+   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+   Results:
+   - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
+   - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+   - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
+   - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+
+   {
+       "entityChainId":  "ec1",
+       "resourceAttributesId":  "attr-set-1",
+       "decision":  "DECISION_PERMIT",
+       "obligations":  [
+         "http://www.example.org/obligation/watermark"
+       ]
+     },
+     {
+       "entityChainId":  "ec1",
+       "resourceAttributesId":  "attr-set-2",
+       "decision":  "DECISION_PERMIT"
+     },
+     {
+       "entityChainId":  "ec2",
+       "resourceAttributesId":  "attr-set-1",
+       "decision":  "DECISION_PERMIT"
+     },
+     {
+       "entityChainId":  "ec2",
+       "resourceAttributesId":  "attr-set-2",
+       "decision":  "DECISION_DENY"
+     }
+
+
+*/
+message DecisionResponse {
+  enum Decision {
+    DECISION_UNSPECIFIED = 0;
+    DECISION_DENY = 1;
+    DECISION_PERMIT = 2;
+  }
+  string entity_chain_id = 1; // ephemeral entity chain id from the request
+  string resource_attributes_id = 2; // ephemeral resource attributes id from the request
+  policy.Action action = 3; // Action of the decision response
+  Decision decision = 4; // The decision response
+  repeated string obligations = 5; //optional list of obligations represented in URI format
+}
+
+message GetDecisionsRequest {
+  repeated DecisionRequest decision_requests = 1;
+}
+
+message GetDecisionsResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
+/*
+   Request to get entitlements for one or more entities for an optional attribute scope
+
+   Example: Get entitlements for bob and alice (both represented using an email address
+
+   {
+     "entities": [
+       {
+         "id": "e1",
+         "emailAddress": "bob@example.org"
+       },
+       {
+         "id": "e2",
+         "emailAddress": "alice@example.org"
+       }
+     ],
+     "scope": {
+        "attributeFqns": [
+          "https://example.net/attr/attr1/value/value1",
+         "https://example.net/attr/attr1/value/value2"
+        ]
+      }
+   }
+
+*/
+message GetEntitlementsRequest {
+  // list of requested entities
+  repeated Entity entities = 1;
+  // optional attribute fqn as a scope
+  optional ResourceAttribute scope = 2;
+  // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
+  optional bool with_comprehensive_hierarchy = 3;
+}
+
+message EntityEntitlements {
+  string entity_id = 1;
+  repeated string attribute_value_fqns = 2;
+}
+
+//A logical bucket of attributes belonging to a "Resource"
+message ResourceAttribute {
+  string resource_attributes_id = 1;
+  repeated string attribute_value_fqns = 2;
+}
+
+/*
+
+   Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+
+   {
+     "entitlements":  [
+       {
+         "entityId":  "e1",
+         "attributeValueReferences":  [
+           {
+             "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
+           }
+         ]
+       },
+       {
+         "entityId":  "e2",
+         "attributeValueReferences":  [
+           {
+             "attributeFqn":  "http://www.example.org/attr/color/value/red"
+           }
+         ]
+       }
+     ]
+   }
+
+
+*/
+message GetEntitlementsResponse {
+  repeated EntityEntitlements entitlements = 1;
+}
+
+
+/*
+   Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
+   and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "tok1",
+      "jwt": ....
+    },
+    {
+      "id": "tok2",
+      "jwt": .....
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
+
+*/
+message TokenDecisionRequest {
+  repeated policy.Action actions = 1;
+  repeated Token tokens = 2;
+  repeated ResourceAttribute resource_attributes = 3;
+}
+
+message GetDecisionsByTokenRequest {
+  repeated TokenDecisionRequest decision_requests = 1;
+}
+
+message GetDecisionsByTokenResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
+service AuthorizationService {
+  rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/authorization"
+      body: "*"
+    };
+  }
+  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
+    option (google.api.http) = {post: "/v1/token/authorization"};
+  }
+  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
+    option (google.api.http) = {
+      post: "/v1/entitlements"
+      body: "*"
+    };
+  }
+}

@@ -1,0 +1,86 @@
+name: "Create Release Branch from Tag"
+description: "Creates a release branch from any tag"
+
+inputs:
+  branch-prefix:
+    description: "Prefix used for branch names"
+    required: false
+    default: "release-"
+  github-token:
+    description: "GitHub token for API access"
+    required: true
+
+outputs:
+  branch-name:
+    description: "Name of the created branch"
+    value: ${{ steps.script.outputs.branch-name }}
+  created:
+    description: "Whether a branch was created (true/false)"
+    value: ${{ steps.script.outputs.created }}
+  skipped-reason:
+    description: "Reason why branch creation was skipped (if applicable)"
+    value: ${{ steps.script.outputs.skipped-reason }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: script
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      if: startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/dummy')
+      env:
+        BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          try {
+            const branchPrefix = process.env.BRANCH_PREFIX;
+            const tagName = context.ref.replace('refs/tags/', '');
+            
+            // Extract the branch name by removing patch version
+            let branchName;
+            if (tagName.includes('.')) {
+              const lastDotIndex = tagName.lastIndexOf('.');
+              branchName = `${branchPrefix}${tagName.substring(0, lastDotIndex)}`;
+            } else {
+              branchName = `${branchPrefix}${tagName}`;
+            }
+
+            // Get tag SHA
+            console.log(`Getting SHA for tag ${tagName}...`);
+            const tagResponse = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${tagName}`
+            });
+
+            const tagSha = tagResponse.data.object.sha;
+            console.log(`Tag SHA: ${tagSha}`);
+
+            // Create branch reference
+            console.log(`Creating branch ${branchName} from tag ${tagName}...`);
+
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/heads/${branchName}`,
+                sha: tagSha
+              });
+              
+              console.log(`✅ Successfully created branch ${branchName} from tag ${tagName}`);
+              core.setOutput('branch-name', branchName);
+              core.setOutput('created', 'true');
+            } catch (error) {
+              if (error.status === 422 && error.message.includes('already exists')) {
+                console.log(`⚠️ Branch ${branchName} already exists`);
+                core.setOutput('branch-name', branchName);
+                core.setOutput('created', 'false');
+                core.setOutput('skipped-reason', 'Branch already exists');
+              } else {
+                throw error;
+              }
+            }
+          } catch (error) {
+            core.setFailed(`Error fetching tag SHA: ${error.message}`);
+            return;
+          }

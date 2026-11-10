@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package entity;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/any.proto";
+
+message Token {
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+  // the token
+  string jwt = 2 [(buf.validate.field).required = true];
+}
+
+// PE (Person Entity) or NPE (Non-Person Entity)
+message Entity {
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+
+  // Standard entity types supported by the platform, one of which must be set
+  oneof entity_type {
+    string email_address = 2;
+    string user_name = 3;
+    // used by ERS claims mode
+    google.protobuf.Any claims = 4;
+    string client_id = 5;
+  }
+  enum Category {
+    CATEGORY_UNSPECIFIED = 0;
+    CATEGORY_SUBJECT = 1;
+    CATEGORY_ENVIRONMENT = 2;
+  }
+  Category category = 11;
+}
+
+// A set of related PE and NPE
+message EntityChain {
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+  repeated Entity entities = 2;
+}

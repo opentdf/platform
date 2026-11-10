@@ -1,0 +1,56 @@
+name: "🔦 actionlint & 🌈 zizmor"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+
+
+permissions: {}
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-22.04
+    name: actionlint
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: "Run reviewdog actionlint"
+        uses: reviewdog/action-actionlint@8e1a3507eddeba1bcb41dcda6e6de09ed83c8a6b # v1.57.0
+        with:
+          reporter: "github-pr-review"
+          fail_level: error
+  zizmor:
+    name: zizmor latest via PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read # only needed for private repos
+      actions: read # only needed for private repos
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # 6.6.1
+
+      - name: Run zizmor 🌈
+        run: uvx zizmor --format=sarif . > results.sarif
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@16140ae1a102900babc80a33c44059580f687047 # 4.30.9
+        with:
+          sarif_file: results.sarif
+          category: zizmor
+          

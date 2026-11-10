@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package wellknownconfiguration;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+message WellKnownConfig {
+  map<string, google.protobuf.Struct> configuration = 1;
+}
+
+message GetWellKnownConfigurationRequest {}
+
+message GetWellKnownConfigurationResponse {
+  google.protobuf.Struct configuration = 1;
+}
+
+service WellKnownService {
+  rpc GetWellKnownConfiguration(GetWellKnownConfigurationRequest) returns (GetWellKnownConfigurationResponse) {
+    option (google.api.http) = {get: "/.well-known/opentdf-configuration"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

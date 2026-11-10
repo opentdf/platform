@@ -1,0 +1,40 @@
+# Changelog
+
+## [0.3.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.2.0...lib/identifier/v0.3.0) (2026-03-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+
+### Features
+
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+
+## [0.2.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.1.0...lib/identifier/v0.2.0) (2025-09-26)
+
+
+### Features
+
+* **core:** add FullyQualifiedObligation implementation ([#2761](https://github.com/opentdf/platform/issues/2761)) ([279bacd](https://github.com/opentdf/platform/commit/279bacd89dda2916fc40a6b1ea4716840c59cb8e))
+
+## [0.1.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.0.2...lib/identifier/v0.1.0) (2025-09-17)
+
+
+### Features
+
+* **authz:** RR GetDecision improvements ([#2479](https://github.com/opentdf/platform/issues/2479)) ([443cedb](https://github.com/opentdf/platform/commit/443cedba49691e2ef5c2ea6824c0150feff8f056))
+* **policy:** add protovalidate for obligation defs + vals ([#2699](https://github.com/opentdf/platform/issues/2699)) ([af5c049](https://github.com/opentdf/platform/commit/af5c049435355646b7b59fd3a4b0191875a4b88d))
+
+## [0.0.2](https://github.com/opentdf/platform/compare/lib/identifier-v0.0.1...lib/identifier/v0.0.2) (2025-05-20)
+
+
+### Features
+
+* **core:** introduce FQN utility library ([#2148](https://github.com/opentdf/platform/issues/2148)) ([fc1c9c6](https://github.com/opentdf/platform/commit/fc1c9c64672a6366c7b222b4f77866632a005a54))

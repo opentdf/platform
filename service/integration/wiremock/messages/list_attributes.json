@@ -1,0 +1,31 @@
+{
+  "attributes": [
+    {
+      "id": "attr-1",
+      "namespace": {
+        "id": "ns-1",
+        "name": "demo.com"
+      },
+      "name": "test",
+      "rule": "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY",
+      "values": [
+        {
+          "id": "attr1-value-1",
+          "value": "TradeSecret"
+        },
+        {
+          "id": "attr1-value-2",
+          "value": "Proprietary"
+        },
+        {
+          "id": "attr1-value-3",
+          "value": "BusinessSensitive"
+        },
+        {
+          "id": "attr1-value-4",
+          "value": "Open"
+        }
+      ]
+    }
+  ]
+}

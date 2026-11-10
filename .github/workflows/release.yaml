@@ -1,15 +1,12 @@
 name: Release
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
 on:
   push:
     branches:
       - main
       - "release/**"
+
+permissions: {}
 
 jobs:
   release-please:
@@ -20,44 +17,3 @@ jobs:
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
-  other:
-    needs: release-please
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        if: ${{ needs.release-please.outputs.release_created }}
-      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
-        if: ${{ needs.release-please.outputs.release_created }}
-        with: 
-          go-version-file: go.mod
-
-      ##  TODO get this working again 
-      ## fatal: unable to access 'https://github.com/opentdf/otdfctl/': The requested URL returned error: 403
-      # - name: Tag semver and push to repo
-      #   if: ${{ needs.release-please.outputs.release_created }}
-      #   run: |
-      #     git config user.name github-actions[bot]
-      #     git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-      #     git remote add gh-token "https://${{ steps.generate_token.outputs.token }}@github.com/googleapis/release-please-action.git"
-      #     git tag -d v${{ needs.release-please.outputs.major }} || true
-      #     git tag -d v${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }} || true
-      #     git push origin :v${{ needs.release-please.outputs.major }} || true
-      #     git push origin :v${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }} || true
-      #     git tag -a v${{ needs.release-please.outputs.major }} -m "Release v${{ needs.release-please.outputs.major }}"
-      #     git tag -a v${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }} -m "Release v${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}"
-      #     git push origin v${{ needs.release-please.outputs.major }}
-      #     git push origin v${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}
-
-      - name: Build, compress, and draft checksums
-        if: ${{ needs.release-please.outputs.release_created }}
-        env:
-          SEM_VER: ${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}
-          COMMIT_SHA: ${{ needs.release-please.outputs.sha }}
-        run: make build
-
-      - name: Upload Release Artifact
-        if: ${{ needs.release-please.outputs.release_created }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ needs.release-please.outputs.tag_name }} ./output/*
-

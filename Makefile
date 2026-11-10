@@ -1,95 +1,135 @@
-# We're going to be using this Makefile as a sort of task runner, for all sorts of operations in this project
+# make
+# To run all lint checks: `LINT_OPTIONS= make lint`
 
-# first we'll grab the current version from our ENV VAR (added by our CI) - see here: https://github.com/marketplace/actions/version-increment
-BINARY_NAME := otdfctl
-CURR_VERSION := ${SEM_VER}
-COMMIT_SHA := ${COMMIT_SHA}
-BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
 
-GO_MOD_LINE = $(shell head -n 1 go.mod | cut -c 8-)
-GO_MOD_NAME = $(word 1,$(subst /, ,$(GO_MOD_LINE)))
-APP_CFG = $(GO_MOD_LINE)/pkg/config
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl
+REQUIRED_BUF_VERSION=1.56.0
 
-GO_BUILD_FLAGS=-ldflags " \
-	-X $(APP_CFG).Version=${CURR_VERSION} \
-	-X $(APP_CFG).CommitSha=${COMMIT_SHA} \
-	-X $(APP_CFG).BuildTime=${BUILD_TIME} \
-"
-GO_BUILD_PREFIX=$(TARGET_DIR)/$(BINARY_NAME)-${CURR_VERSION}
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-# If commit sha is not available try git
-ifndef COMMIT_SHA
-	COMMIT_SHA := $(shell git rev-parse HEAD)
-endif
+# LINT_OPTIONS?=--new
+# LINT_OPTIONS?=-new-from-rev=main
+LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci.yaml
 
-# If current version is not available try git
-ifndef CURR_VERSION
-	CURR_VERSION := $(shell git describe --tags --always)
-endif
+all: toolcheck clean build lint license test
 
-# Default target executed when no arguments are given to make.
-# NOTE: .PHONY is used to indicate that the target is not a file (e.g. there is no file called 'build-darwin-amd64', instead the .PHONY directive tells make that the proceeding target is a command to be executed, not a file to be generated)
-.PHONY: all
-all: run
-.DEFAULT_GOAL := run
+toolcheck:
+	@echo "Checking for required tools..."
+	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
+	@BUF_VERSION=$$(buf --version | head -n 1 | awk '{print $$1}'); \
+	if [ "$$(printf '%s\n' '$(REQUIRED_BUF_VERSION)' "$$BUF_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_BUF_VERSION)" ]; then \
+		echo "Error: buf version $(REQUIRED_BUF_VERSION) or later is required, but found $$BUF_VERSION."; \
+		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
+		exit 1; \
+	fi
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0'" && exit 1)
+	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
+	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)
+	@required_golangci_lint_version="2.8.0"; \
+	current_version=$$(golangci-lint --version | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//' | head -n 1); \
+	[ "$$(printf '%s\n' "$$required_golangci_lint_version" "$$current_version" | sort -V | head -n1)" = "$$required_golangci_lint_version" ] || \
+		(echo "golangci-lint version must be v$$required_golangci_lint_version or later [found: $$current_version]" && exit 1)
+	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
+	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
 
-# Target directory for compiled binaries
-TARGET_DIR=target
+fix: tidy fmt
 
-# Output directory for the zipped artifacts
-OUTPUT_DIR=output
+fmt:
+	for m in $(HAND_MODS); do  golangci-lint fmt $$m || exit 1; done
 
-# Build commands for each platform (extra hyphen used in windows to avoid issues with the .exe extension)
-PLATFORMS := \
-	darwin-amd64 \
-	darwin-arm64 \
-	linux-amd64 \
-	linux-arm \
-	linux-arm64 \
-	windows-amd64-.exe \
-	windows-arm-.exe \
-	windows-arm64-.exe
+tidy:
+	for m in $(MODS); do (cd $$m && go mod tidy) || exit 1; done
 
-build: test clean $(addprefix build-,$(PLATFORMS)) zip-builds verify-checksums
+license:
+	for m in $(MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
-build-%:
-	GOOS=$(word 1,$(subst -, ,$*)) \
-	GOARCH=$(word 2,$(subst -, ,$*)) \
-	go build $(GO_BUILD_FLAGS) \
-		-o $(GO_BUILD_PREFIX)-$(word 1,$(subst -, ,$*))-$(word 2,$(subst -, ,$*))$(word 3,$(subst -, ,$*))
+lint: proto-lint go-lint govulncheck
 
-zip-builds:
-	./.github/scripts/zip-builds.sh $(BINARY_NAME)-$(CURR_VERSION) $(TARGET_DIR) $(OUTPUT_DIR)
+proto-lint:
+	buf lint service || (exit_code=$$?; \
+	 if [ $$exit_code -eq 100 ]; then \
+      echo "Buf lint exited with code 100, treating as success"; \
+		else \
+			echo "Buf lint exited with code $$exit_code"; \
+			exit $$exit_code; \
+		fi)
 
-verify-checksums:
-	./.github/scripts/verify-checksums.sh $(OUTPUT_DIR) $(BINARY_NAME)-$(CURR_VERSION)_checksums.txt 
+go-lint:
+	status=0; \
+	for m in $(HAND_MODS); do \
+		echo "Linting module: $$m"; \
+		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) ) || status=1; \
+	done; \
+	exit $$status
 
-# Target for running the project (adjust as necessary for your project)
-.PHONY: run
-run:
-	go run .
+govulncheck:
+	status=0; \
+	for m in $(MODS); do \
+		echo "govulncheck module: $$m"; \
+		(cd "$$m" && govulncheck ./...) || status=1; \
+	done; \
+	exit $$status
 
-# Target for testing the project
-.PHONY: test
+proto-generate: toolcheck
+	# remove all generated directories under protocol/go
+	find protocol/go -mindepth 1 -maxdepth 1 -type d ! -name internal -exec rm -rf {} +
+	rm -rf docs/grpc docs/openapi
+	buf generate service
+	buf generate service --template buf.gen.grpc.docs.yaml
+	buf generate service --template buf.gen.openapi.docs.yaml
+
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
+
+	cd protocol/codegen && go run .
+	go run ./sdk/codegen
+
+connect-wrapper-generate:
+	go run ./sdk/codegen
+
+proto-helper-generate:
+	cd protocol/codegen && go run .
+
+policy-sql-gen:
+	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
+	sqlc generate -f service/policy/db/sqlc.yaml
+
+policy-erd-gen:
+	@which mermerd > /dev/null || { echo "mermerd not found, please install it: https://github.com/KarnerTh/mermerd#installation"; exit 1; }
+	# Docs: https://github.com/KarnerTh/mermerd#parametersflags
+	mermerd -c 'postgresql://postgres:changeme@localhost:5432/opentdf' -e -o service/policy/db/schema_erd.md -s opentdf_policy --useAllTables --showDescriptions enumValues,columnComments
+	# Add mermaid CSS to the end of the generated file
+	@echo '\n<style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>' >> service/policy/db/schema_erd.md
+
 test:
-	go test -v ./...
+	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
 
-.PHONY: build-test
-build-test:
-	go build \
-		-ldflags "\
-			-X $(APP_CFG).TestMode=true \
-			-X $(APP_CFG).Version=${CURR_VERSION}-testbuild \
-			-X $(APP_CFG).CommitSha=${COMMIT_SHA} \
-			-X $(APP_CFG).BuildTime=${BUILD_TIME} \
-		" \
-		-o $(BINARY_NAME)_testbuild
+fuzz:
+	cd sdk && go test ./... -fuzztime=2m
 
-.PHONY: test-bats
-test-bats: build-test
-	./e2e/resize_terminal.sh && bats ./e2e
+bench:
+	for m in $(HAND_MODS); do (cd $$m && go test -bench ./... -benchmem) || exit 1; done
 
-# Target for cleaning up the target directory
-.PHONY: clean
 clean:
-	rm -rf $(TARGET_DIR)
+	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
+	rm -f opentdf examples/examples otdfctl/otdfctl
+
+build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples otdfctl/otdfctl
+
+opentdf: $(shell find service)
+	go build -o opentdf -v service/main.go
+
+sdk/sdk: $(shell find sdk)
+	(cd sdk && go build ./...)
+
+examples/examples: $(shell find examples)
+	(cd examples && go build -o examples .)
+
+otdfctl/otdfctl: $(shell find otdfctl)
+	(cd otdfctl && go build -o otdfctl .)
+
+docker-build: build
+	docker build -t opentdf .

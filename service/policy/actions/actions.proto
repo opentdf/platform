@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package policy.actions;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+/*
+   Actions CRUD Operations
+*/
+
+message GetActionRequest {
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
+  // Required
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string name = 2 [
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "action_name_format"
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+        expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
+  }
+
+  // Optional namespace ID to scope name-based lookup.
+  // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
+  string namespace_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  // Optional namespace FQN to scope name-based lookup.
+  // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
+  string namespace_fqn = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+}
+message GetActionResponse {
+  policy.Action action = 1;
+
+  // Subject Mappings driving entitlement to the action
+  repeated policy.SubjectMapping subject_mappings = 2;
+}
+
+message ListActionsRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
+  // ID of the namespace to scope results. If omitted, returns actions across namespaces.
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // FQN of the namespace to scope results. If omitted, returns actions across namespaces.
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListActionsResponse {
+  repeated policy.Action actions_standard = 1;
+  repeated policy.Action actions_custom = 2;
+
+  policy.PageResponse pagination = 10;
+}
+
+// Create a new Custom action name with optional metadata.
+// Creation of Standard actions is not supported.
+message CreateActionRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
+  // Required
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional namespace ID for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
+  string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+  // Optional namespace FQN for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
+  string namespace_fqn = 3 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateActionResponse {
+  policy.Action action = 1;
+}
+
+// Metadata may be updated for either Custom or Standard actions.
+// Names may only be updated for Custom actions.
+message UpdateActionRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // Custom actions only: replaces the existing action name
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateActionResponse {
+  policy.Action action = 1;
+}
+
+// Custom only: deletion of Standard actions is not supported.
+message DeleteActionRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteActionResponse {
+  policy.Action action = 1;
+}
+
+service ActionService {
+  rpc GetAction(GetActionRequest) returns (GetActionResponse) {}
+  rpc ListActions(ListActionsRequest) returns (ListActionsResponse) {}
+  rpc CreateAction(CreateActionRequest) returns (CreateActionResponse) {}
+  rpc UpdateAction(UpdateActionRequest) returns (UpdateActionResponse) {}
+  rpc DeleteAction(DeleteActionRequest) returns (DeleteActionResponse) {}
+}

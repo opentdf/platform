@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/auth/.well-known/openid-configuration"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/oidc_config.json",
+    "transformers": [
+      "response-template"
+    ]
+  }
+}

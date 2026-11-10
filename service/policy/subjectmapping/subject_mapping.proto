@@ -1,0 +1,289 @@
+syntax = "proto3";
+
+package policy.subjectmapping;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+// MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties.
+// The SubjectMappings are returned if an external selector field matches.
+message MatchSubjectMappingsRequest {
+  repeated policy.SubjectProperty subject_properties = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message MatchSubjectMappingsResponse {
+  repeated policy.SubjectMapping subject_mappings = 1;
+}
+
+/*
+   Subject Mappings CRUD Operations
+*/
+
+message GetSubjectMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetSubjectMappingResponse {
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+enum SortSubjectMappingsType {
+  SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED = 0;
+  SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT = 1;
+  SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT = 2;
+}
+
+message SubjectMappingsSort {
+  SortSubjectMappingsType field = 1;
+  policy.SortDirection direction = 2;
+}
+
+message ListSubjectMappingsRequest {
+  // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+
+  // Optional - CONSTRAINT: max 1 item
+  repeated SubjectMappingsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+}
+message ListSubjectMappingsResponse {
+  repeated policy.SubjectMapping subject_mappings = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message CreateSubjectMappingRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
+  // Required
+  // Attribute Value to be mapped to
+  string attribute_value_id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // The actions permitted by subjects in this mapping
+  repeated policy.Action actions = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
+
+  // Either of the following:
+  // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+  string existing_subject_condition_set_id = 3 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+  SubjectConditionSetCreate new_subject_condition_set = 4;
+
+  // Optional
+  // Namespace ID or FQN for the subject mapping
+  string namespace_id = 5 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 6 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateSubjectMappingResponse {
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+message UpdateSubjectMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // Replaces the existing SubjectConditionSet id with a new one
+  string subject_condition_set_id = 2 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Optional
+  // Replaces entire list of actions permitted by subjects
+  repeated policy.Action actions = 3 [(buf.validate.field).cel = {
+    id: "action_name_or_id_not_empty"
+    message: "Action name or ID must not be empty if provided"
+    expression: "this.size() == 0 || this.all(item, item.name != '' || item.id != '')"
+  }];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateSubjectMappingResponse {
+  // Only ID of the updated Subject Mapping provided
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+message DeleteSubjectMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteSubjectMappingResponse {
+  // Only ID of the updated Subject Mapping provided
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+/**
+   SubjectConditionSet CRUD operations
+*/
+
+message GetSubjectConditionSetRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetSubjectConditionSetResponse {
+  policy.SubjectConditionSet subject_condition_set = 1;
+  // contextualized Subject Mappings associated with this SubjectConditionSet
+  repeated policy.SubjectMapping associated_subject_mappings = 2;
+}
+
+enum SortSubjectConditionSetsType {
+  SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED = 0;
+  SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT = 1;
+  SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT = 2;
+}
+
+message SubjectConditionSetsSort {
+  SortSubjectConditionSetsType field = 1;
+  policy.SortDirection direction = 2;
+}
+
+message ListSubjectConditionSetsRequest {
+  // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC, then id ASC (tie-breaker).
+  repeated SubjectConditionSetsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+}
+message ListSubjectConditionSetsResponse {
+  repeated policy.SubjectConditionSet subject_condition_sets = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message SubjectConditionSetCreate {
+  // Required
+  repeated policy.SubjectSet subject_sets = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateSubjectConditionSetRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
+  SubjectConditionSetCreate subject_condition_set = 1 [(buf.validate.field).required = true];
+  string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 3 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+}
+message CreateSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+}
+
+message UpdateSubjectConditionSetRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
+  repeated policy.SubjectSet subject_sets = 2;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateSubjectConditionSetResponse {
+  // Only ID of updated Subject Condition Set provided
+  policy.SubjectConditionSet subject_condition_set = 1;
+}
+
+message DeleteSubjectConditionSetRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteSubjectConditionSetResponse {
+  // Only ID of deleted Subject Condition Set provided
+  policy.SubjectConditionSet subject_condition_set = 1;
+}
+
+// Prune any Subject Condition Sets not utilized within a Subject Mapping
+message DeleteAllUnmappedSubjectConditionSetsRequest {}
+message DeleteAllUnmappedSubjectConditionSetsResponse {
+  // Only IDs of any deleted Subject Condition Set provided
+  repeated policy.SubjectConditionSet subject_condition_sets = 1;
+}
+
+service SubjectMappingService {
+  // Find matching Subject Mappings for a given Subject
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {}
+
+  rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {}
+
+  rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {}
+
+  rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {}
+
+  rpc ListSubjectConditionSets(ListSubjectConditionSetsRequest) returns (ListSubjectConditionSetsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetSubjectConditionSet(GetSubjectConditionSetRequest) returns (GetSubjectConditionSetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {}
+
+  rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {}
+
+  rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {}
+
+  rpc DeleteAllUnmappedSubjectConditionSets(DeleteAllUnmappedSubjectConditionSetsRequest) returns (DeleteAllUnmappedSubjectConditionSetsResponse) {}
+}

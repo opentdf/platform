@@ -1,0 +1,223 @@
+syntax = "proto3";
+
+package policy.unsafe;
+
+import "buf/validate/validate.proto";
+
+import "google/protobuf/wrappers.proto";
+import "policy/objects.proto";
+
+// Namespaces Unsafe RPCs
+
+// WARNING!!
+// Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.
+// Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
+message UnsafeUpdateNamespaceRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Required
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "namespace_name_format"
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case."
+      expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
+    }
+  ];
+}
+message UnsafeUpdateNamespaceResponse {
+  policy.Namespace namespace = 1;
+}
+
+// WARNING!!
+// Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.
+// Active state of any Definitions and their Values under this Namespace will NOT be changed.
+message UnsafeReactivateNamespaceRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message UnsafeReactivateNamespaceResponse {
+  policy.Namespace namespace = 1;
+}
+
+// WARNING!!
+// Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.
+// Definitions and their Values under this Namespace will be cascadingly deleted.
+message UnsafeDeleteNamespaceRequest {
+  // Required
+  // UUID of the Namespace
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message UnsafeDeleteNamespaceResponse {
+  policy.Namespace namespace = 1;
+}
+
+// Attribute Definitions Unsafe RPCs
+
+// WARNING!!
+// Updating an Attribute can have dangerous consequences. Use with caution.
+message UnsafeUpdateAttributeRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // WARNING!!
+  // Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
+  string name = 2 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
+  ];
+  // Optional
+  // WARNING!!
+  // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
+  AttributeRuleTypeEnum rule = 3 [(buf.validate.field).enum.defined_only = true];
+  // Optional
+  // WARNING!!
+  // Updating allow_traversal allows TDF creation to be front-loaded, meaning a customer
+  // can create encrypted content with an attribute definitions key mapping before
+  // creating the attribute values needed to decrypt.
+  google.protobuf.BoolValue allow_traversal = 5;
+  // Optional
+  // WARNING!!
+  // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
+  // will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
+  // deleted, created, and unsafely re-ordered as necessary.
+  repeated string values_order = 4;
+}
+message UnsafeUpdateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+// WARNING!!
+// Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.
+// Active state of any Values under this Attribute Definition will NOT be changed.
+message UnsafeReactivateAttributeRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message UnsafeReactivateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+// WARNING!!
+// Deleting an Attribute will free up the Attribute name for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute name.
+// Values under this Attribute will be cascadingly deleted.
+// Any KAS Grants associated with this Attribute will be cascadingly deleted.
+message UnsafeDeleteAttributeRequest {
+  // Required
+  // UUID of the Attribute
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message UnsafeDeleteAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+///
+/// Value Unsafe RPC messages
+///
+
+// WARNING!!
+// Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
+message UnsafeUpdateAttributeValueRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Required
+  string value = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "value_format"
+      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+}
+message UnsafeUpdateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+// WARNING!!
+// Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
+message UnsafeReactivateAttributeValueRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message UnsafeReactivateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+// WARNING!!
+// Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.
+// Any KAS Grants associated with this Attribute Value will be cascadingly deleted.
+message UnsafeDeleteAttributeValueRequest {
+  // Required
+  // UUID of the Attribute Value
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message UnsafeDeleteAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+// WARNING!!
+// Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
+message UnsafeDeleteKasKeyRequest {
+  // Required
+  // UUID of the Key
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // The key id assigned to this key (Ex: "key-1")
+  string kid = 2 [(buf.validate.field).required = true];
+  // Required
+  // The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
+  string kas_uri = 3 [(buf.validate.field).required = true];
+}
+
+message UnsafeDeleteKasKeyResponse {
+  policy.KasKey key = 1;
+}
+
+///
+/// Unsafe Service
+///
+service UnsafeService {
+  /*--------------------------------------*
+   * Namespace RPCs
+   *---------------------------------------*/
+  rpc UnsafeUpdateNamespace(UnsafeUpdateNamespaceRequest) returns (UnsafeUpdateNamespaceResponse) {}
+  rpc UnsafeReactivateNamespace(UnsafeReactivateNamespaceRequest) returns (UnsafeReactivateNamespaceResponse) {}
+  rpc UnsafeDeleteNamespace(UnsafeDeleteNamespaceRequest) returns (UnsafeDeleteNamespaceResponse) {}
+
+  /*--------------------------------------*
+   * Attribute RPCs
+   *---------------------------------------*/
+  rpc UnsafeUpdateAttribute(UnsafeUpdateAttributeRequest) returns (UnsafeUpdateAttributeResponse) {}
+  rpc UnsafeReactivateAttribute(UnsafeReactivateAttributeRequest) returns (UnsafeReactivateAttributeResponse) {}
+  rpc UnsafeDeleteAttribute(UnsafeDeleteAttributeRequest) returns (UnsafeDeleteAttributeResponse) {}
+
+  /*--------------------------------------*
+   * Value RPCs
+   *---------------------------------------*/
+  rpc UnsafeUpdateAttributeValue(UnsafeUpdateAttributeValueRequest) returns (UnsafeUpdateAttributeValueResponse) {}
+  rpc UnsafeReactivateAttributeValue(UnsafeReactivateAttributeValueRequest) returns (UnsafeReactivateAttributeValueResponse) {}
+  rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {}
+
+  /*--------------------------------------*
+   * Kas Key RPCs
+   *---------------------------------------*/
+  rpc UnsafeDeleteKasKey(UnsafeDeleteKasKeyRequest) returns (UnsafeDeleteKasKeyResponse) {}
+}

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package service.logger.audit;
+
+import "common/common.proto";
+import "google/protobuf/wrappers.proto";
+
+// This is a test proto message to test the functionality of the audit logger
+// and is excluded from normal proto generation. See the service/buf.yaml file 
+// for details on how to make changes to this proto file (which should be rare).
+message TestPolicyObject {
+  string id = 1;
+
+  google.protobuf.BoolValue active = 2;
+
+  TestPolicyObjectVersionEnum version = 3;
+
+  // add array field 
+  repeated string tags = 5;
+
+  // add oneOf simulated field that has either a scalar or struct value
+  oneof policy_user {
+    string username = 6;
+    User user = 7;
+  }
+
+  common.Metadata metadata = 4;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+}
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum TestPolicyObjectVersionEnum {
+  TEST_POLICY_OBJECT_VERSION_ENUM_UNSPECIFIED = 0;
+  TEST_POLICY_OBJECT_VERSION_ENUM_OLD = 1;
+  TEST_POLICY_OBJECT_VERSION_ENUM_NEW = 2;
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "55f0b12f-affd-4a14-895e-449a8da26a9c",
+  "owner": [
+    "tdf3-user@virtrucanary.com"
+  ],
+  "simplePolicy": {
+    "emailUsers": [
+      "tdf3-user@virtrucanary.com"
+    ],
+    "state": "active",
+    "activeEnd": "2019-12-26T15:38:12Z",
+    "authorizations": [
+      "print",
+      "copy",
+      "forward"
+    ]
+  },
+  "keys": [
+    {
+      "type": "string",
+      "details": {
+        "payload": "LmFfAIplhK+Ba+RSsbfsE0r3mnYDl5BfDXvpxoG6TyEBgQVhYItDHnl0Ie83o3ITBKG2EnvQBwF05pU0OZQadXdvWvdiBlZzuvWpQVI2vXnAl2kidUbqtuX7uXNHs7UnMbLNIZaoMrOdybM54iaOHmzMQLK5JasN/Iqs7gwlTEZy/iUEQpypqfIYmAFv0SguBNJ38liXi0I/HrGt4vfLWpOmvgR32PAMXsjtDACsNTKuOVVmr92qkhNzozcp4Qe+UnmsrbI7pK6urhrGM6zDYbh4bYY7ArTmANRU8YeX9BizfUWOZiO3qWDYCrF5fJc/azPL7QbhlmGDvysQmYPvqg==",
+        "encoding": "base64",
+        "isDefault": "True"
+      }
+    }
+  ],
+  "type": "file",
+  "displayName": "sample.pdf",
+  "fileProvider": "virtru-sdk-cpp"
+}

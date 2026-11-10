@@ -1,0 +1,16 @@
+{
+  "attribute": {
+    "id": "attr-1",
+    "name": "{{jsonPath request.body '$.attribute.name'}}",
+    "values": [
+      {{#each (jsonPath request.body '$.attribute.values') as |attrvalue|}}
+      {{#if @last}}
+      { "value": "{{attrvalue.value}}", "id": "attr-value-{{@index}}" }
+      {{else}}
+      { "value": "{{attrvalue.value}}", "id": "attr-value-{{@index}}" },
+      {{/if}}
+      {{/each}}
+    ]
+  }
+}
+

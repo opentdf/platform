@@ -1,0 +1,12 @@
+name: "Sign GitHub App commit"
+description: "Signs a commit created by a GitHub app based on PR number(s)"
+runs:
+  using: "composite"
+  steps:
+    - name: "sign-github-app-commit"
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        bash "$ACTION_PATH/sign-github-app-commit.sh"

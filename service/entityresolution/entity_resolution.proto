@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package entityresolution;
+
+import "authorization/authorization.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+import "google/api/annotations.proto";
+
+/*
+   Example: Get idp attributes for bob and alice (both represented using an email address
+   {
+     "entities": [
+       {
+         "id": "e1",
+         "emailAddress": "bob@example.org"
+       },
+       {
+         "id": "e2",
+         "emailAddress": "alice@example.org"
+       }
+     ]
+   }
+
+*/
+message ResolveEntitiesRequest {
+    repeated authorization.Entity entities = 1;
+}
+
+
+message EntityRepresentation {
+  repeated google.protobuf.Struct additional_props = 1;
+  string original_id = 2; // ephemeral entity id from the request
+}
+
+
+/*
+   Example: Get idp attributes for bob and alice
+   {
+     "entity_representations": [
+       {
+         "idp_entity_id": "e1",
+         "additional_props": {"someAttr1":"someValue1"}
+       },
+       {
+         "idp_entity_id": "e2",
+         "additional_props": {"someAttr2":"someValue2"}
+       }
+     ]
+   }
+
+*/
+message ResolveEntitiesResponse {
+  repeated EntityRepresentation entity_representations = 1;
+}
+
+message EntityNotFoundError {
+  int32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+  string entity = 4;
+}
+
+
+/*
+   Example: Get Entity chains for tokens aaaaaa and bbbbbb
+   {
+     "tokens": [
+       "aaaaaaa",
+       "bbbbbbbb"
+     ]
+   }
+
+*/
+message CreateEntityChainFromJwtRequest {
+    repeated authorization.Token tokens = 1;
+}
+
+/*
+   Example: Return the entity chains from the provided tokens
+   {
+     "entity_chains": [
+    {
+      "id": "tok1",
+      "entities": [
+        {
+          "clientId": "client1"
+        }
+      ]
+    },
+    {
+      "id": "tok2",
+      "entities": [
+        {
+          "userName": "alice",
+          "clientId": "client2"
+        }
+      ]
+    }
+  ]
+   }
+
+*/
+message CreateEntityChainFromJwtResponse {
+  repeated authorization.EntityChain entity_chains = 1;
+}
+
+
+service EntityResolutionService {
+  // Deprecated: use v2 ResolveEntities instead
+  rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
+    option (google.api.http) = {
+        post: "/entityresolution/resolve"
+        body: "*";
+    };
+  }
+  // Deprecated: use v2 CreateEntityChainsFromTokens instead
+  rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {
+    option (google.api.http) = {
+        post: "/entityresolution/entitychain"
+        body: "*";
+    };
+  }
+}

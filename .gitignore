@@ -1,28 +1,93 @@
-bin/.DS_Store
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+*.tmp
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+tmp/
 .DS_Store
-target/
-.vscode/launch.json
-otdfctl.yaml
+__pycache__
+
+# Userland files
+opentdf.yaml
+.vscode/
+.idea/
+
+# Generated files
+tmp-gen/
+/examples/examples
+/**/kas-*.pem
+/opentdf
+/sdkjava/target
+/serviceapp
+/service/opentdf
+/go.work.sum
+service/rttests/*.tdf
+coverage.out
+coverage.lcov
+sdk/nanotest1.ntdf
+
+*.zip
+sensitive.txt.tdf
+keys/
+/examples/sensitive.txt.ntdf
+sensitive.txt.ntdf
+traces/
+
+# Cucumber / BDD log files
+*.log
+
+.cache/*
+
+# Claude AI files
+.claude/
+
+# otdfctl specific ignores
+# =========================
+otdfctl/bin/.DS_Store
+otdfctl/.DS_Store
+otdfctl/target/
+otdfctl/.vscode/launch.json
+otdfctl/otdfctl.yaml
 
 # Ignore the binaries
-otdfctl
-otdfctl.*
-otdfctl_testbuild
-otdfctl_testbuild.*
+otdfctl/otdfctl
+otdfctl/otdfctl.*
+otdfctl/otdfctl_testbuild
+otdfctl/otdfctl_testbuild.*
 
 # Test artifacts
-creds.json
+otdfctl/creds.json
+otdfctl/**/creds.json
 
 # TestRail-related files
-testrail.config.json
-testname-to-testrail-id.json
-mapping-report.txt
-bats-results.tap
+otdfctl/testrail.config.json
+otdfctl/testname-to-testrail-id.json
+otdfctl/mapping-report.txt
+otdfctl/bats-results.tap
 
 # Hugo
-public/
-.hugo_build.lock
-output/
+otdfctl/public/
+otdfctl/.hugo_build.lock
+otdfctl/output/
 
 # Ignore any TDF files created by the CLI
-*.tdf
+otdfctl/*.tdf
+
+# Ignore go.cache
+otdfctl/.gocache
+# =========================

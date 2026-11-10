@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package policy.resourcemapping;
+
+import "buf/validate/validate.proto";
+
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+/*
+   Resource Mapping Groups
+*/
+
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
+message ListResourceMappingGroupsRequest {
+  // Optional
+  string namespace_id = 1 [(buf.validate.field).cel = {
+      id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+    }];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListResourceMappingGroupsResponse {
+  repeated ResourceMappingGroup resource_mapping_groups = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message GetResourceMappingGroupRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message GetResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message CreateResourceMappingGroupRequest {
+  // Required
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Required
+  string name = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+
+message CreateResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message UpdateResourceMappingGroupRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  string namespace_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  string name = 3 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "optional_name_format",
+      message: "Optional field must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored group name will be normalized to lower case.",
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message DeleteResourceMappingGroupRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message DeleteResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+/*
+   Resource Mappings
+*/
+
+message ListResourceMappingsRequest {
+  // Optional
+  string group_id = 1 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListResourceMappingsResponse {
+  repeated policy.ResourceMapping resource_mappings = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message ListResourceMappingsByGroupFqnsRequest {
+  // Required
+  // Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1,
+    items: {
+      cel: [
+        {
+          id: "resourcemappinggroup_fqn",
+          message: "Resource Mapping Group FQN must be in the format 'https://<namespace>/resm/<group name>'",
+          expression: "this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}/resm/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        }
+      ]
+    },
+  }];
+}
+
+message ResourceMappingsByGroup {
+  policy.ResourceMappingGroup group = 1;
+  repeated policy.ResourceMapping mappings = 2;
+}
+
+message ListResourceMappingsByGroupFqnsResponse {
+  map<string, ResourceMappingsByGroup> fqn_resource_mapping_groups = 1;
+}
+
+message GetResourceMappingRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message GetResourceMappingResponse {
+  policy.ResourceMapping resource_mapping = 1;
+}
+
+
+message CreateResourceMappingRequest {
+  // Required
+  string attribute_value_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Required
+  repeated string terms = 2 [(buf.validate.field).repeated = {
+    min_items: 1,
+    max_items: 1000,
+  }];
+
+  // Optional
+  string group_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+message UpdateResourceMappingRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  string attribute_value_id = 4 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  repeated string terms = 5 [(buf.validate.field).repeated = {
+    max_items: 1000,
+  }];
+
+  // Optional
+  string group_id = 6 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  // Common Metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+message DeleteResourceMappingRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+message DeleteResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+service ResourceMappingService {
+  /*
+     Resource Mapping Groups
+  */
+
+  rpc ListResourceMappingGroups(ListResourceMappingGroupsRequest) returns (ListResourceMappingGroupsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {}
+
+  rpc UpdateResourceMappingGroup(UpdateResourceMappingGroupRequest) returns (UpdateResourceMappingGroupResponse) {}
+
+  rpc DeleteResourceMappingGroup(DeleteResourceMappingGroupRequest) returns (DeleteResourceMappingGroupResponse) {}
+
+  /*
+     Resource Mappings
+  */
+
+  rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc ListResourceMappingsByGroupFqns(ListResourceMappingsByGroupFqnsRequest) returns (ListResourceMappingsByGroupFqnsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {}
+  
+  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {}
+
+  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {}
+}

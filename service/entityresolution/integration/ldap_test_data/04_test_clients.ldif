@@ -1,0 +1,82 @@
+# Test client applications for Entity Resolution Service LDAP provider
+# Client entries for testing application/environment entity resolution
+
+# Test Client Application 1
+dn: cn=test-client-1,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: test-client-1
+description: Primary test client for integration testing
+applicationCategory: development
+applicationVersion: 1.0.0
+applicationStatus: active
+
+# Test Client Application 2
+dn: cn=test-client-2,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: test-client-2
+description: Secondary test client for multi-client scenarios
+applicationCategory: development
+applicationVersion: 1.1.0
+applicationStatus: active
+
+# OpenTDF SDK Client
+dn: cn=opentdf-sdk,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: opentdf-sdk
+description: Official OpenTDF SDK client
+applicationCategory: production
+applicationVersion: 2.0.0
+applicationStatus: active
+
+# External Integration Client
+dn: cn=external-client,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: external-client
+description: Third-party client application
+applicationCategory: staging
+applicationVersion: 1.5.0
+applicationStatus: active
+
+# Mobile Application Client
+dn: cn=mobile-app,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: mobile-app
+description: Mobile application client for testing
+applicationCategory: development
+applicationVersion: 0.9.0
+applicationStatus: active
+
+# Web Portal Client
+dn: cn=web-portal,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: web-portal
+description: Web-based client application
+applicationCategory: production
+applicationVersion: 3.2.1
+applicationStatus: active
+
+# Legacy System Integration (inactive)
+dn: cn=legacy-system,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: legacy-system
+description: Legacy system client (inactive for testing)
+applicationCategory: production
+applicationVersion: 1.0.0
+applicationStatus: inactive
+
+# Test Service Client
+dn: cn=test-service,ou=clients,dc=opentdf,dc=test
+objectClass: applicationEntity
+objectClass: top
+cn: test-service
+description: Service-to-service client for testing
+applicationCategory: development
+applicationVersion: 1.0.0
+applicationStatus: active

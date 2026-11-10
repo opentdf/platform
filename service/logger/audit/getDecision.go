@@ -1,0 +1,177 @@
+package audit
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+)
+
+type DecisionResult int
+
+const (
+	GetDecisionResultPermit DecisionResult = iota
+	GetDecisionResultDeny
+)
+
+func (dr DecisionResult) String() string {
+	return [...]string{
+		"permit",
+		"deny",
+	}[dr]
+}
+
+type EntityChainEntitlement struct {
+	EntityID                 string   `json:"entityId"`
+	EntityCatagory           string   `json:"entityCatagory"`
+	AttributeValueReferences []string `json:"attributeValueReferences"`
+}
+
+type EntityDecision struct {
+	EntityID     string   `json:"id"`
+	Decision     string   `json:"decision"`
+	Entitlements []string `json:"entitlements"`
+}
+
+type GetDecisionEventParams struct {
+	Decision                DecisionResult
+	EntityChainEntitlements []EntityChainEntitlement
+	EntityChainID           string
+	EntityDecisions         []EntityDecision
+	ResourceAttributeID     string
+	FQNs                    []string
+}
+
+type GetDecisionV2EventParams struct {
+	EntityID                       string
+	ActionName                     string
+	Decision                       DecisionResult
+	Entitlements                   subjectmappingbuiltin.AttributeValueFQNsToActions
+	FulfillableObligationValueFQNs []string
+	ObligationsSatisfied           bool
+	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
+	ResourceDecisions any
+}
+
+func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
+	auditDataFromContext := GetAuditDataFromContext(ctx)
+
+	// Get result from decision
+	result := ActionResultSuccess
+	if params.Decision == GetDecisionResultDeny {
+		result = ActionResultFailure
+	}
+
+	return &EventObject{
+		Object: auditEventObject{
+			Type: ObjectTypeEntityObject,
+			ID:   fmt.Sprintf("%s-%s", params.EntityChainID, params.ResourceAttributeID),
+			Attributes: eventObjectAttributes{
+				Attrs: params.FQNs,
+			},
+		},
+		Action: eventAction{
+			Type:   ActionTypeRead,
+			Result: result,
+		},
+		Actor: auditEventActor{
+			ID:         params.EntityChainID,
+			Attributes: buildActorAttributes(params.EntityChainEntitlements),
+		},
+		EventMetaData: buildEventMetadata(params.EntityDecisions),
+		ClientInfo: eventClientInfo{
+			Platform:  "authorization",
+			UserAgent: auditDataFromContext.UserAgent,
+			RequestIP: auditDataFromContext.RequestIP,
+		},
+		RequestID: auditDataFromContext.RequestID,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventParams) (*EventObject, error) {
+	auditDataFromContext := GetAuditDataFromContext(ctx)
+
+	// Get result from decision
+	result := ActionResultSuccess
+	if params.Decision == GetDecisionResultDeny {
+		result = ActionResultFailure
+	}
+
+	actorAttributes := []any{
+		struct {
+			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements_relevant_to_decision"`
+		}{
+			Entitlements: params.Entitlements,
+		},
+	}
+
+	fulfillable := params.FulfillableObligationValueFQNs
+	if fulfillable == nil {
+		fulfillable = []string{}
+	}
+
+	// Build event metadata with both resource decisions and obligations
+	eventMetadata := auditEventMetadata{
+		"resource_decisions":                params.ResourceDecisions,
+		"fulfillable_obligation_value_fqns": fulfillable,
+		"obligations_satisfied":             params.ObligationsSatisfied,
+	}
+
+	return &EventObject{
+		Object: auditEventObject{
+			ID:   params.EntityID + "-" + params.ActionName,
+			Type: ObjectTypeEntityObject,
+			Name: "decisionRequest-" + params.ActionName,
+		},
+		Action: eventAction{
+			Type:   ActionTypeRead,
+			Result: result,
+		},
+		Actor: auditEventActor{
+			ID:         params.EntityID,
+			Attributes: actorAttributes,
+		},
+		EventMetaData: eventMetadata,
+		ClientInfo: eventClientInfo{
+			Platform:  "authorization.v2",
+			UserAgent: auditDataFromContext.UserAgent,
+			RequestIP: auditDataFromContext.RequestIP,
+		},
+		RequestID: auditDataFromContext.RequestID,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []any {
+	actorAttributes := make([]any, len(entityChainEntitlements))
+	for i, v := range entityChainEntitlements {
+		actorAttributes[i] = struct {
+			EntityID                 string   `json:"entityId"`
+			EntityCategory           string   `json:"entityCategory"`
+			AttributeValueReferences []string `json:"attributeValueReferences"`
+		}{
+			EntityID:                 v.EntityID,
+			EntityCategory:           v.EntityCatagory,
+			AttributeValueReferences: v.AttributeValueReferences,
+		}
+	}
+	return actorAttributes
+}
+
+func buildEventMetadata(entityDecisions []EntityDecision) auditEventMetadata {
+	entities := make([]map[string]any, len(entityDecisions))
+
+	for i, v := range entityDecisions {
+		entities[i] = map[string]any{
+			"id":           v.EntityID,
+			"decision":     v.Decision,
+			"entitlements": v.Entitlements,
+		}
+	}
+
+	return auditEventMetadata{
+		"entities": entities,
+	}
+}

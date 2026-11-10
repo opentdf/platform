@@ -1,0 +1,643 @@
+syntax = "proto3";
+
+package policy;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/protobuf/wrappers.proto";
+// import "google/protobuf/struct.proto";
+
+message SimpleKasPublicKey {
+  Algorithm algorithm = 1;
+  string kid = 2;
+  string pem = 3;
+}
+
+message SimpleKasKey {
+  string kas_uri = 1; // The URL of the Key Access Server
+  SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+  string kas_id = 3; // The ID of the Key Access Server
+}
+
+message KeyProviderConfig {
+  string id = 1;
+  string name = 2;
+  bytes config_json = 3;
+  string manager = 4;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message Namespace {
+  // generated uuid in database
+  string id = 1;
+  // used to partition Attribute Definitions, support by namespace AuthN and
+  // enable federation
+  string name = 2;
+
+  string fqn = 3;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 4;
+
+  common.Metadata metadata = 5;
+
+  // Deprecated KAS grants for the namespace. Use kas_keys instead.
+  repeated KeyAccessServer grants = 6;
+
+  // Keys for the namespace
+  repeated SimpleKasKey kas_keys = 7;
+}
+
+message Attribute {
+  string id = 1;
+
+  // namespace of the attribute
+  Namespace namespace = 2;
+
+  // attribute name
+  string name = 3;
+
+  // attribute rule enum
+  AttributeRuleTypeEnum rule = 4 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  repeated Value values = 5;
+
+  // Deprecated KAS grants for the attribute. Use kas_keys instead.
+  repeated KeyAccessServer grants = 6;
+
+  string fqn = 7;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 8;
+
+  //Keys associated with the attribute
+  repeated SimpleKasKey kas_keys = 9;
+
+  // Whether or not we will use the attribute definition during encryption
+  // if the attribute value is missing.
+  google.protobuf.BoolValue allow_traversal = 10;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+enum AttributeRuleTypeEnum {
+  ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
+  ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
+  ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2;
+  ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3;
+}
+
+message Value {
+  // generated uuid in database
+  string id = 1;
+
+  Attribute attribute = 2;
+
+  string value = 3;
+
+  // Deprecated: no replacement
+  reserved "members";
+  reserved 4;
+
+  // Deprecated KAS grants for the value. Use kas_keys instead.
+  repeated KeyAccessServer grants = 5;
+
+  string fqn = 6;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 7;
+
+  // subject mapping
+  repeated SubjectMapping subject_mappings = 8;
+
+  repeated SimpleKasKey kas_keys = 9;
+
+  repeated ResourceMapping resource_mappings = 10;
+
+  repeated Obligation obligations = 11;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+// An action an entity can take
+message Action {
+  // Generated uuid in database
+  string id = 3;
+
+  enum StandardAction {
+    STANDARD_ACTION_UNSPECIFIED = 0;
+
+    // Deprecated
+    // Migrate to 'read' action name
+    STANDARD_ACTION_DECRYPT = 1;
+
+    // Deprecated
+    // Migrate to 'create' action name
+    STANDARD_ACTION_TRANSMIT = 2;
+  }
+  // Deprecated: use 'name' instead
+  oneof value {
+    // Deprecated
+    StandardAction standard = 1;
+    // Deprecated
+    string custom = 2;
+  }
+
+  string name = 4;
+
+  // Namespace context for this action
+  Namespace namespace = 5;
+
+  common.Metadata metadata = 100;
+}
+
+/*
+   Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures
+   supporting the mapping of Subjects and Attributes (e.g. Entitlement)
+*/
+
+enum SubjectMappingOperatorEnum {
+  SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // operator that returns true if a value in a list matches the string
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
+  // operator that returns true if a value is not in a list that is matched by
+  // string
+  SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
+  // operator that returns true if a value in a list contains the substring
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS = 3;
+}
+
+enum ConditionBooleanTypeEnum {
+  CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0;
+  CONDITION_BOOLEAN_TYPE_ENUM_AND = 1;
+  CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
+}
+
+/*
+   Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
+   value + action(s) combination
+*/
+message SubjectMapping {
+  string id = 1;
+
+  // the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
+  Value attribute_value = 2;
+
+  // the reusable SubjectConditionSet mapped to the given Attribute Value
+  SubjectConditionSet subject_condition_set = 3;
+
+  // The actions permitted by subjects in this mapping
+  repeated Action actions = 4;
+
+  // the namespace containing this subject mapping
+  // possible this is empty. If so that means
+  // the Subject Mapping has not been migrated to a namespace.
+  Namespace namespace = 5;
+
+  common.Metadata metadata = 100;
+}
+
+/**
+   A Condition defines a rule of <the value at the flattened 'selector value'
+   location> <operator> <subject external values>
+*/
+message Condition {
+  // a selector for a field value on a flattened Entity Representation (such as
+  // from idP/LDAP)
+  string subject_external_selector_value = 1 [(buf.validate.field).required = true];
+
+  // the evaluation operator of relation
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // list of comparison values for the result of applying the
+  // subject_external_selector_value on a flattened Entity Representation
+  // (Subject), evaluated by the operator
+  repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// A collection of Conditions evaluated by the boolean_operator provided
+message ConditionGroup {
+  repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // the boolean evaluation type across the conditions
+  ConditionBooleanTypeEnum boolean_operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+// A collection of Condition Groups
+message SubjectSet {
+  // multiple Condition Groups are evaluated with AND logic
+  repeated ConditionGroup condition_groups = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/*
+   A container for multiple Subject Sets, each containing Condition Groups, each
+   containing Conditions. Multiple Subject Sets in a SubjectConditionSet are
+   evaluated with AND logic. As each Subject Mapping has only one Attribute
+   Value, the SubjectConditionSet is reusable across multiple Subject Mappings /
+   Attribute Values and is an independent unit.
+*/
+message SubjectConditionSet {
+  string id = 1;
+
+  // the namespace containing this subject condition set
+  // possible this is empty in the case a subject condition set
+  // has not been migrated to a namespace.
+  Namespace namespace = 2;
+
+  repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  common.Metadata metadata = 100;
+}
+
+/*
+
+   A property of a Subject/Entity as its selector expression -> value result
+   pair. This would mirror external user attributes retrieved from an
+   authoritative source such as an IDP (Identity Provider) or User Store.
+   Examples include such ADFS/LDAP, OKTA, etc. For now, a valid property must
+   contain both a selector expression & a resulting value.
+
+   The external_selector_value is a specifier to select a value from a flattened
+   external representation of an Entity (such as from idP/LDAP), and the
+   external_value is the value selected by the external_selector_value on that
+   Entity Representation (Subject Context). These mirror the Condition.
+*/
+message SubjectProperty {
+  string external_selector_value = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+  string external_value = 2;
+}
+
+/*
+   Resource Mapping Groups are namespaced collections of Resource Mappings
+   associated under a common group name.
+*/
+message ResourceMappingGroup {
+  string id = 1;
+
+  // the namespace containing the group of resource mappings
+  string namespace_id = 2 [(buf.validate.field).required = true];
+
+  // the common name for the group of resource mappings, which must be unique
+  // per namespace
+  string name = 3 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+/*
+   Resource Mappings (aka Access Control Resource Encodings aka ACRE) are
+   structures supporting the mapping of Resources and Attribute Values
+*/
+message ResourceMapping {
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  policy.Value attribute_value = 3 [(buf.validate.field).required = true];
+
+  repeated string terms = 4;
+
+  ResourceMappingGroup group = 5;
+}
+
+// Describes whether this kas is managed by the organization or if they imported
+// the kas information from an external party. These two modes are necessary in order
+// to encrypt a tdf dek with an external parties kas public key.
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  // The kas is managed by the organization.
+  SOURCE_TYPE_INTERNAL = 1;
+  // The kas is managed by an external party.
+  SOURCE_TYPE_EXTERNAL = 2;
+}
+
+/*
+   Key Access Server Registry
+*/
+message KeyAccessServer {
+  string id = 1;
+  // Address of a KAS instance
+  string uri = 2 [(buf.validate.field).cel = {
+    id: "uri_format"
+    message:
+      "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
+      "additional segments. Each segment must start and end with an "
+      "alphanumeric character, can contain hyphens, alphanumeric "
+      "characters, and slashes."
+    expression:
+      "this.matches('^https?://"
+      "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
+      "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/"
+      ".*)?$')"
+  }];
+
+  // Deprecated: KAS can have multiple key pairs
+  PublicKey public_key = 3;
+
+  // The source of the KAS: (INTERNAL, EXTERNAL)
+  SourceType source_type = 4;
+  // Kas keys associated with this KAS
+  repeated SimpleKasKey kas_keys = 5;
+
+  // Optional
+  // Unique name of the KAS instance
+  string name = 20;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message Key {
+  // the database record ID, not the key ID (`kid`)
+  string id = 1;
+
+  google.protobuf.BoolValue is_active = 2;
+
+  google.protobuf.BoolValue was_mapped = 3;
+
+  KasPublicKey public_key = 4;
+
+  KeyAccessServer kas = 5;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+enum KasPublicKeyAlgEnum {
+  KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED = 0;
+  KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048 = 1;
+  KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096 = 2;
+
+  KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 = 5;
+  KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1 = 6;
+  KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
+}
+
+// Deprecated
+// A KAS public key and some associated metadata for further identifcation
+message KasPublicKey {
+  // x509 ASN.1 content in PEM envelope, usually
+  string pem = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8192
+  }];
+
+  // A unique string identifier for this key
+  string kid = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+
+  // A known algorithm type with any additional parameters encoded.
+  // To start, these may be `rsa:2048` for RSA-based wrapping and
+  // `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
+  KasPublicKeyAlgEnum alg = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// Deprecated
+// A list of known KAS public keys
+message KasPublicKeySet {
+  repeated KasPublicKey keys = 1;
+}
+
+// Deprecated
+message PublicKey {
+  // Deprecated
+  reserved "local";
+  reserved 2;
+
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "uri_format"
+      message:
+        "URI must be a valid URL (e.g., 'https://demo.com/') followed "
+        "by additional segments. Each segment must start and end with "
+        "an alphanumeric character, can contain hyphens, alphanumeric "
+        "characters, and slashes."
+      expression:
+        "this.matches('^https://"
+        "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
+        "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
+
+    // public key with additional information. Current preferred version
+    KasPublicKeySet cached = 3;
+  }
+}
+
+message RegisteredResource {
+  string id = 1;
+
+  string name = 2;
+
+  repeated RegisteredResourceValue values = 3;
+
+  Namespace namespace = 4;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message RegisteredResourceValue {
+  message ActionAttributeValue {
+    string id = 1;
+
+    Action action = 2;
+
+    Value attribute_value = 3;
+
+    // Common metadata
+    common.Metadata metadata = 100;
+  }
+  string id = 1;
+
+  string value = 2;
+
+  RegisteredResource resource = 3;
+
+  repeated ActionAttributeValue action_attribute_values = 4;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message PolicyEnforcementPoint {
+  string client_id = 1 [
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
+// Holds the context needed for obligation fulfillment
+message RequestContext {
+  PolicyEnforcementPoint pep = 1 [(buf.validate.field).required = true];
+}
+
+message Obligation {
+  string id = 1;
+
+  Namespace namespace = 2;
+
+  string name = 3;
+
+  repeated ObligationValue values = 4;
+
+  string fqn = 5;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationValue {
+  string id = 1;
+
+  Obligation obligation = 2;
+
+  string value = 3;
+
+  repeated ObligationTrigger triggers = 4;
+
+  string fqn = 5;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationTrigger {
+  string id = 1;
+
+  ObligationValue obligation_value = 2;
+
+  Action action = 3;
+
+  Value attribute_value = 4;
+
+  repeated RequestContext context = 5;
+
+  common.Metadata metadata = 100;
+}
+
+// message ObligationFulfiller {
+//   string id = 1;
+
+//   ObligationValue obligation_value = 2;
+
+//   google.protobuf.Struct conditionals = 3;
+
+//   common.Metadata metadata = 100;
+// }
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_ROTATED = 2;
+}
+
+// Describes the management and operational mode of a cryptographic key.
+enum KeyMode {
+  // KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.
+  KEY_MODE_UNSPECIFIED = 0;
+
+  // KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+  // sourced from local configuration. Unwrapping and all cryptographic operations are performed locally.
+  KEY_MODE_CONFIG_ROOT_KEY = 1;
+
+  // KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+  // managed by an external provider (e.g., a Hardware Security Module or Cloud KMS).
+  // Key unwrapping is delegated to the external provider; subsequent cryptographic operations
+  // are performed locally using the unwrapped key.
+  KEY_MODE_PROVIDER_ROOT_KEY = 2;
+
+  // KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic
+  // operations are performed by, a remote Key Management Service (KMS) or HSM.
+  // The private key material never leaves the secure boundary of the remote system.
+  KEY_MODE_REMOTE = 3;
+
+  // KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,
+  // typically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).
+  // The corresponding private key is not managed or accessible by this system.
+  KEY_MODE_PUBLIC_KEY_ONLY = 4;
+}
+
+message KasKey {
+  string kas_id = 1;
+  AsymmetricKey key = 2;
+  string kas_uri = 3;
+}
+
+message PublicKeyCtx {
+  // Required
+  string pem = 1 [(buf.validate.field).string = {min_len: 1}]; // Base64 encoded public key in PEM format
+}
+
+message PrivateKeyCtx {
+  // Required
+  string key_id = 1 [(buf.validate.field).string = {min_len: 1}]; // Key ID for the symmetric key wrapping this key.
+  // Optional
+  string wrapped_key = 2; // Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
+}
+
+message AsymmetricKey {
+  // Required
+  string id = 1;
+  // Required
+  string key_id = 2;
+  // Required
+  Algorithm key_algorithm = 3;
+  // Required
+  KeyStatus key_status = 4;
+  // Required
+  KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
+  // Required
+  PublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
+  // Optional
+  PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
+  // Optional
+  KeyProviderConfig provider_config = 8; // Configuration for the key provider
+  // Optional
+  bool legacy = 9; // Indicates a key may be found in TDFs without key identifiers
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes key_ctx = 5; // Specific structure based on key provider implementation
+  KeyProviderConfig provider_config = 6; // Configuration for the key provider
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
+}

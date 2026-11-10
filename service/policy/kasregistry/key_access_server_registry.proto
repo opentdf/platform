@@ -1,0 +1,717 @@
+syntax = "proto3";
+
+package policy.kasregistry;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+message GetKeyAccessServerRequest {
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.kas_id) || has(this.uri) || has(this.name)))"
+    message: "Either use deprecated 'id' field or one of 'kas_id' or 'uri', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields"
+    expression: "has(this.id) || has(this.kas_id) || has(this.uri) || has(this.name)"
+    message: "Either id or one of kas_id or uri must be set"
+  };
+
+  // Deprecated
+  string id = 1 [
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  oneof identifier {
+    // option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+    string kas_id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+    string uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+}
+message GetKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+enum SortKeyAccessServersType {
+  SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED = 0;
+  SORT_KEY_ACCESS_SERVERS_TYPE_NAME = 1;
+  SORT_KEY_ACCESS_SERVERS_TYPE_URI = 2;
+  SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT = 3;
+  SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT = 4;
+}
+
+message KeyAccessServersSort {
+  SortKeyAccessServersType field = 1;
+  policy.SortDirection direction = 2;
+}
+
+message ListKeyAccessServersRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC, then id ASC (tie-breaker).
+  repeated KeyAccessServersSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+}
+message ListKeyAccessServersResponse {
+  repeated KeyAccessServer key_access_servers = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+// TODO: optional validation below should be through a custom validator, which
+// is too bleeding edge at present without full plugin support
+
+message CreateKeyAccessServerRequest {
+  // Required
+  string uri = 1 [(buf.validate.field).cel = {
+    id: "uri_format"
+    message:
+      "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
+      "additional segments. Each segment must start and end with an "
+      "alphanumeric character, can contain hyphens, alphanumeric "
+      "characters, and slashes."
+    expression: "this.isUri()"
+  }];
+  // Deprecated
+  PublicKey public_key = 2;
+
+  // Optional
+  SourceType source_type = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {defined_only: true}
+  ];
+
+  // Optional
+  string name = 20 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format"
+      message:
+        "Registered KAS name must be an alphanumeric string, allowing "
+        "hyphens, and underscores but not as the first or last "
+        "character. The stored KAS name will be normalized to lower "
+        "case."
+      expression:
+        "size(this) > 0 ? "
+        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        " : true"
+    }
+  ];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message UpdateKeyAccessServerRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  string uri = 2 [(buf.validate.field).cel = {
+    id: "optional_uri_format"
+    message:
+      "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
+      "followed by additional segments. Each segment must start and "
+      "end with an alphanumeric character, can contain hyphens, "
+      "alphanumeric characters, and slashes."
+    expression: "size(this) == 0 || this.isUri()"
+  }];
+  // Deprecated
+  // Optional
+  PublicKey public_key = 3;
+
+  // Optional
+  // Using UNSPECIFIED will result in a successful update,
+  // but will not actually update the underlying source.
+  // You should not update KAS's from INTERNAL/EXTERNAL
+  // to unspecified.
+  SourceType source_type = 4 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {defined_only: true}
+  ];
+
+  // Optional
+  string name = 20 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format"
+      message:
+        "Registered KAS name must be an alphanumeric string, allowing "
+        "hyphens, and underscores but not as the first or last "
+        "character. The stored KAS name will be normalized to lower "
+        "case."
+      expression:
+        "size(this) == 0 || "
+        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message DeleteKeyAccessServerRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+// Can be namespace, attribute definition, or value
+message GrantedPolicyObject {
+  string id = 1;
+  string fqn = 2;
+}
+
+// Deprecated
+message KeyAccessServerGrants {
+  KeyAccessServer key_access_server = 1;
+  repeated GrantedPolicyObject namespace_grants = 2;
+  repeated GrantedPolicyObject attribute_grants = 3;
+  repeated GrantedPolicyObject value_grants = 4;
+}
+
+/*
+   KEY MANAGEMENT
+*/
+
+message CreatePublicKeyRequest {
+  // Required
+  string kas_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Required
+  KasPublicKey key = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+
+message CreatePublicKeyResponse {
+  Key key = 1;
+}
+
+message GetPublicKeyRequest {
+  oneof identifier {
+    string id = 1 [(buf.validate.field).string.uuid = true];
+  }
+}
+
+message GetPublicKeyResponse {
+  Key key = 1;
+}
+
+message ListPublicKeysRequest {
+  oneof kas_filter {
+    // Optional
+    string kas_id = 1 [(buf.validate.field).string.uuid = true];
+    // Optional
+    string kas_name = 2 [(buf.validate.field).string.min_len = 1];
+    // Optional
+    string kas_uri = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListPublicKeysResponse {
+  repeated Key keys = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message ListPublicKeyMappingRequest {
+  oneof kas_filter {
+    // Optional
+    string kas_id = 1 [(buf.validate.field).string.uuid = true];
+    // Optional
+    string kas_name = 2 [(buf.validate.field).string.min_len = 1];
+    // Optional
+    string kas_uri = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+
+  // Optional Public Key ID
+  string public_key_id = 4 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListPublicKeyMappingResponse {
+  message PublicKeyMapping {
+    string kas_id = 2;
+    string kas_name = 3;
+    string kas_uri = 4;
+    repeated PublicKey public_keys = 5;
+  }
+  message PublicKey {
+    policy.Key key = 1;
+    repeated Association values = 6;
+    repeated Association definitions = 7;
+    repeated Association namespaces = 8;
+  }
+  message Association {
+    string id = 1;
+    string fqn = 2;
+  }
+
+  repeated PublicKeyMapping public_key_mappings = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdatePublicKeyRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdatePublicKeyResponse {
+  Key key = 1;
+}
+
+message DeactivatePublicKeyRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message DeactivatePublicKeyResponse {
+  Key key = 1;
+}
+
+message ActivatePublicKeyRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message ActivatePublicKeyResponse {
+  Key key = 1;
+}
+
+// Deprecated in favor of ListPublicKeyMapping
+// TODO: optional validation below should be through a custom validator, which
+// is too bleeding edge at present without full plugin support
+
+// LIST of KAS Grants returns flat response of grants to all policy objects. It
+// does not employ selectors for grants to specific policy objects or build the
+// attribute tree relation. If grants to a known namespace, attribute, or value
+// are needed, use the respective GET request to the specific policy object.
+message ListKeyAccessServerGrantsRequest {
+  option deprecated = true;
+  // Optional
+  // Filter LIST by ID of a registered Key Access Server.
+  // If neither is provided, grants from all registered KASs to policy attribute
+  // objects are returned.
+  string kas_id = 1 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression:
+      "size(this) == 0 || "
+      "this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-["
+      "0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Optional
+  // Filter LIST by URI of a registered Key Access Server.
+  // If none is provided, grants from all registered KASs to policy attribute
+  // objects are returned.
+  string kas_uri = 2 [(buf.validate.field).cel = {
+    id: "optional_uri_format"
+    message:
+      "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
+      "followed by additional segments. Each segment must start and "
+      "end with an alphanumeric character, can contain hyphens, "
+      "alphanumeric characters, and slashes."
+    expression: "size(this) == 0 || this.isUri()"
+  }];
+  // Optional
+  // Filter LIST by name of a registered Key Access Server.
+  // If none are provided, grants from all registered KASs to policy attribute
+  // objects are returned.
+  string kas_name = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format"
+      message:
+        "Registered KAS name must be an alphanumeric string, allowing "
+        "hyphens, and underscores but not as the first or last "
+        "character. The stored KAS name will be normalized to lower "
+        "case."
+      expression:
+        "size(this) == 0 || "
+        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+// Deprecated
+message ListKeyAccessServerGrantsResponse {
+  option deprecated = true;
+
+  repeated KeyAccessServerGrants grants = 1 [deprecated = true];
+
+  policy.PageResponse pagination = 10;
+}
+
+/*
+   KAS Key Management Requests and Response Messages
+*/
+// Create a new asymmetric key for the specified Key Access Server (KAS)
+message CreateKeyRequest {
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_optionally_required"
+    message:
+      "The wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
+      "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.key_mode == 1 || this.key_mode == 2) && this.private_key_ctx.wrapped_key != '') || ((this.key_mode == 3 || this.key_mode == 4) && this.private_key_ctx.wrapped_key == '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "provider_config_id_optionally_required"
+    message: "Provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.key_mode == 1 || this.key_mode == 4) && this.provider_config_id == '') || ((this.key_mode == 2 || this.key_mode == 3) && this.provider_config_id != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.key_mode == 4 && has(this.private_key_ctx))"
+  };
+
+  // Required
+  string kas_id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the Key Access Server
+  // Required
+  string key_id = 2 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier for the key
+  // Required
+  Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
+    id: "key_algorithm_defined"
+    message: "The key_algorithm must be one of the defined values."
+    expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
+  }]; // The algorithm to be used for the key
+  // Required
+  KeyMode key_mode = 4 [(buf.validate.field).cel = {
+    id: "key_mode_defined"
+    message: "The key_mode must be one of the defined values (1-4)."
+    expression: "this >= 1 && this <= 4" // Allow CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
+  }]; // The mode of the key (e.g., local or external)
+  // Required
+  PublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
+  // Conditionally Required
+  PrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
+  // Optional
+  string provider_config_id = 7; // Configuration ID for the key provider, if applicable
+  // Optional
+  bool legacy = 8; // Whether the key is a legacy key
+  // Common metadata
+  common.MetadataMutable metadata = 100; // Mutable metadata for the key
+}
+
+// Response to a CreateKeyRequest, containing the created asymmetric key
+message CreateKeyResponse {
+  KasKey kas_key = 1; // The created asymmetric key for a KAS.
+}
+
+// Retrieve an existing asymmetric key from the Key Management System
+message GetKeyRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
+    KasKeyIdentifier key = 3;
+  }
+}
+
+// Response to a GetKeyRequest, containing the requested asymmetric key
+message GetKeyResponse {
+  KasKey kas_key = 1; // The requested asymmetric key for a KAS.
+}
+
+// List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
+message ListKeysRequest {
+  Algorithm key_algorithm = 1 [(buf.validate.field).cel = {
+    id: "key_algorithm_defined"
+    message: "The key_algorithm must be one of the defined values."
+    expression: "this in [0, 1, 2, 3, 4, 5]" // Allow unspecified and object.Algorithm values for currently supported RSA bit sizes and EC curve types
+  }]; // Filter keys by algorithm
+
+  oneof kas_filter {
+    string kas_id = 2 [(buf.validate.field).string.uuid = true]; // Filter keys by the KAS ID
+    string kas_name = 3 [(buf.validate.field).string.min_len = 1]; // Filter keys by the KAS name
+    string kas_uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }]; // Filter keys by the KAS URI
+  }
+
+  // Optional
+  optional bool legacy = 8; // Filter for legacy keys
+
+  // Optional
+  policy.PageRequest pagination = 10; // Pagination request for the list of keys
+}
+
+// Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information
+message ListKeysResponse {
+  repeated KasKey kas_keys = 1; // The list of kas keys
+
+  policy.PageResponse pagination = 10; // Pagination response for the list of keys
+}
+
+// Update an existing asymmetric key in the Key Management System
+message UpdateKeyRequest {
+  option (buf.validate.message).cel = {
+    id: "metadata_update_behavior"
+    message: "Metadata update behavior must be either APPEND or REPLACE, when updating metadata."
+    expression: "((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))"
+  };
+
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100; // Mutable metadata for the key
+  common.MetadataUpdateEnum metadata_update_behavior = 101; // The behavior for updating the metadata
+}
+
+// Response to an UpdateKeyRequest, containing the updated asymmetric key
+message UpdateKeyResponse {
+  KasKey kas_key = 1; // The updated kas key
+}
+
+// Nested message for specifying the active key using KAS ID and Key ID
+message KasKeyIdentifier {
+  // Required UUID of the Key Access Server
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string kas_id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+    string uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+  // Required Key ID of the key in question
+  string kid = 5 [(buf.validate.field).string.min_len = 1];
+}
+
+message RotateKeyRequest {
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_optionally_required"
+    message:
+      "For the new key, the wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
+      "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 2) && this.new_key.private_key_ctx.wrapped_key != '') || ((this.new_key.key_mode == 3 || this.new_key.key_mode == 4) && this.new_key.private_key_ctx.wrapped_key == '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "provider_config_id_optionally_required"
+    message: "For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 4) && this.new_key.provider_config_id == '') || ((this.new_key.key_mode == 2 || this.new_key.key_mode == 3) && this.new_key.provider_config_id != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.new_key.key_mode == 4 && has(this.new_key.private_key_ctx))"
+  };
+
+  // Required (Current Active Key ID)
+  oneof active_key {
+    option (buf.validate.oneof).required = true;
+    // Current Active Key UUID
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    // Alternative way to specify the active key using KAS ID and Key ID
+    KasKeyIdentifier key = 2;
+  }
+
+  // Information about the new key to be rotated in
+  NewKey new_key = 3;
+
+  // Nested message for specifying the new key details
+  message NewKey {
+    // Required
+    string key_id = 1 [(buf.validate.field).string.min_len = 1];
+    // Required
+    Algorithm algorithm = 2 [(buf.validate.field).cel = {
+      id: "key_algorithm_defined"
+      message: "The key_algorithm must be one of the defined values."
+      expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
+    }];
+    // Required
+    KeyMode key_mode = 3 [
+      (buf.validate.field).enum.defined_only = true,
+      (buf.validate.field).cel = {
+        id: "new_key_mode_defined"
+        message: "The new key_mode must be one of the defined values (1-4)."
+        expression: "this in [1, 2, 3, 4]" // Allow modes CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
+      }
+    ];
+    // Required
+    PublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
+    // Required
+    PrivateKeyCtx private_key_ctx = 5;
+    // Conditionally Required.
+    string provider_config_id = 6; // Validation handled by message-level CEL
+
+    // Common metadata fields
+    common.MetadataMutable metadata = 100;
+  }
+}
+
+/**
+ * Simplified information about the resources that were rotated as part of the key rotation process.
+ */
+message ChangeMappings {
+  string id = 1;
+  string fqn = 2;
+}
+
+/*
+ * All resources that were rotated as part of the key rotation process
+ */
+message RotatedResources {
+  KasKey rotated_out_key = 1; // The old key that was rotated out
+  repeated ChangeMappings attribute_definition_mappings = 2;
+  repeated ChangeMappings attribute_value_mappings = 3;
+  repeated ChangeMappings namespace_mappings = 4;
+}
+
+// Response message for the RotateKey request
+message RotateKeyResponse {
+  // The newly rotated Kas Key
+  KasKey kas_key = 1;
+  // All resources that were rotated as part of the key rotation process
+  RotatedResources rotated_resources = 2;
+}
+
+// Sets the specified key as the base key for the Key Access Server
+// Note: The key must be active.
+message SetBaseKeyRequest {
+  // Required
+  oneof active_key {
+    option (buf.validate.oneof).required = true;
+    // Current Key UUID tp be set as default
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    // Alternative way to specify the key using KAS ID and Key ID
+    KasKeyIdentifier key = 2;
+  }
+}
+
+message GetBaseKeyRequest {}
+message GetBaseKeyResponse {
+  SimpleKasKey base_key = 1; // The current base key
+}
+
+message SetBaseKeyResponse {
+  SimpleKasKey new_base_key = 1; // The key that was set as base
+  SimpleKasKey previous_base_key = 2; // The previous base key, if any
+}
+
+message MappedPolicyObject {
+  string id = 1; // The unique identifier of the policy object
+  string fqn = 2; // The fully qualified name of the policy object
+}
+
+message KeyMapping {
+  string kid = 1;
+  string kas_uri = 2;
+  repeated MappedPolicyObject namespace_mappings = 3; // List of namespaces mapped to the key
+  repeated MappedPolicyObject attribute_mappings = 4; // List of attribute definitions mapped to the key
+  repeated MappedPolicyObject value_mappings = 5; // List of attribute values mapped to the key
+}
+
+message ListKeyMappingsRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = false;
+    string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
+    KasKeyIdentifier key = 3;
+  }
+
+  policy.PageRequest pagination = 10; // Pagination request for the list of keys
+}
+
+message ListKeyMappingsResponse {
+  repeated KeyMapping key_mappings = 1; // The list of key mappings
+
+  policy.PageResponse pagination = 10; // Pagination response for the list of keys
+}
+
+service KeyAccessServerRegistryService {
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
+    option (google.api.http) = {get: "/key-access-servers"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
+
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
+
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {}
+
+  // Deprecated
+  rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
+    option deprecated = true;
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // KAS Key Management
+  // Request to create a new key in the Key Access Service.
+  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+
+  // Request to retrieve a key from the Key Access Service.
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
+
+  // Request to list keys in the Key Access Service.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+
+  // Request to update a key in the Key Access Service.
+  rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
+
+  // Request to rotate a key in the Key Access Service.
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
+
+  // Request to set the default a default kas key.
+  rpc SetBaseKey(SetBaseKeyRequest) returns (SetBaseKeyResponse) {}
+
+  // Get Default kas keys
+  rpc GetBaseKey(GetBaseKeyRequest) returns (GetBaseKeyResponse) {}
+
+  // Request to list key mappings in the Key Access Service.
+  rpc ListKeyMappings(ListKeyMappingsRequest) returns (ListKeyMappingsResponse) {}
+}

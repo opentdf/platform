@@ -23,7 +23,7 @@ jobs:
         github.event.issue.pull_request &&
         startsWith(github.event.comment.body, '/backport')
       )
-    uses: opentdf/platform/.github/workflows/reusable_backport.yaml@main
+    uses: ./.github/workflows/reusable_backport.yaml
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}

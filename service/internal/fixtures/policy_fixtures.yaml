@@ -1,0 +1,665 @@
+##
+# Namespaces
+##
+attribute_namespaces:
+  metadata:
+    table_name: attribute_namespaces
+    columns:
+      - id
+      - name
+      - active
+  data:
+    example.com:
+      id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example.com
+      active: true
+    example.net:
+      id: d69cf14d-744b-48cf-aab4-43756e97a8e5
+      name: example.net
+      active: true
+    example.org:
+      id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
+      name: example.org
+      active: true
+    scenario.com:
+      id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: scenario.com
+      active: true
+    # deactivated state
+    deactivated_ns:
+      id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: deactivated.io
+      active: false
+##
+# Attributes
+#
+# Attribute Rule Enum: UNSPECIFIED, ANY_OF, ALL_OF, HIERARCHY
+##
+attributes:
+  metadata:
+    table_name: attribute_definitions
+    columns:
+      - id
+      - namespace_id
+      - name
+      - rule
+      - active
+  data:
+    example.com/attr/attr1:
+      id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: attr1
+      rule: ANY_OF
+      active: true
+    example.com/attr/attr2:
+      id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: attr2
+      rule: ALL_OF
+      active: true
+
+    example.net/attr/attr1:
+      id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
+      name: attr1
+      rule: ANY_OF
+      active: true
+    example.net/attr/attr2:
+      id: 8e778b7f-3a0e-4ed7-b007-5e4d8dfc03df
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
+      name: attr2
+      rule: ALL_OF
+      active: true
+    example.net/attr/attr3:
+      id: 438a0dfb-cd1a-4f73-af73-2325a6e9db1b
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
+      name: attr3
+      rule: HIERARCHY
+      active: true
+
+    example.org/attr/attr1:
+      id: 07d04942-c5b4-42d1-964e-f5b2d6365d80
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
+      name: attr1
+      rule: ANY_OF
+      active: true
+    example.org/attr/attr2:
+      id: 65a0e745-7a22-4e16-8004-09ebc932f621
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
+      name: attr2
+      rule: ALL_OF
+      active: true
+    example.org/attr/attr3:
+      id: 6dc88b9e-319b-4c6e-85c7-6f7e43a5d8d4
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
+      name: attr3
+      rule: HIERARCHY
+      active: true
+
+    scenario.com/attr/working_group:
+      id: 6181b7f3-c7ed-4050-b654-315016a65563
+      namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: working_group
+      rule: ALL_OF
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/deactivated_attr:
+      id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      namespace_id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: deactivated_attr
+      rule: ANY_OF
+      active: false
+
+attribute_key_access_servers:
+  - attribute_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+    key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+  - attribute_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+    key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
+
+##
+# Attribute Values
+##
+attribute_values:
+  metadata:
+    table_name: attribute_values
+    columns:
+      - id
+      - attribute_definition_id
+      - value
+      - active
+  data:
+    example.com/attr/attr1/value/value1:
+      id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+      value: value1
+      active: true
+    example.com/attr/attr1/value/value2:
+      id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+      value: value2
+      active: true
+
+    example.com/attr/attr2/value/value1:
+      id: 0fd363db-27b1-4210-b77b-8c82fe044d41
+      attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
+      value: value1
+      active: true
+    example.com/attr/attr2/value/value2:
+      id: 81f643f8-e050-4b97-a005-b61294d4c8bb
+      attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
+      value: value2
+      active: true
+
+    example.net/attr/attr1/value/value1:
+      id: 532e5957-28f7-466d-91e2-493e9431cd83
+      attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
+      value: value1
+      active: true
+    example.net/attr/attr1/value/value2:
+      id: 04bd2657-de10-46bc-a88f-5d687de4816b
+      attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
+      value: value2
+      active: true
+
+    scenario.com/attr/working_group/value/blue:
+      id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
+      attribute_definition_id: 6181b7f3-c7ed-4050-b654-315016a65563
+      value: blue
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/deactivated_attr/value/deactivated_value:
+      id: 06fa035b-8205-4000-86ad-2439cc1325ec
+      attribute_definition_id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      value: deactivated_value
+      active: false
+
+attribute_value_key_access_servers:
+  - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+  - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
+
+##
+# Subject Mappings -> 1 Group of Subject Condition Sets
+##
+subject_mappings:
+  metadata:
+    table_name: subject_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - subject_condition_set_id
+  data:
+    subject_mapping_subject_attribute1:
+      id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_set1
+      subject_condition_set_id: b3903282-06f9-41a4-924a-7b8eb43dffe0
+
+    subject_mapping_subject_attribute2:
+      id: e6a3f940-e24f-4383-8763-718a1a304948
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      # subject_condition_set2
+      subject_condition_set_id: 798aacd2-abaf-4623-975e-3bb8ca43e318
+
+    subject_mapping_subject_attribute3:
+      id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_set3
+      subject_condition_set_id: eaf866c0-327f-4826-846a-5041c3c22f06
+
+    subject_mapping_subject_simple_in:
+      id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_simple_in
+      subject_condition_set_id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+
+    subject_mapping_subject_simple_not_in:
+      id: 1b9508a7-746a-4705-a1f1-4b6e676377ce
+      attribute_value_id: 532e5957-28f7-466d-91e2-493e9431cd83
+      # subject_condition_simple_not_in
+      subject_condition_set_id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
+
+    subject_mapping_scenario_blue:
+      id: 1748761a-bd8c-4b23-8560-16ba7a181f19
+      attribute_value_id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
+      # subject_condition_working_group_blue_scenario
+      subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
+
+    subject_mapping_sdk_attribute1:
+      id: bc28cacb-1687-4c87-9c63-eae55e271320
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_sdk_client
+      subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
+
+subject_condition_set:
+  metadata:
+    table_name: subject_condition_set
+    columns:
+      - id
+      - condition
+  data:
+    subject_condition_set1:
+      id: b3903282-06f9-41a4-924a-7b8eb43dffe0
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.superhero_name[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - thor
+                      - captain_america
+                  - subjectExternalSelectorValue: ".attributes.superhero_group[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - avengers
+    subject_condition_set2:
+      id: 798aacd2-abaf-4623-975e-3bb8ca43e318
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".org"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - marketing
+                      - sales
+                  - subjectExternalSelectorValue: ".role"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - senior_vice_president
+                      - vice_president
+                      - director
+    subject_condition_set3:
+      id: eaf866c0-327f-4826-846a-5041c3c22f06
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  # any index
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - futbol
+                      - soccer
+                  # specific index
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[1]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+                    subjectExternalValues:
+                      - ice_cream
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".department"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - engineering
+                  - subjectExternalSelectorValue: ".role"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+                    subjectExternalValues:
+                      - manager
+                      - director
+                      - vice_president
+    subject_condition_simple_in:
+      id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subjectExternalSelectorValue: ".some_field"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - some_value
+    subject_condition_simple_not_in:
+      id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subjectExternalSelectorValue: ".some_other_field[1]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+                    subjectExternalValues:
+                      - some_other_value_123
+    subject_condition_working_group_blue_scenario:
+      id: 10d03422-7eae-43b9-ac3b-d10400171858
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".team.name"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - CoolTool
+                      - RadService
+                      - ShinyThing
+                  - subjectExternalSelectorValue: ".org.name"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - marketing
+    subject_condition_sdk_client:
+      id: 86621a00-b63e-42e9-bea5-40ba52d98ede
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subjectExternalSelectorValue: ".clientId"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - opentdf-sdk
+
+##
+# Actions
+#
+# Note: Standard Actions [create, read, update, delete] inserted by migration
+##
+custom_actions:
+  metadata:
+    table_name: actions
+    columns:
+      - id
+      - name
+      - is_standard
+  data:
+    custom_action_1:
+      id: e3e3df5f-02c8-4a41-88af-1c7436a43722
+      name: custom_action_1
+      is_standard: false
+    other_special_action:
+      id: ef31bac8-7d9b-46c4-8dbb-5965df87b824
+      name: other-special-action
+      is_standard: false
+
+subject_mapping_actions_relation:
+  metadata:
+    table_name: subject_mapping_actions
+    columns:
+      - subject_mapping_id
+      - action_id
+  data:
+    subject_mapping_subject_attribute1_read:
+      subject_mapping_id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      action_name: read
+    subject_mapping_subject_attribute2_read:
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      action_name: read
+    subject_mapping_subject_attribute2_create:
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      action_name: create
+    subject_mapping_subject_attribute3_create:
+      subject_mapping_id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
+      action_name: create
+    subject_mapping_subject_attribute3_custom_action_1:
+      subject_mapping_id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
+      action_name: custom_action_1
+    subject_mapping_subject_simple_in_read:
+      subject_mapping_id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      action_name: read
+    subject_mapping_subject_simple_not_in_read:
+      subject_mapping_id: 1b9508a7-746a-4705-a1f1-4b6e676377ce
+      action_name: read
+    subject_mapping_scenario_blue_read:
+      subject_mapping_id: 1748761a-bd8c-4b23-8560-16ba7a181f19
+      action_name: read
+    subject_mapping_sdk_attribute1_read:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: read
+    subject_mapping_sdk_attribute1_create:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: create
+
+##
+# Resource Mapping Groups
+#
+##
+resource_mapping_groups:
+  metadata:
+    table_name: resource_mapping_groups
+    columns:
+      - id
+      - namespace_id
+      - name
+  data:
+    example.com_ns_group_1:
+      id: 173bb45c-76ae-4993-a648-d9bc0bc05147
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example_group_1
+    example.com_ns_group_2:
+      id: 32d4df0c-8600-4b8d-89cf-801b61bc7abe
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example_group_2
+    scenario.com_ns_group_1:
+      id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af
+      namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: scenario_group_1
+
+##
+# Resource Mappings
+#
+##
+resource_mappings:
+  metadata:
+    table_name: resource_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - terms
+      - group_id
+  data:
+    resource_mapping_to_attribute_value1:
+      id: 02092d67-fffa-4030-9775-b5cd5d581e1f
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      terms:
+        - TS
+        - TOPSECRET
+      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
+    resource_mapping_to_attribute_value2:
+      id: b05d8d25-42ad-445d-b973-12b7561a7738
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      terms:
+        - test0
+      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
+    resource_mapping_to_attribute_value3:
+      id: f4d76bfb-e1a1-4f7a-83f2-8e8433cf229f
+      attribute_value_id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
+      terms:
+        - helloworld
+      group_id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af
+
+##
+# KAS Registry (key access server registry)
+#
+##
+kas_registry:
+  metadata:
+    table_name: key_access_servers
+    columns:
+      - id
+      - uri
+      - name
+      - public_key
+  data:
+    key_access_server_1:
+      id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+      uri: https://kas.example.com
+      public_key:
+        remote: https://kas.example.com/public_key
+      name: kas-remote-example
+    key_access_server_2:
+      id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
+      uri: https://local.kas.com:3000
+      name: kas-cached-key
+      public_key:
+        cached:
+          keys:
+            - pem: |-
+                -----BEGIN CERTIFICATE-----
+                MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
+                PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
+                aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
+                MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
+                ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
+                rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
+                8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
+                HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
+                CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
+                UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
+                -----END CERTIFICATE-----
+              kid: r1
+              alg: 1
+    key_access_server_acme:
+      id: 882c5ee8-1a26-4d32-af98-38c9df0993cb
+      uri: https://kas.acme.net
+      public_key:
+        remote: https://kas.acme.net/key
+      name: remote-acme-kas
+
+##############
+# Key access server keys
+##############
+kas_registry_keys:
+  metadata:
+    table_name: key_access_server_keys
+    columns:
+      - id
+      - key_access_server_id
+      - key_algorithm
+      - key_id
+      - key_mode
+      - key_status
+      - private_key_ctx
+      - public_key_ctx
+      - provider_config_id
+  data:
+    kas_key_1:
+      id: 7b9c4f44-ee74-418c-b05c-8320e01953be
+      key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb # key_access_server_1
+      key_algorithm: 1 # ALGORITHM_RSA_2048
+      key_id: rsa_key_1
+      key_mode: 1 # KEY_MODE_LOCAL
+      key_status: 1 # KEY_STATUS_ACTIVE
+      private_key_ctx: eyAid3JhcHBlZEtleSI6ICJsY2JxNjgyR3NpaStqRWtRNjJzV0lYa1dXVkpqZ1dQdXZobUJ0OUtpWUZKL28zWENseVJkNGMwS0RGdHVvaGRCdzJqdlZHd2VGZnNwaTllV0dNSXpFbDZiY0VSYzUycTVIdmlINWtjVDlSY25KaFV2M2lONjM1UndIek52akdFVktLVU5CdjRwZkVOMzB3N29wSFBpZ3owS1ExVkJNSk5PM1lEOUZWQTdVb0h4MGVKY0Y3WlFKSkdYeHdwUVYwTXR3bHFtUnBxNFEyVTl2cFlyajY3ODdRSEdmOWhlZ0lYTkErcjByM1RDTHB3YzVZM0E5aEhreWp3N1FnWEU4dWVKSUx1TW04N0NlckpweVpPQ3NySDN2QWppWUFWdjcvZEVKcWpYMUFnYUI4NFQ3aHhERmVqOUpLaEl5OWVLWk5yTndNWW1Bc0hwYkEzamc1R0VIQjdFM2ZYRXFoaTFTTllhR1ZpZHRvSnVTLzNrVm5JTEtOWTZpZnRvNllMTEJBdWlQQVJjNTZVblVTS0hZQ1dtTko3QkM4Y0hhN2FIdDllUW1lVVRicVZmMGg3aDQ2M3FZQ2F6RDhYT0FMUTBuQ3lPQ3I5dUxkV1o1QThLbHFmMytqKzcyOGtaYUJFN2tKZ1I1UFh0dDFMTHlYcThmSEhPRXNOWXMzT3RSOGN3akV1ZGpvVVRJMTd1YkJOYjhYZU01emFaL1dmdWZDcWp2UGVjREt6cHJVbzdlanBrZjZKOEJ0RStZSFZRSjdNMWJWb1ZlQ0tFTWUvK3p5Y2Zpc3BzbmZsQ1ZtNkJNdFlMdmtVLzIzRWRiOWNNN1BRR3lFTEZOeDMyQXRwUXpMRUUrNWVaWWFhUU5Za3hEaWF0c3ZkMkQyNEVSTVhmWGp1YWg4MTBOSVpUZTE4cStGMitZMEtuTU9LZHpqV3AyUXdvNHVIb3JidndRRkwzOXZrVHJmZTIzelhVY2Q2N1pCTmpJUUNGc0prOW5sRk9ORjhrc25XVzQ5aHdxSjk1dXJtaG5zSGRSZlBrbVc2SHZ0UnVTclN3L2VmOGZ0MUZmMlZGMUNKUXArSnc2YnpKWmRQSzdsTmxmN1F3N2trREtqSGxnTTVnanZlZVJXZjE5Q3FqaTdHM1FhSS9Oa3FDdEplWllLZmZGU1RtbStIY3o0bXpMQkpzc3hNdGgvUkRaQzVTaVVJODJhZ0h0QkJ5VC9DK3A2NEE3cjZGeFNvdmRNTi9mTU5ZSUx3NGRQV3VxdDZwNmVnTUlyMFNVYXBpUHJpTjBiRjNaN2d5R1QxQXZyMHVnaU9qQUI3L3pybDJHaWFlajFUV01YS08zd2J4L0VzUVdpMDNWcmxWanBIdjl2Y2hlWjdGTzliREJUUkxKZHI0QkU4RWs0YkZCaytxRkZOQXZXcC9GZDFiNnFiKytEdU5Iajg1V2R3WE1PaW9nNUlSSzdjZUlNT0xQY214TnE3YXh5WnkrTm0yQ2VocjN5Qk9OQzFQRml4U2NMSGJZUEJlTU9EaGJHWXo5NEVaYkxHOWJpL1B5RkJiNERYSGlLemxrNEtTZ3BYZ1FLUHBSRWx6aUNiYVB3WlowZVljUEhoaktVNHQ3a2k3TlR2MlFYVU1nK3V2dVZWajJtcGpSMTJ5bmJiS2xJNDJoUEcxYW1FV0JlM1JjNmZ4cW5uQnVScnlMWjdEYW5wa252V0t5UXE3S1pHSHJGemlaMEE3Q1VSejFnT2R4d2xDQXEvRnAxZ2oxMGpNMFpJK3lod1RGcnhCUDJXdHF1S1dBREhGMHBGblNWdUpKUnlzUFR2aXNSYVM1N3d2aVZZQnRCcnRGYmZhTHBGcytwQ2ViYk81K0dRZ29wWlZaSDM5c0lnY0dIY3B4RU1zdDBCd3JuUGZIM0RRbGJqVmdrWlFmNkJiZUpDNWFBL2tEVTVSZFNiUTI1NjNCcGRMRUREQ3dvaVU5NW5LcE1tOE8zVTIxMEdRMHgveFdFYUMxdDJkOVM2RlVFbFRVSlJYWVZNZVB2Z3JaMnZGajl5YTZvNm5LVWt4RXAyaUlkS2d1ckR4MEVNSHZ2NU90TEZYTnVXWVdIU0o3czNET3JWNjZxUXRYaHF6VUlsRjRHWERVYUpmZ3NtUTk0MU03eUFqL3RibjBHUGFkMENsRXZWd25ucGpnNEpoZ2Y1dlpCaC9TcG5Na2hia1RIQis0ajhrT1dFTHdWc2ZDU3RTa0ZGdHAxY1VtRVI5RWhqSzhjSmJ3L2FKVTU5ZkZmZDJXR0N6VUxIZkEyMURLcld6SWwzODhray94cXdUN1E5aU92Y1NSN1pzdE10R1RRWG54Q1gvV3A4VG9qNjRIM2RsR2p6TGhGeDZ1Qk53WFQxMTRSeGw4ZWZLdW9VZzd0ZHcxcVdtOUplUC92TVF6VTlLd2Z5SExLNmdDQUlmWkpneVkrcnVyN0YrZVNPRUlEeWlkRnJLM1NWTFE3T1lHRmVXaFRNS01HdzdaV2VuTC9xWDdBUFErdkdoMmpQNTJVN2VsT0t4L1RsTkZ5UHJHL2FZUDN0MDRTdWVZUkd2RXAremZkVU0xbmYvN3YvRHhzc1VSS29zQUdHa1JwbzBLQ3NUU0I4UzhxdTlNKzA3YjBSREVXai9QdHVrZWdvRUR1KzZ4azN0WmRqclpWTTIxZURDaDhxME9HbS9KeDBITWVlUHFIY28zeEdTMUpYMW90QVp3UEhaaUkyaWNjWksrV21KTExaSXJYSzRsSG8vd1lpQitOeUlwZDJWd2dTdXZua3hhTlF5dmxtdWtSaTJCTzM1ZEdDNVFaY1V5d2lCZlRoSzdzRC9CMjJHNDZlUVNHeTdqeTlJSmJaMXhNKzVHcXVxOTdPOCtWOVIreEcydW1ZN0grWG90NlBaRjVPT0hERmI2cEVUSThsNDJDdDV2bElJMmRmWXFqZWR6WHAvb1drdXFub2FQejNnUU4wS2JGaDlsazZvVXVJMWlMaHBDMWxIR283em8xV3E0NDFlUW9nS3dhWFNDcGxQNDE0UW44dFE0elcvRTdjZ2hLbnpWMTg1K2lHdXBxTnNoWTBlS1VtSzB2Rkx3dkcrdnc9PSIsICJrZXlfaWQiOiAiY29uZmlnIiB9
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVU12VkVORFFXVlhaMEYzU1VKQlowbFZSakE1UVdwSWFsbEpPRU5TZWtWR1NtcGpWRVJFWTJsa1pFZ3dkMFJSV1VwTGIxcEphSFpqVGtGUlJVd0tRbEZCZDBScVJVMU5RVzlIUVRGVlJVRjNkMFJoTWtaNlRVSTBXRVJVU1RCTlJGVjNUbXBGZVUxVVFYaE5iRzlZUkZSSk1VMUVWWGRPYWtWNVRWUkJlQXBOYkc5M1JHcEZUVTFCYjBkQk1WVkZRWGQzUkdFeVJucE5TVWxDU1dwQlRrSm5hM0ZvYTJsSE9YY3dRa0ZSUlVaQlFVOURRVkU0UVUxSlNVSkRaMHREQ2tGUlJVRnNWRUk1ZWtzM2R6RjFNRzFtT1dJNWJtZzRVM3AwSzB0NVpGZHZialV5VURWTlkyazRaMVlyZW1GUVdqbG1NMHBpY2xsSFZXWldXRzE2Um1FS2JWRXJUakJtVGpaUmFEaFZPV2x6YnpGUFozVkhXREIxZVRSd1YxazNlbTFYVFhGdFJqVnBTazlJTkVOQmRUVm5WMlZ1YzNJNVIyRlhNMWxtZUV0V1JncFdVbnBLY1V4MFUzcEJUM2x2UTBsaE5WRXJTVEpVZG1kTmVFWmpTRll3U0dONE9YVTVla2RZZERkS05VZGxWMXBUTTNJMk9VZzRNR1JHVWpkR2MwbFJDazFoVERaUlVIaG1VV05XT1ZKaWRXOXdlVUZ3T0U0M1RrdGlVM3A0T0VaVVpFSllVV0U0UW5WeFRYTnZObFp5SzBjclpDOW9lVnA2WWxwVmMxcEVVelFLWjNSdE5uSkNRbFVyYUU4ek1FTjZXbkJhWkhCRVRWTlBkamxqTkdOWlVYbHBkRWx3UmpCcmJWZFFjRTAyWWl0S1V6UnlOMmhHVVU1a1kxQldWWEJXZUFvdlZHb3dSVUZOYVdzcmNIcFpRVXh5YWxSTFpqbEhjbUprZDBsRVFWRkJRbTh4VFhkVlZFRmtRbWRPVmtoUk5FVkdaMUZWYTJSVE0wSnVXSE5uWlV0U0NuVk5MMGhDTlc5c00zbGFjVlJ2TUhkSWQxbEVWbEl3YWtKQ1ozZEdiMEZWYTJSVE0wSnVXSE5uWlV0U2RVMHZTRUkxYjJ3emVWcHhWRzh3ZDBSM1dVUUtWbEl3VkVGUlNDOUNRVlYzUVhkRlFpOTZRVTVDWjJ0eGFHdHBSemwzTUVKQlVYTkdRVUZQUTBGUlJVRlRaWG94UVZaaE5WaEhWWEJyTlVnNFRIcHlTUXA0VTBWelVuUkhVaXRTVjJOSmRHeE1aVlZMYzNOUFRUTnpZMDFtVUVaNlNuUXlUbGR3ZDBOd1NUUmlZMkZHUVZnemVGbExSMWx4Vm5aelZtcHhiVEZWQ25SS1ltaDZkekZoVVZCVVQyWnZORFpsT1hOR0sybHhaR0pwYkVwbFJVbFFabGxEYjB3MlZYUjBSbTk2VEM5TFoyazFlV0ZsU1hCU2NURmlhSEZ3VmpjS1RWUm1TbTFDYkhWSWNrWmhkV05GYUVGTVRESm9LMHRzUTFSNmFtSnNRbkJaTjFocFZGWkhjM0paYzBWMk1tRjNORWgyYjFwWlZrWlZWM0l4UTFKWFlncHBjREI0ZEZaMVNYRTVSRmhoYTBaSllXVlFXbFpuTUhSQ2N6VkJlakJ6VUdscE5VZFVWalV6VlhkbWNqWTRWamhCWVhGUlNFOXlWR1JRTDJaYWRrTjNDbVJYVFdkS1NubHRjMjFWVWlzMWNUSkNUbkp2WkhsVFdEZDRSelp4ZW5FME1tNUJWMVp3U2xOdmIwZzVaV2RTWVhadVowUTVVWFJyZVdVNUt6QnVSVzBLVkdjOVBRb3RMUzB0TFVWT1JDQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENnPT0iIH0=
+      provider_config_id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
+    kas_key_2:
+      id: 7b7197e4-f2de-4f74-b2f5-17c2d87ba13c
+      key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb # key_access_server_1
+      key_algorithm: 3 # ALGORITHM_EC_P256
+      key_id: ec_key_1
+      key_mode: 1 # KEY_MODE_LOCAL
+      key_status: 1 # KEY_STATUS_ACTIVE
+      private_key_ctx: eyAid3JhcHBlZF9rZXkiOiAiMXZ2V2pJZ2E2emM0bkhKVHEwL3RmM2hKZXU2VlpDY2o5WTVvbXZNekN2MEw5OVNxcGNpUHY5dUw1ZTQzeHVabTBYMDR3ekJ4VVdhUnJBaWJQRGN2TzFOQWJwS1ZObVNPODRyaXE4aklVeTRJRTRWeHBiTWYwL0duR1U2RjJIODhWb251K2YxMFRQeXdvVWgrU0dXTUZRZWU0eHFkaDJvQ2JlY3FiWklkK1JRR3dRUUh4dUlmOVljUW53MXJXcVMyRHhEekc5cGtleVZCTFBnaTQvZmo5SWhHVmtQQ0RaRFpZYys5MksrZ2UzT0htSlVSSWlURUI4b3BXbVNTc2Zhblc5YkJSYURWdWwxV3EyaHVrK1piVWhqeEZ6bEJWVHRuUVQ2c2R3Yzl0YlpSd0Rqa2ViVGExNVJHVkRKZFhZK1drTHZ2a2J0TVdWZHJQdlNNT2hwRndtcGNvN2g5VjRMdnRLalhvcTA9IiwgImtleV9pZCI6ICJjb25maWciIH0=
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVUpqUkVORFFWSmxaMEYzU1VKQlowbFZXRGRMUW14blVUaENWa3BEYldkWlp6SldTM0pyUWt3eVl6UkpkME5uV1VsTGIxcEplbW93UlVGM1NYY0tSR3BGVFUxQmIwZEJNVlZGUVhkM1JHRXlSbnBOUWpSWVJGUkpNRTFFVlhkT2FrVjVUVlJCZUUxc2IxaEVWRWt4VFVSVmQwNXFSWGxOVkVGNFRXeHZkd3BFYWtWTlRVRnZSMEV4VlVWQmQzZEVZVEpHZWsxR2EzZEZkMWxJUzI5YVNYcHFNRU5CVVZsSlMyOWFTWHBxTUVSQlVXTkVVV2RCUldRNFJGSnlhRTFFQ2xCUlUyTkpVR3hTZFZaaVdtSlZZakoxV1RoVlRFSldaVzFSZW5oblZEZHZURGRaTjFWR1NHSmtTWFZuVjBGRFVsVm5UMEl6VjJ0a1MzTTVjVXBFYUcwS1EwUkZZazh2WXl0YWMzSnpUa3RPVkUxR1JYZElVVmxFVmxJd1QwSkNXVVZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVJNFJ3cEJNVlZrU1hkUldVMUNZVUZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVFNFIwRXhWV1JGZDBWQ0wzZFJSazFCVFVKQlpqaDNDa05uV1VsTGIxcEplbW93UlVGM1NVUlNkMEYzVWtGSloxSnliVEJvU1VwSWFYaHlVVEpGT0VneWVtZE1SMVZMUkdsUlJYcE5aRWMwYzNGRWIySTBjVm9LZVN0clEwbElTMjVIZEUxU05GcHlia3BxSzJaM2FrSTJhelZzZVhSM1dYRnhibGxJWVU1NWNFVmlTVlUwYWpWcUNpMHRMUzB0UlU1RUlFTkZVbFJKUmtsRFFWUkZMUzB0TFMwSyIgfQ==
+    kas_key_3:
+      id: 8f3c5e4a-6b5f-4d3c-9d1f-0f7d8e0e2a2b
+      key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f # key_access_server_2
+      key_algorithm: 2 # ALGORITHM_RSA_4096
+      key_id: kas_key_3
+      key_mode: 1 # KEY_MODE_LOCAL
+      key_status: 1 # KEY_STATUS_INACTIVE
+      private_key_ctx: eyAid3JhcHBlZEtleSI6ICIwUXNLV1p6Q3I5NXdNdkxjYnh6cUpIcTRrNlJqSXZ0MU1UUGZ6aE9HZHhXYmZnYW5wVUhpWWw2ZUMxOGdKUWhkTm5TTENla1MwdTY5V0JTZUdGV0VtcENlb29TbmhTWElWcTJaQnJ1bVBTOWxWQndXRXl6biszbVlSK3FkQW80ZHY1YlFIcDBidExVUWNoRTNJWHU1NC9FeUFUbm8xRmlMSjZLa00xUHA4MmE3L2FPRDVNckpOZ0x5dXYySVZKbzhEckFXVmQyeXFra29MdXo5NzZERldJUndBd1JUN1dyOUo4MHpYdkFBVS9ibHdGSWFBbmRRZFJLMXppS21nUUJvWExNaCttb3IyVnM2KzFOSEYycWtRalVEMEQyVXlOUThycHVjSXM4RGhrWFFZYXVtWm1iZVdWQUo0a1lPRDRnUUQ3NVdSYUNNWXp3Nm9tTHBHS0RYUzc4bGZTR05VUGMvSnF1M2QxUU8vNVIyTVJST0NLVXVLL0VPSTB0QmFOQUFESXVpT3pVaEoydHZMQ0preTFGMndHeGgxM1hqUmVmS0gzVVdtYVd6SVl4TnM2TW9hdU91enJFNndNV1lWUnA5UWlpOXkvMS9oZ1hicGIxYWZZbWlzT1EvOGcwWmhvMWRmTWdLdlJWWHEyRUFiSWpYb0ZoNE9JUnd0VWhsU29pcVBIVTRPTW1rOVE5Q2RaMVk3anpXdHNra1NnOEY3MjdSdy80S1hTS1hGYWdRbTRNUWN1K2graVpFWGxTOGhmNVRTQXh6M2psejg3M281ZTlXNzh3MkJPL2dBZFloVGxjUnVKeEwxK09CQmF6ZDBWSjkxVitJNmM3bTR3NHVxc1BnRmFNSW1DaTdGYlJSaW16UWh0ZWdKYXpzZVJBNm01VjM3TlhmK3VUbS9PaFJ2ekZBMnRNN0NHem9LdTNubkZHUVdJVUlSSGUxSC82UVJEc2VoSzZ6SFN4VDVaOHk5enpJblh4bUw1bmVGOFNHUms0OWx3MWE1YVZZUlRsVHRmaEQvKzVoVUxuZFlMUzBhTnVSdnNGODU3QjhzN0YveWV2eFBiUnBSdWY3dFhheGwvUHptSFVHRzlKTjYvNy9RWjNXNWVNdU44ZXdqUmlwOGM1SEpydzBBazQvcFVzcnM0dnBpQ1hPYjBNejlvbWNTSU16UjlFUkUxNnp5b2ptTXFXZ3BGYjhja0R0ZXpEWU5tN3RVWDhSY2NZSnRwOEtCU052dTREZXVJL2pYYnF5b3Z6Q09SUnhCUmxUNDByb1hFQURGU2dSc0pXTkg0SGxBSjVDWW9oNE43RUVGS2lCVnkxeWNWajg0aEk0ODNkdy95dC9ZU3E5ak5LTjlVT1daVG0zU20xZk9XODdpR0lwWUZsejk4K3ZRYjZvOU5tSjZycEkzUTJ0c3JrS0dMQzhFTThycmFzMGFYRm9HOUhIaTRTR1VseXFSYXJVK0RjUEtneHphTkVDa2U0QmJRWHFBRlBXRU5vNXJMUEJZTHMyNG9XRDJjZEpVYzIyWWdDV1FBNlI1SFE4dXpTMDZxUmF5SUdnTmtjYThneXUrWEJXcjl5UTUzWllVdWNQdURwQjdVaWFGcVVNbnpZUmwwdzA0NGc5S09ycnpWdk0rZmNCVENaTDJCVUUxY3FUUHNHQlkrRDJoVVV0V1drd1Jha1NkVlpNQjF5bE1PNVNzYVpFaVl0Z3ZhSkZ3SGZKR2t3NE9EWlI3ejhHRW45Mlg1MC8vWktZZW4vWnNFMllodE5DVGJadm1TZk84RmZjZ01lektmR0t6MXNySE5IMm1DSThmSkVyekxBQmZ0WC9udUFDTEdCS08zaTU1VFl3UEhqbHRWU1J4c3krSGlGeGdQR0JNNnNucGhtcmxyS0x1M1lsZlYxRmhQT3o1ZXdqV205RGdDUDJkYktEQUxxMVFGTzlpSnIvckRGTDlLanZITmdIWjE4REsvU1Vld1pFcjAvRmpWaWxZUm1BRUlEZllhWTJmZ1pVVGJlQjJYaUpLTDJncDFFTWZCbjhNZzdDK1c4RWY5dWJSR1JSOCsvUHVFTjFmemYzNzNkNmZlSVA5UmYyZFJ4UnFUSFpodG9NSGoxS0FRcDZpWXlDbTZOM2VRQVVpMHgxa1h1ZDRQQm4wL2pwbEZNYTRib0dzSzFRdUFtTDI1eTRHMjJ1NzUzMmdiemUwNzlNNmUya0NVSFhsVmJWT1lnTktKTmJGNzQ0dlFOYU5UbnNZNVdWcE1vU200TU82Z0p3UWpac2UwMkJqbk92cWJBMjV1OVV6WTlwcElJN3E5TUpSNG1mQnJWcjFMdi9SZnpIVllUTjlEdzQvVy9ld01lbFZTNk1ldCtIWHJuZFV1QjErbXIvVWE3UUJHR0hobCswTWdYcG00aSt4U3EzKy95bk0zZG50Z0xOSEIrTEpjbUdEaG5EWXZ1THRVWWpPbmhmR05QYzNsRE9yN29jb2V1cXBWYVpIOUFEMFhmVHdpVVJYVmdWb1pVN1dWd1l4YTc4WGpDL0U2NWFjU1Q3aTl2Vk5lVUNYTlA2SFVnV1NiNStzZzRpV2dNTVBtNzR3Z0ZwMHVBb25reGZxb1h6ZXROaElyR2RvamhDbFdLb3E5WXAxaHJYb2RkM1Q4L0UrL1l4aFo2NkdsQ2NpY1UwTlZLQ1lJREI1SnY5WnY3SmFBRk1qVnhyd09hak5FeHZLTDFobFVEYVhKNG9OM2NNaW5QR2hJeTlRRmh5aGxxWDFyL0kzVmcydHN0NUFtZnZKQzcyeXJWUkFzZU5BUlJQWllBem96Y1FBb3pZQWpGY2lveGhXMHZ1RTFFOE85RUliMXlSTDFvU3F2Q05YcVJXYis0Y0FrcmdjMmp5eEJvSDdtdXBLa25CTVZ2UWd4WHQrZzZVSUlRR2laTkxxME9FdWhkRG1FRitUamU1ME05Vm9hbnNoejVoc09lZ2dZellTWFFIN1NRVm5OZitjK1RQa1UwWHBlRzdFVEQ4WUdueGhXTW5mRk5lK0FON0o5b0FjRTFSN0dZLzdLTVRQZ09DaVc2aTd5eVI5YllQcmsyYkU1eEtINnF1dVU5amJvaG90ZWJrS2ZEU05LTDNiWGh2UDd1bmEzUFFxbXJRRm1DZWpPcGRrb0lEL1E4eDI1KzlQYTNDWXd0aEFEaUdnTHBSM1lNVy9NR0IvNGs5ZFpNVUNaS3lBcTlNTnkvUWh5bm5NV1BBZmVGM0E3ZHBxY2pUb01KT3diakFuY0VPUjcrQU51VWtnbTBOWlRzdUUyTGtFeTJJdnRmZ0ZRY3FkZGt4U0xLNTFpbDBSU2VJaXlNN3Vxa3lOaTVKQ2JWckRJL1pBSmUyUHJFQmhlQWJ2SUhlSjZtamFnVndXNEY2Q3RUT0VJa0VoMENyTlNnb0VLL25VUlJGMzNkMjMxYm4wRVhTbnErZHlQVjZNSFR5d255cWxCWDJ2ZjBGUHhpNDVnTldrQTY2cUJHUStvVlVtQlY5YnZ1NkNlN0xWRndIVjNpRkN2dVI0ajd4V3ZqSXNtdnJ5b3JWTkkvN0s0YW1NMjRYTitZdVBvTW1iSmI4SGFGM2hvNXVFMlhTeVgzK2EwL2l6clRidjlVWEJwNUJ6bTVpYm5PL0g5NFJUTlhsSDQxZkVnNitacHJMcjlmckE1V2pFYXJ5QlMzRlFUN002c3ppL085eXpUMXE5cVB4d1ZRRDA4M0NObjNDaE5hbEFCK2t0SHFIUE4wbGRVL3UzSE01UFRXejhjcFBWVWtqUStOejAxaDl2VDBlNFpud01WVFBEZTVLZExNZDZueENsK2UxeGp4R2FMbkFNSmVqVVlsWURQeEc1dmhqYWcyVFkvTkl5ajZoemlZUXB1Y2F5aTg5VzV2NVJUWmFDeUpNdzh0T2Y0YjZScE9oY3JVa0hGV3hIUDduaXQySE1yblBmNmhKeWZ0cDcxSHQzNUt3aUxMUXY0VnVERzhxT0Y3bzhsL3RDcDBYOEdvNzVvYjBxVDY2SnB3aFpKdndLbWdKZ3k3VTNnbzhEVXZpY21RRDVmMk83eEFjZit0N3dyZlZPcEYrNnFJdnFJNE5kcHhDYlM5Nm00dm1FR2hwL2RiYjdwQjFrbEZFY0x4MGpQbW5MejRmTk1XMFMvSGdDckJjUkdGelVvWWRCeGFodHVNd09VeFdTc203dnQ4RnM1U0Z6NlJ4cWI2YUxxVEFXeFVYWDBCandLZUlUTyswUTU1eUhLdkRPbVJxOExKZXpEMFc2bStqVVVuSlB0TllxVUUxdVRrM00rUFlTdzVsUWJsaWNEcDlNaHNDUm84dGlGS0t0S3BZRmJMclZ6eGJKKytFajBYQ080bGorcUppYVlEN2lGUVp5b1NPelhQeUdGQzRaU2c3V1VkWlBWRW00RjlwN0U2ODgyQWV3ekFjcFZML1lGenVYWkNqaTltK3hHVHN3WENNdnBHNzFqZjBqUm9sSnZjd2pJVXFjdXZlWExWa2FmTVZybkllbXM2VzdPNjBtTTFqY0xtUWlqOGkxNUJrM214MTVmcnhsamJJaldHSEsvRFBwNkh3SzY4UmIyaGZrTXV2b0FSNExGMDFRMEk4MkZWWWY1SCt0OU5sSmw0dUNDSDNuUlNLZTBDRzM0NmIwOENCZ1JwamRuZHFwNVNKT251SjdpMENVMGRYZ0NxVi9ZRVJmT01GZ1BKcnBuNXVyTWNiZmtZVlJZOE1qRmxvaG9FczVUQmRKaWE4NE9mWVZkUHpZZSttSDAvUURGa0VvZmN1RHJVUUJPbjlGL1AvbUVidUZFR3NtSHNhaUx2NnJyaTJWM3Q2eDRsUmJleDNZTW84dGIrbFRwdkVhdGp2eGRTdmRXZlFlR2J6cDRDZDNHQ2ZEMWpuekh1ZEc2UFNLMVhubXphVUEzek9DT1JJYURaczRBQ04wRS82M1VSMit1aFppVW83ZjVmS2Q5anhtT0k4NStDajN2ZlhRU1ZTMCt6dXE4K3lYbk55NGhoUnhZWEF4ZE9uNWNjOFE0dTc1bjc0RGo0ekM3UVFrVGl4VjkyZjlsZGFLdUFPbVB1ak5tclhJSnhYN1o1SjI1TXdqcHVCMkV4a3pzTDZNN0RWQXZZMitUUlhMNjRYRlpSY2hCbzNkN0orUmZFcFU4T0lpNEpKV3YxTzcxMzVWeXhsRm1Lb3Q3Q1lFSGsvWjZTM29ZZHY0RWh2NkxLRzRBQ1BvWjRtb1VGVjRqajkvY3Q5dVZObFdlZXpEWXpNQUdFMVdPa29Cc0xaWDIrQjVWcWpIdGV0aFpPK1REMS9YeDVRaWp4TWRWWEZaRm42NVdVT3cvaGUvVUZIMllUTVlJOTg1UFNUek8rYmpvY0VQaWxIclkycmN0U0JabkFjYkF1bTNBNmN6VVlRMmtDT09JZ3Y2WjVBcEpCdmxSV2RQYk9TQjhnZkJJZElXeitOUW1DMFp0OUpsOWtMR2xIeS9qUnZtVkViNi9kaGFuOCtaLzkzREN1UmFmZkpZWHBqK3djR2YwSGp6Rms3Z2JsZCswMFV6WmZQaW13dkU2ZDNVVEFZOHRRdDRTKzZtcHVnMy9QK3ZvRFB0cFhaQjJNR3pLdlU5dGdPR0w1Z1gvOFBKbEkrUFU1bkVxL2Z5WG9vQy9Ud0EwTnJRWkhPSWg0c3hzbklvdnpJSzhDcVp2aWxqc0M5ZUhwVkpYT0lyUHhKNkdnM3d1cG5lUzdFMFcvRzRtanNUc0F2WHJOck5jZUw4K0JiRU5vcUR5NndKblJRcU5WZFlmVE1paWFFQThxNFNsTTRwLzI3d0RhSHNaS09HeVdIaGpxWnBNT2xiN3R3QmJZa3hyQlU5K05JY1ZOTXVOV1oyT00rRGtUUyIsICJrZXlfaWQiOiAiY29uZmlnIiB9
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVVZ0UkVORFFXOUJRME5SUkVRd2J6WkRhREl2UzJKNlFVNUNaMnR4YUd0cFJ6bDNNRUpCVVhOR1FVUkJUMDFSZDNkRFoxbEVWbEZSUkVSQlRuSUtXVmhOZDBob1kwNU5hbFYzVG1wRmVrMVVUWGhOUkUwd1YyaGpUazFxV1hkT2FrVjZUVlJOZUUxRVRUQlhha0ZQVFZGM2QwTm5XVVJXVVZGRVJFRk9jZ3BaV0UxM1oyZEphVTFCTUVkRFUzRkhVMGxpTTBSUlJVSkJVVlZCUVRSSlEwUjNRWGRuWjBsTFFXOUpRMEZSUkRZNFEydFJkVU5rWW1kdFVFdFJNa2N5Q25JM05sZHNPVzR5Tm1aa1FYaDRkWGRZT1VOeWExaHBWbGhHV0U1M2ExSnRkSE40Yms5cmIxUkdVM2xWYWtseVRIa3JabVZIVUdKcGVsVnhjMVZFVEZnS1RVVkhlREI2ZUdkalptZHFNakptVERObGJVNXhLMVV5UldSeGNtdFdSblpWWVhvek1reEVZVnAzY21OYWEzRXJlbTl6UzJkQ09VWXlhQzlyVlVScWJRcDVZelJJVG5WeVprMXZWR1Z1UVZOeWJESTRaekZaV21kV2VGbDFVbFZtY1V0aVVURm5TSGxaUkdreVNFTjVMM2gxVXpGTGVFbEtNbEV2T1dJMVNuaG1Da015VDI1R2RVazJUVVpRZFVwb1Fra3pkMUZ3T1RVdlJEWlVVVFpxUlV0clZIUlhjVmg0Uldsb01rdEdNVFJQYkUxUGMwRjZLMGxpTW1aNE1XcDVRUzhLTWpCYUwyaFZkRko1VjBwbVJESlJiamRuYVdKa1RXdDNPV1ZITHpSV1oycDRibnB0WWxOTmJ5OHJNSFpvZWpkSVFsRTNVVEJqYzA5V1lVaEVaR1IxUlFwbGEzTjRjVGt3TWt4TE9XZzBNbHBwVld0WlMwMVdlVEk1VjBaM1VUWlNXbnBHWWtwNFEyNUdRakZVU2s1eVFrMWtLemhaYkUxVWFWTjFlWEZ4VlNzeENsZDBTbTUxTTFKSFVGY3JXSEU0YjBKSE1XaElLeTlQVEM5Vk5GcDJlRE4yTlhkTE5WVlBSak54YVdSWVdXUkNZeXRyYm5wVGJqTnpUa3BGU1VoU01Xa0tiV3RvYjFOdWFFVnhkMFZHTldod2JrazJhamQ1UlUwcllVNHlhR3A1ZGtKVlVtUllVR3hvYldwYVZDdEtRVU1yTjNSS1dYTjZXSFp0VW5FMk5sRTNSZ3A0VW1WNlZYZDZPRTh3UW5GNGMwZHhSemQxZDBsQ2QwZzFZVFF4UTFaNWJHMVpURTF3TVhaTmJGVnJZa2R1YUdwaEwydzVhSFpOT1RSMWFuSk9XVGxaQ25wR1dtbFdlWEJoUXl0VVNqWlpkV3BTV0d0eU9EaEljMWx2WWpOQ01UZzBjVXM1Y1dzNE1qZGllRlZ1YTB0Wk4xZDBaVkY0ZUd0blR6SnFLMWhNUTNRS1YwaHdWMWc0TlN0dlYycDFRbVUyTDFaQ1RXZEpVMlpIUVZGSlJFRlJRVUpOUVRCSFExTnhSMU5KWWpORVVVVkNRM2RWUVVFMFNVTkJVVU5vYVRkVFFRcHdSbUkwVFhWMVJFbExWbFJJWjBoUlpGTnVPRXBwVkdkUlJteFpTbGx5WlVwa2JFTllSSEZZZFZkQ1ZqRmpVMkpVVkRWbVNsUXdlWEF4Y1dWeVRUWm5DbGhwVUROVmRqUnRXakJLVW5neVFqWXlTVWx6UldSa1J5OWhRM1kwY2tsUWJHRkhhRUZIWTFkWmR6QTJMMUF4TlhoQ09UaGxhRk4zTlhWMFNsVmhkbVFLZDBjMk5VcGlhbVpoYzFGamRFNWpSU3RLTm10aFlVZG9RMlpsTkVVd2RVSXlhazlSWVRneldFNTRTa2MxZDFweU5qaFFNVzVsUlZoSmJEZGFXakppVXdvNWJTdHphWFp0WVVOSE9GcHlkR1ZHV21weE5uSllhM2MxYW10WGRYTjJVamtyYXpSMVJERXJUbGRaVjJzNVdYSlFjRWRCZVdjM1UzaFFUVXhCU0dGWUNqQkZiREJoTkN0dmIxcDZNa1J2TkU5MVltZEVVRkYwVVZoblJVdHFiMDlCUWxFNE5EWmlSMVZWYzFwMlVUa3dUa28zSzNwcWMyOU5OSFZyY1cxTk0yd0tNRzVKTW5nNFJHSXJLMEUzV1dKVVJVMDNjMHN6TXpKVFZ6TkVVWEZzTm5CYU1GQnpiRWRJTHk5Rk4xWTROMVJPVlZoeWJIcEpRalo2ZDNsaFEwSkxkZ3AwWWpoS01VTmhVbmgzVjNWVlkwdEhTVWgzWkhaSVZYazVObTF3WXpGSlZGaFRja1ZtVTJ0U2IwcDFZazVuVlZaaFMyeHZjREU0U2xNclEwMVRUbXhGQ210NFVYSlViVlZPUnpoNFZFZFhaamxwTDI0Mk5rUlJRbmxqT1VOSVZtMTFRVGRxUVhvcmRYZE5hbVpuYkdselRYQmxjRms1VTAxMmVFOTZUVmxsUmxZS2F6ZE1kbWxHV2tNdmFTdEpjRXRsYjBKdWJHWkxObXhoVlRBNFpGQlpVR1JVUmtWSk9HSlRSVTlvTmxRdlUwbFNiMHhQUm1kR0wzSnBNMVJrUm1ST1dRcGpNR3RRYUhsSmEyWlpkMnBwTkV4MVZFMHhWUzh3WTJaWmJWbElNRGhXYzNwa1VVdE1NVEpwVDFvd00wdHFXRVJNUjB0VmFtSjRRamRGT0UxMlZrWkJDaTg1U0N0TFZrTkZaRmxCWlVwS1MyUlFiVVExT0RNck4zSlNZbWwyVEdKQ1FUVnpZMUJSUFQwS0xTMHRMUzFGVGtRZ1EwVlNWRWxHU1VOQlZFVXRMUzB0TFFvPSIgfQ==
+##############
+# Provider Config
+##############
+provider_configs:
+  metadata:
+    table_name: provider_config
+    columns:
+      - id
+      - provider_name
+      - manager
+      - config
+  data:
+    provider_config_1:
+      id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
+      provider_name: fixture-aws
+      manager: opentdf.io/basic
+      config: eyJzb21lIjogInZhbHVlIn0g
+    provider_config_2:
+      id: 19098106-54a1-4d33-8846-4894b5b6db3e
+      provider_name: fixture-gcp
+      manager: opentdf.io/basic
+      config: eyJzb21lIjogInZhbHVlIn0g
+
+##
+# Registered Resources
+#
+##
+registered_resources:
+  metadata:
+    table_name: registered_resources
+    columns:
+      - id
+      - name
+  data:
+    res_with_values:
+      id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      name: res_with_values
+    res_with_values2:
+      id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      name: res_with_values2
+    res_only:
+      id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+      name: res_only
+
+##
+# Registered Resource Values
+#
+##
+registered_resource_values:
+  metadata:
+    table_name: registered_resource_values
+    columns:
+      - id
+      - registered_resource_id
+      - value
+  data:
+    res_with_values__value1:
+      id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      registered_resource_id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      value: res_with_values__value1
+    res_with_values__value2:
+      id: 9e8f7a6b-5c4d-3b2a-1d0c-8f7e6a5b4c3d
+      registered_resource_id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      value: res_with_values__value2
+    res_with_values2__value1:
+      id: a932ff01-cca6-41f6-a147-7eba7560611b
+      registered_resource_id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      value: res_with_values2__value1
+
+##
+# Registered Resource Action Attribute Values
+#
+##
+registered_resource_action_attribute_values:
+  metadata:
+    table_name: registered_resource_action_attribute_values
+    columns:
+      - id
+      - registered_resource_value_id
+      - action_id
+      - attribute_value_id
+  data:
+    res_with_values__value1___action_attr_value1:
+      id: 41452356-3b56-494e-950c-b801239bab4a
+      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      # loaded by migration
+      action_name: create
+      # example.com/attr/attr1/value/value1
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    res_with_values__value1___action_attr_value2:
+      id: f2492cf7-33a9-4259-b556-1068ee55f043
+      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      # loaded by migration
+      action_name: custom_action_1
+      # example.com/attr/attr1/value/value2
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3

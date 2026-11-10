@@ -1,0 +1,39 @@
+# LDAP test data for Entity Resolution Service
+# Creates organizational structure for multi-strategy ERS LDAP provider testing
+
+# Organizational Units
+dn: ou=users,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: users
+description: OpenTDF Test Users
+
+dn: ou=clients,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: clients
+description: OpenTDF Test Client Applications
+
+dn: ou=groups,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: groups
+description: OpenTDF Test Groups
+
+# Department OUs under groups
+dn: ou=engineering,ou=groups,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: engineering
+description: Engineering Department
+
+dn: ou=marketing,ou=groups,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: marketing
+description: Marketing Department
+
+dn: ou=security,ou=groups,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: security
+description: Security Department
+
+dn: ou=operations,ou=groups,dc=opentdf,dc=test
+objectClass: organizationalUnit
+ou: operations
+description: Operations Department

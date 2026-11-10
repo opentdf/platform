@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/spf13/cobra"
 )
 

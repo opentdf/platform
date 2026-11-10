@@ -13,9 +13,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/pkg/tdf"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 )
 

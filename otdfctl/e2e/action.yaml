@@ -9,6 +9,10 @@ inputs:
     required: false
     description: 'Use the otdfctl source from the platform checkout'
     default: 'false'
+  bats-test-paths:
+    required: false
+    description: 'Space-separated Bats test files or directories to run'
+    default: 'e2e'
   testrail-run-name-for-cli-test:
     required: false
     description: 'The name to use for the TestRail test run created for the CLI tests'
@@ -69,14 +73,16 @@ runs:
       shell: bash
       working-directory: otdfctl
       run: |
+        read -r -a bats_test_paths <<< "$BATS_TEST_PATHS"
         if command -v parallel >/dev/null 2>&1; then
           echo "GNU parallel found, running tests in parallel"
-          bats --tap e2e --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee e2e/bats-results.tap
+          bats --tap --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup "${bats_test_paths[@]}" | tee e2e/bats-results.tap
         else
           echo "GNU parallel not found, running tests sequentially"
-          bats --tap e2e | tee e2e/bats-results.tap
+          bats --tap "${bats_test_paths[@]}" | tee e2e/bats-results.tap
         fi
       env:
+        BATS_TEST_PATHS: ${{ inputs.bats-test-paths }}
         # Define 'bats' install location in ubuntu
         BATS_LIB_PATH: /usr/lib
         # Terminal width for testing printed output

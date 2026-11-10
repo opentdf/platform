@@ -572,6 +572,7 @@ jobs:
           provision-policy-fixtures: "false"
       - uses: ./otdfctl/e2e
         with:
+          bats-test-paths: e2e/auth.bats e2e/profile.bats
           use-local-source: "true"
         env:
           GOWORK: off

@@ -14,9 +14,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -34,6 +36,24 @@ import (
 type mockTokenSource struct {
 	token string
 	err   error
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+type trackedReadCloser struct {
+	io.Reader
+	closed bool
+}
+
+func (r *trackedReadCloser) Close() error {
+	r.closed = true
+	return nil
+}
+
+func emptyResponse(req *http.Request, status int) *http.Response {
+	return &http.Response{StatusCode: status, Header: make(http.Header), Body: http.NoBody, Request: req}
 }
 
 func (m *mockTokenSource) AccessToken(_ context.Context, _ *http.Client) (AccessToken, error) {
@@ -591,6 +611,181 @@ func TestDPoPTransport_BearerTokenSourceSkipsProof(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&called), "server should be called exactly once")
 }
 
+func TestDPoPTransport_BearerStreamsOneShotBody(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockCredentialTokenSource{mockTokenSource: mockTokenSource{token: "bearer-token"}, tokenType: TokenTypeBearer}
+	var calls int
+	var original io.ReadCloser
+	base := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		require.Equal(t, original, r.Body, "Bearer body should be passed through")
+		require.Nil(t, r.GetBody)
+		require.Equal(t, "Bearer bearer-token", r.Header.Get("Authorization"))
+		require.Empty(t, r.Header.Get("DPoP"))
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.Equal(t, "upload part", string(body))
+		require.NoError(t, r.Body.Close())
+		resp := emptyResponse(r, http.StatusUnauthorized)
+		resp.Header.Set("DPoP-Nonce", "challenge")
+		return resp, nil
+	})
+	transport := &DPoPTransport{Base: base, DPoPKey: key, TokenSource: ts}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+	require.NoError(t, err)
+	original = io.NopCloser(strings.NewReader("upload part"))
+	req.Body = original
+	req.ContentLength = int64(len("upload part"))
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, 1, calls)
+}
+
+func TestDPoPTransport_ClosesBodyOnCredentialError(t *testing.T) {
+	key := generateTestKey(t)
+	transport := &DPoPTransport{DPoPKey: key, TokenSource: &mockTokenSource{err: errors.New("token unavailable")}}
+	body := &trackedReadCloser{Reader: strings.NewReader("upload part")}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+	require.NoError(t, err)
+	req.Body = body
+	req.ContentLength = int64(len("upload part"))
+	_, err = transport.RoundTrip(req)
+	require.ErrorContains(t, err, "token unavailable")
+	require.True(t, body.closed)
+}
+
+func TestDPoPTransport_UsesExistingGetBody(t *testing.T) {
+	key := generateTestKey(t)
+	var calls int
+	var original io.ReadCloser
+	base := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if calls == 1 {
+			require.Equal(t, original, r.Body, "replayable body should be passed through")
+		}
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.Equal(t, "replayable", string(body))
+		require.NoError(t, r.Body.Close())
+		resp := emptyResponse(r, http.StatusOK)
+		if calls == 1 {
+			resp.StatusCode = http.StatusUnauthorized
+			resp.Header.Set("DPoP-Nonce", "challenge")
+		}
+		return resp, nil
+	})
+	transport := &DPoPTransport{Base: base, DPoPKey: key, TokenSource: &mockTokenSource{token: "dpop-token"}}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", strings.NewReader("replayable"))
+	require.NoError(t, err)
+	require.NotNil(t, req.GetBody)
+	original = req.Body
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, 2, calls)
+}
+
+func TestBufferRequestBodyLengths(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		body   string
+		length int64
+	}{
+		{"exact", "abc", 3},
+		{"short", "abc", 5},
+		{"long", "abc", 1},
+		{"zero", "abc", 0},
+		{"unknown", "abc", -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost, "https://example.com", nil)
+			require.NoError(t, err)
+			req.Body = io.NopCloser(strings.NewReader(tc.body))
+			req.ContentLength = tc.length
+			require.NoError(t, bufferRequestBody(req))
+			if tc.length < 0 {
+				require.Nil(t, req.GetBody)
+				return
+			}
+			for _, body := range []io.ReadCloser{req.Body, func() io.ReadCloser {
+				body, getErr := req.GetBody()
+				require.NoError(t, getErr)
+				return body
+			}()} {
+				got, readErr := io.ReadAll(body)
+				require.NoError(t, readErr)
+				require.Equal(t, tc.body, string(got))
+				require.NoError(t, body.Close())
+			}
+		})
+	}
+}
+
+// BenchmarkDPoPTransportBody measures the one-shot body path used by multipart
+// clients. Run each sub-benchmark in a separate process for comparable max RSS.
+func BenchmarkDPoPTransportBody(b *testing.B) {
+	const partSize = 64 << 20
+	payload := make([]byte, partSize)
+	rawKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		b.Fatal(err)
+	}
+	key, err := jwk.FromRaw(rawKey)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if err := key.Set(jwk.AlgorithmKey, jwa.ES256); err != nil {
+		b.Fatal(err)
+	}
+	base := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		_, err := io.Copy(io.Discard, r.Body)
+		if err != nil {
+			return nil, err
+		}
+		if err := r.Body.Close(); err != nil {
+			return nil, err
+		}
+		return emptyResponse(r, http.StatusOK), nil
+	})
+	for _, tc := range []struct {
+		name   string
+		source AccessTokenSource
+	}{
+		{"bearer", &mockCredentialTokenSource{mockTokenSource: mockTokenSource{token: "token"}, tokenType: TokenTypeBearer}},
+		{"dpop", &mockCredentialTokenSource{mockTokenSource: mockTokenSource{token: "token"}, tokenType: TokenTypeDPoP}},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			transport := &DPoPTransport{Base: base, DPoPKey: key, TokenSource: tc.source}
+			b.SetBytes(partSize)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+				if err != nil {
+					b.Fatal(err)
+				}
+				req.Body = io.NopCloser(bytes.NewReader(payload))
+				req.ContentLength = partSize
+				resp, err := transport.RoundTrip(req)
+				if err != nil {
+					b.Fatal(err)
+				}
+				_ = resp.Body.Close()
+			}
+			var usage syscall.Rusage
+			if err := syscall.Getrusage(syscall.RUSAGE_SELF, &usage); err != nil {
+				b.Fatal(err)
+			}
+			peakRSS := float64(usage.Maxrss)
+			if runtime.GOOS == "linux" {
+				peakRSS *= 1024
+			}
+			b.ReportMetric(peakRSS, "process-peak-RSS-B")
+		})
+	}
+}
+
 // TestDPoPTransport_DPoPCredentialSourceSignsProof verifies that a credential
 // source reporting the DPoP scheme keeps the full sender-constrained behavior:
 // a proof with an ath claim and Authorization: DPoP.
@@ -647,7 +842,7 @@ func TestDPoPTransport_BearerStripsInheritedProof(t *testing.T) {
 	require.NoError(t, err, "create request")
 	req.Header.Set("DPoP", "stale-proof")
 
-	require.NoError(t, transport.addDPoPProof(req, http.DefaultTransport, "", false), "addDPoPProof")
+	require.NoError(t, transport.addDPoPProof(req, "", false, AccessTokenCredential{Token: "bearer-access-token", Type: TokenTypeBearer}), "addDPoPProof")
 	assert.Empty(t, req.Header.Get("DPoP"), "inherited DPoP proof should be stripped for a bearer request")
 	assert.Equal(t, "Bearer bearer-access-token", req.Header.Get("Authorization"), "Authorization header")
 }

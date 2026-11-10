@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"context"
 	"crypto/rand"
 	"testing"
 
@@ -60,9 +59,20 @@ func TestAESProtectedKey_DecryptAESGCM_InvalidCiphertext(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test with invalid IV size (should be 12 bytes)
-	// This triggers the ErrInvalidCiphertext check in DecryptWithIVAndTagSize
 	_, err = protectedKey.DecryptAESGCM([]byte{0x01, 0x02}, []byte("test"), 16)
 	require.ErrorIs(t, err, ErrInvalidCiphertext)
+}
+
+func TestAESProtectedKey_DecryptAESGCM_UnsupportedTagSize(t *testing.T) {
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+
+	protectedKey, err := NewAESProtectedKey(key)
+	require.NoError(t, err)
+
+	_, err = protectedKey.DecryptAESGCM(make([]byte, GcmStandardNonceSize), []byte("test"), 12)
+	require.ErrorIs(t, err, ErrUnsupportedAESGCMConfiguration)
 }
 
 func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
@@ -148,7 +158,7 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 	require.NoError(t, err)
 
 	policy := []byte("test-policy-data")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate the expected HMAC
 	expectedHMAC := protectedKey.generateHMACDigest(policy)
@@ -165,7 +175,7 @@ func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
 
 	policy := []byte("test-policy-data")
 	wrongBinding := []byte("wrong-binding-data")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err = protectedKey.VerifyBinding(ctx, policy, wrongBinding)
 	require.Error(t, err)
@@ -177,7 +187,7 @@ func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate HMAC for first policy
 	policy1 := []byte("policy-data-1")

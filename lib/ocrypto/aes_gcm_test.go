@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto/aes"
 	"encoding/hex"
 	"errors"
 	"strings"
@@ -61,88 +62,82 @@ widely adopted for its performance`,
 }
 
 func TestCreateAesGcm_EncryptWithDefaults(t *testing.T) {
-	gcmEncryptionTests := []struct {
-		symmetricKey string
-		iv           string
-		plainText    string
-		cipherText   string
-	}{
-		{
-			"66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4",
-			"29a8b044b5b6ce00e18bc6fc78ff50c6",
-			"virtru",
-			"29a8b044b5b6ce00e18bc6fc78ff50c6b3cf733137d865892e5af63dcbca08086ba1ac82aae2",
-		},
-		{
-			"120fba31c537d99ade0a0a8c8e6df535f7de86fb6e1d5948317b4596982a5e1b",
-			"ec9074bc6c6b81d6520f5a7425f8977a",
-			"",
-			"ec9074bc6c6b81d6520f5a7425f8977adabe8b28dd100eea2f58d71e3644b43d",
-		},
-		{
-			"9895f395913a3cfd974ea53c0735030c7df4602d699c986afdc5fdd10071c0a5",
-			"5142d90e8499f597802ca68cddb25ec1",
-			`In cryptography, Galois/Counter Mode (GCM)[1] is a mode of operation
-for symmetric-key cryptographic block ciphers which is
-widely adopted for its performance`,
-			`5142d90e8499f597802ca68cddb25ec101c1e44df776bfca60ed217e06421c7b945adaf328984
-9406ca5b7046c886050fe72cc0ebc429f683f9cfe3a47613e2ca8a812ef9b75d361c32d042124d3dc5d84c757225
-21df65ed7829327b5adda0ae020a778b909328a48311cc705d4c0a8b83f49430aa80febba73e27e99b3006d6e768
-a092d5b9dc894e7a634235198b1a986a3624912dec108ef03055b319f59f25fc579eb08f01820ea19edc7f9896129
-c572c36440ed80fd61fc71df37`,
-		},
-	}
-
-	for _, test := range gcmEncryptionTests {
-		key, _ := hex.DecodeString(test.symmetricKey)
-		nonce, _ := hex.DecodeString(test.iv)
-
-		aesGcm, err := NewAESGcm(key)
-		if err != nil {
-			t.Fatalf("Fail to create AesGcm: %v", err)
-		}
-
-		cipherText, err := aesGcm.EncryptWithIV(nonce, []byte(test.plainText))
-		if err != nil {
-			t.Fatalf("Fail to encrypt with iv: %v", err)
-		}
-
-		actualCipherText, _ := hex.DecodeString(strings.ReplaceAll(test.cipherText, "\n", ""))
-		if string(actualCipherText) != string(cipherText) {
-			t.Fatalf("encrypt test fail: actual:%s, expected:%s",
-				string(actualCipherText), string(cipherText))
-		}
-	}
-}
-
-func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
-	plainText := "Virtru"
 	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
 	aesGcm, err := NewAESGcm(key)
 	if err != nil {
 		t.Fatalf("Fail to create AesGcm: %v", err)
 	}
 
-	nonce, err := RandomBytes(GcmStandardNonceSize)
+	plainText := []byte("virtru")
+	cipherText, err := aesGcm.Encrypt(plainText)
 	if err != nil {
-		t.Fatalf("Fail to grenerate nonce %v", err)
+		t.Fatalf("Fail to encrypt: %v", err)
 	}
 
-	authTagsToTest := []int{12, 13, 14, 15, 16}
-	for _, authTag := range authTagsToTest {
-		cipherText, err := aesGcm.EncryptWithIVAndTagSize(nonce, []byte(plainText), authTag)
-		if err != nil {
-			t.Fatalf("Fail to encrypt with auth tag:%d err:%v", authTag, err)
-		}
+	if len(cipherText) != len(plainText)+GcmStandardNonceSize+aes.BlockSize {
+		t.Fatalf("unexpected ciphertext length: got %d", len(cipherText))
+	}
 
-		decipherText, err := aesGcm.DecryptWithTagSize(cipherText, authTag)
-		if err != nil {
-			t.Fatalf("Fail to decrypt with auth tag:%d err:%v", authTag, err)
-		}
+	decipherText, err := aesGcm.Decrypt(cipherText)
+	if err != nil {
+		t.Fatalf("Fail to decrypt: %v", err)
+	}
 
-		if plainText != string(decipherText) {
-			t.Errorf("gcm decryption test don't match: expected %v, got %v", plainText, string(decipherText))
-		}
+	if string(plainText) != string(decipherText) {
+		t.Errorf("gcm decryption test don't match: expected %v, got %v", string(plainText), string(decipherText))
+	}
+}
+
+func TestCreateAESGcm_EncryptInPlace(t *testing.T) {
+	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
+	aesGcm, err := NewAESGcm(key)
+	if err != nil {
+		t.Fatalf("Fail to create AesGcm: %v", err)
+	}
+
+	plainText := []byte("Virtru")
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "exact capacity",
+			data: append([]byte{}, plainText...),
+		},
+		{
+			name: "spare capacity",
+			data: func() []byte {
+				buf := make([]byte, len(plainText), len(plainText)+GcmStandardNonceSize+aes.BlockSize)
+				copy(buf, plainText)
+				return buf
+			}(),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cipherText, nonce, err := aesGcm.EncryptInPlace(test.data)
+			if err != nil {
+				t.Fatalf("Fail to encrypt in place: %v", err)
+			}
+
+			if len(nonce) != GcmStandardNonceSize {
+				t.Fatalf("unexpected nonce length: got %d", len(nonce))
+			}
+			if len(cipherText) != len(plainText)+aes.BlockSize {
+				t.Fatalf("unexpected ciphertext length: got %d", len(cipherText))
+			}
+
+			sealed := append(append([]byte{}, nonce...), cipherText...)
+			decipherText, err := aesGcm.Decrypt(sealed)
+			if err != nil {
+				t.Fatalf("Fail to decrypt ciphertext: %v", err)
+			}
+
+			if string(plainText) != string(decipherText) {
+				t.Errorf("gcm decryption test don't match: expected %v, got %v", string(plainText), string(decipherText))
+			}
+		})
 	}
 }
 
@@ -231,77 +226,5 @@ func TestDecrypt_TooShortData(t *testing.T) {
 	}
 	if !errors.Is(err, ErrInvalidCiphertext) {
 		t.Errorf("expected ErrInvalidCiphertext, got %v", err)
-	}
-}
-
-func TestDecryptWithTagSize_EmptyData(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, _ := NewAESGcm(key)
-
-	_, err := aesGcm.DecryptWithTagSize([]byte{}, 16)
-	if err == nil {
-		t.Fatal("expected error for empty data, got nil")
-	}
-	if !errors.Is(err, ErrInvalidCiphertext) {
-		t.Errorf("expected ErrInvalidCiphertext, got %v", err)
-	}
-}
-
-func TestDecryptWithTagSize_TooShortData(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, _ := NewAESGcm(key)
-
-	_, err := aesGcm.DecryptWithTagSize([]byte{0x01, 0x02}, 16)
-	if err == nil {
-		t.Fatal("expected error for short data, got nil")
-	}
-	if !errors.Is(err, ErrInvalidCiphertext) {
-		t.Errorf("expected ErrInvalidCiphertext, got %v", err)
-	}
-}
-
-func TestEncryptWithIVAndTagSize_InvalidIVSize(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, _ := NewAESGcm(key)
-
-	// Test various invalid IV sizes (should be 12 bytes for GCM standard)
-	invalidIVs := [][]byte{
-		{},
-		make([]byte, 11),
-		make([]byte, 13),
-		make([]byte, 16),
-	}
-
-	for _, iv := range invalidIVs {
-		_, err := aesGcm.EncryptWithIVAndTagSize(iv, []byte("test"), 16)
-		if err == nil {
-			t.Errorf("expected error for %d-byte IV, got nil", len(iv))
-		}
-		if !errors.Is(err, ErrInvalidCiphertext) {
-			t.Errorf("expected ErrInvalidCiphertext for %d-byte IV, got %v", len(iv), err)
-		}
-	}
-}
-
-func TestDecryptWithIVAndTagSize_InvalidIVSize(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, _ := NewAESGcm(key)
-
-	// Test various invalid IV sizes (should be 12 bytes for GCM standard)
-	invalidIVs := [][]byte{
-		{},
-		make([]byte, 11),
-		make([]byte, 13),
-		make([]byte, 16),
-	}
-
-	for _, iv := range invalidIVs {
-		_, err := aesGcm.DecryptWithIVAndTagSize(iv, []byte("test"), 16)
-		if err == nil {
-			t.Errorf("expected error for %d-byte IV, got nil", len(iv))
-		}
-		if !errors.Is(err, ErrInvalidCiphertext) {
-			t.Errorf("expected ErrInvalidCiphertext for %d-byte IV, got %v", len(iv), err)
-		}
 	}
 }

@@ -6,13 +6,20 @@ import (
 	"fmt"
 	"strings"
 
-	// Database drivers would be imported here:
-	// _ "github.com/lib/pq"           // PostgreSQL driver
-	// _ "github.com/go-sql-driver/mysql" // MySQL driver
-	// _ "github.com/mattn/go-sqlite3" // SQLite driver
-
+	// Register the pgx/v5 database/sql driver for SQL providers.
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
+
+func normalizeDriverName(driver string) string {
+	driver = strings.ToLower(strings.TrimSpace(driver))
+	switch driver {
+	case defaultPostgreSQLDriver, pgxDriverAlias, postgresQLDriverAlias:
+		return canonicalPGXDriver
+	default:
+		return driver
+	}
+}
 
 // Provider implements the Provider interface for SQL databases
 type Provider struct {
@@ -24,6 +31,10 @@ type Provider struct {
 
 // NewProvider creates a new SQL provider
 func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
+	// Normalize aliases so "pgx", "postgres", and "postgresql" use the
+	// registered pgx/v5 database/sql driver name.
+	config.Driver = normalizeDriverName(config.Driver)
+
 	provider := &Provider{
 		name:   name,
 		config: config,
@@ -253,8 +264,8 @@ func (p *Provider) Close() error {
 
 // buildConnectionString creates a connection string based on the driver
 func (p *Provider) buildConnectionString() (string, error) {
-	switch strings.ToLower(p.config.Driver) {
-	case "postgres":
+	switch normalizeDriverName(p.config.Driver) {
+	case canonicalPGXDriver:
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			p.config.Host, p.config.Port, p.config.Username, p.config.Password,
 			p.config.Database, p.config.SSLMode), nil

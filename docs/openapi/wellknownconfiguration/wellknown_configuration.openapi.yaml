@@ -2,12 +2,28 @@ openapi: 3.1.0
 info:
   title: wellknownconfiguration
 paths:
-  /.well-known/opentdf-configuration:
-    get:
+  /wellknownconfiguration.WellKnownService/GetWellKnownConfiguration:
+    post:
       tags:
         - wellknownconfiguration.WellKnownService
       summary: GetWellKnownConfiguration
       operationId: wellknownconfiguration.WellKnownService.GetWellKnownConfiguration
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wellknownconfiguration.GetWellKnownConfigurationRequest'
+        required: true
       responses:
         default:
           description: Error

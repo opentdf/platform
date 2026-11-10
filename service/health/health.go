@@ -9,8 +9,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"connectrpc.com/grpchealth"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/grpchealth/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -25,9 +24,9 @@ type HealthService struct { //nolint:revive // HealthService is a valid name for
 func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 	return &serviceregistry.Service[grpchealth.Checker]{
 		ServiceOptions: serviceregistry.ServiceOptions[grpchealth.Checker]{
-			Namespace:      "health",
-			ServiceDesc:    &healthpb.Health_ServiceDesc,
-			ConnectRPCFunc: grpchealth.NewHandler,
+			Namespace:              "health",
+			ServiceDesc:            &healthpb.Health_ServiceDesc,
+			ConnectRPCRegisterFunc: grpchealth.Register,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (grpchealth.Checker, serviceregistry.HandlerServer) {
 				err := srp.WellKnownConfig("health", map[string]any{
 					"endpoint": "/healthz",
@@ -36,9 +35,9 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 					srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 				}
 				hs := HealthService{logger: srp.Logger}
-				return hs, func(_ context.Context, mux *runtime.ServeMux) error {
-					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) { //nolint:contextcheck // check is not relevant here
-						resp, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+				return hs, func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+						resp, err := hs.Check(r.Context(), &grpchealth.CheckRequest{
 							Service: r.URL.Query().Get("service"),
 						})
 						if err != nil {
@@ -59,10 +58,6 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 							srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
 						}
 					})
-					if err != nil {
-						panic(errors.Join(errors.New("failed to register healthz endpoint"), err))
-					}
-
 					return nil
 				}
 			},
@@ -120,10 +115,22 @@ func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_W
 }
 
 func RegisterReadinessCheck(namespace string, service func(context.Context) error) error {
-	if _, ok := serviceHealthChecks[namespace]; ok {
-		return errors.New("readiness check already registered")
+	if existing, ok := serviceHealthChecks[namespace]; ok {
+		serviceHealthChecks[namespace] = func(ctx context.Context) error {
+			if err := existing(ctx); err != nil {
+				return err
+			}
+			return service(ctx)
+		}
+		return nil
 	}
 	serviceHealthChecks[namespace] = service
 
 	return nil
+}
+
+// ResetReadinessChecks removes checks left by a prior server lifecycle. Services
+// register their checks again as they start.
+func ResetReadinessChecks() {
+	serviceHealthChecks = make(map[string]func(context.Context) error)
 }

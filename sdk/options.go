@@ -5,8 +5,10 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
@@ -15,6 +17,19 @@ import (
 )
 
 type Option func(*config)
+
+// SigningAlgorithm identifies a JWS signing algorithm (RFC 7518 §3.1).
+type SigningAlgorithm string
+
+// Supported JWS signing algorithms for DPoP proof tokens (RFC 9449 §4.2).
+const (
+	ES256 SigningAlgorithm = "ES256"
+	ES384 SigningAlgorithm = "ES384"
+	ES512 SigningAlgorithm = "ES512"
+	RS256 SigningAlgorithm = "RS256"
+	RS384 SigningAlgorithm = "RS384"
+	RS512 SigningAlgorithm = "RS512"
+)
 
 type ConnectRPCConnection struct {
 	Client   *http.Client
@@ -31,10 +46,14 @@ type config struct {
 	clientCredentials                  *oauth.ClientCredentials
 	tokenExchange                      *oauth.TokenExchangeInfo
 	tokenEndpoint                      string
+	tokenExpirationBuffer              time.Duration
 	scopes                             []string
 	certExchange                       *oauth.CertExchangeInfo
 	kasSessionKey                      *ocrypto.RsaKeyPair
 	dpopKey                            *ocrypto.RsaKeyPair
+	dpopJWK                            jwk.Key
+	dpopAlgorithm                      SigningAlgorithm
+	dpopKeyPEM                         []byte
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
 	customAccessTokenSource            auth.AccessTokenSource
@@ -79,6 +98,15 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	return func(c *config) {
 		c.clientCredentials = &oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
+	}
+}
+
+// WithTokenExpirationBuffer sets how early SDK-managed access tokens are renewed.
+// The default is 10 seconds. Zero disables early renewal; negative values are rejected by New.
+// It applies to client credentials, token exchange, and certificate exchange, not custom token sources.
+func WithTokenExpirationBuffer(buffer time.Duration) Option {
+	return func(c *config) {
+		c.tokenExpirationBuffer = buffer
 	}
 }
 
@@ -175,7 +203,10 @@ func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Opti
 	}
 }
 
-// WithConnectionValidation will validate connection to a healthy, running platform
+// WithConnectionValidation will validate connection to a healthy, running platform at
+// SDK construction time. For runtime readiness probes (e.g. Kubernetes liveness/readiness
+// endpoints), use SDK.IsHealthy(ctx) instead — it honors ctx for deadlines and tracing
+// and does not fail-fast at construction.
 func WithConnectionValidation() Option {
 	return func(c *config) {
 		c.shouldValidatePlatformConnectivity = true
@@ -223,5 +254,32 @@ func WithFulfillableObligationFQNs(fqns []string) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *config) {
 		c.logger = logger
+	}
+}
+
+// WithDPoPAlgorithm enables DPoP with an ephemeral key generated for the given algorithm.
+// Supported: ES256, ES384, ES512, RS256, RS384, RS512.
+// When no DPoP key is otherwise configured, the SDK auto-generates an ephemeral ES256 (P-256) key by default; ES256 is the
+// recommended choice.
+func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
+	return func(c *config) {
+		c.dpopAlgorithm = alg
+	}
+}
+
+// WithDPoPKeyPEM enables DPoP using a PEM-encoded private key. Algorithm is inferred
+// from the key type unless also overridden via WithDPoPAlgorithm.
+func WithDPoPKeyPEM(pemBytes []byte) Option {
+	return func(c *config) {
+		c.dpopKeyPEM = pemBytes
+	}
+}
+
+// WithDPoPJWK enables DPoP using a pre-built JWK private key. The JWK must have its
+// Algorithm field set. This is the lowest-level DPoP key injection; prefer
+// WithDPoPAlgorithm or WithDPoPKeyPEM for most use cases.
+func WithDPoPJWK(key jwk.Key) Option {
+	return func(c *config) {
+		c.dpopJWK = key
 	}
 }

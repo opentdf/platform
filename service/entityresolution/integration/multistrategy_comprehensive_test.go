@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -21,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
 	_ "github.com/mattn/go-sqlite3"
@@ -88,23 +87,27 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
 
 	entity := chain.GetEntities()[0]
-	if entity.GetUserName() != "testuser" {
-		t.Errorf("Expected username 'testuser', got '%s'", entity.GetUserName())
+	claims := chainEntityClaimsMap(t, entity)
+	if got := claims["username"]; got != "testuser" {
+		t.Errorf("Expected username 'testuser', got '%v'", got)
+	}
+	if got := claims["email_address"]; got != "test@example.com" {
+		t.Errorf("Expected email_address 'test@example.com', got '%v'", got)
 	}
 
 	t.Logf("✅ Claims-only multi-strategy test passed: Created %d entities", len(chain.GetEntities()))
@@ -254,18 +257,26 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
+	}
+
+	claims := chainEntityClaimsMap(t, chain.GetEntities()[0])
+	if got := claims["username"]; got != "alice" {
+		t.Fatalf("Expected username 'alice', got %v", got)
+	}
+	if got := claims["display_name"]; got != "Alice Test" {
+		t.Fatalf("Expected display_name 'Alice Test', got %v", got)
 	}
 
 	t.Logf("✅ SQL-only multi-strategy test passed: Created %d entities", len(chain.GetEntities()))
@@ -395,14 +406,14 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Logf("LDAP lookup failed as expected (no test data): %v", err)
 		return
 	}
 
-	if len(resp.Msg.GetEntityChains()) > 0 {
-		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.Msg.GetEntityChains()[0].GetEntities()))
+	if len(resp.GetEntityChains()) > 0 {
+		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.GetEntityChains()[0].GetEntities()))
 	}
 }
 
@@ -551,14 +562,20 @@ func TestMultiStrategy_ClaimsThenLDAPFallback(t *testing.T) {
 		t.Fatalf("Expected LDAP search_filter for alice, got %v", got)
 	}
 
-	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]string)
+	expectedStrategies := []string{"claims_direct_lookup", "ldap_directory_lookup"}
+	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]interface{})
 	if !ok {
-		t.Fatalf("Expected attempted_strategies to be []string, got %T", result.Metadata["attempted_strategies"])
+		t.Fatalf("Expected attempted_strategies to be []interface{}, got %T", result.Metadata["attempted_strategies"])
 	}
 
-	expectedStrategies := []string{"claims_direct_lookup", "ldap_directory_lookup"}
-	if !reflect.DeepEqual(attemptedStrategies, expectedStrategies) {
-		t.Fatalf("Expected attempted_strategies %v, got %v", expectedStrategies, attemptedStrategies)
+	if len(attemptedStrategies) != len(expectedStrategies) {
+		t.Fatalf("Expected %d attempted_strategies, got %d: %v", len(expectedStrategies), len(attemptedStrategies), attemptedStrategies)
+	}
+	for i, expected := range expectedStrategies {
+		got, isStr := attemptedStrategies[i].(string)
+		if !isStr || got != expected {
+			t.Fatalf("Expected attempted_strategies[%d] = %q, got %v", i, expected, attemptedStrategies[i])
+		}
 	}
 }
 
@@ -654,23 +671,24 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("Multi-provider failover test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain after failover")
 	}
 
 	entity := chain.GetEntities()[0]
-	if entity.GetUserName() != "failover-user" {
-		t.Errorf("Expected username 'failover-user', got '%s'", entity.GetUserName())
+	claims := chainEntityClaimsMap(t, entity)
+	if got := claims["username"]; got != "failover-user" {
+		t.Errorf("Expected username 'failover-user', got '%v'", got)
 	}
 
 	t.Logf("✅ Multi-provider failover test passed: Failed over to claims provider and created %d entities", len(chain.GetEntities()))
@@ -753,25 +771,26 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 	}
 
 	start := time.Now()
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	duration := time.Since(start)
 
 	if err != nil {
 		t.Fatalf("Multi-provider early success test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 	}
 
-	chain := resp.Msg.GetEntityChains()[0]
+	chain := resp.GetEntityChains()[0]
 	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
 
 	entity := chain.GetEntities()[0]
-	if entity.GetUserName() != "early-user" {
-		t.Errorf("Expected username 'early-user', got '%s'", entity.GetUserName())
+	claims := chainEntityClaimsMap(t, entity)
+	if got := claims["username"]; got != "early-user" {
+		t.Errorf("Expected username 'early-user', got '%v'", got)
 	}
 
 	// Should be fast because it short-circuited on first success
@@ -864,17 +883,17 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		},
 	}
 
-	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
+	resp, err := ers.CreateEntityChainsFromTokens(ctx, req)
 	if err != nil {
 		t.Fatalf("Entity chain creation test failed: %v", err)
 	}
 
-	if len(resp.Msg.GetEntityChains()) != 3 {
-		t.Fatalf("Expected 3 entity chains, got %d", len(resp.Msg.GetEntityChains()))
+	if len(resp.GetEntityChains()) != 3 {
+		t.Fatalf("Expected 3 entity chains, got %d", len(resp.GetEntityChains()))
 	}
 
 	totalEntities := 0
-	for i, chain := range resp.Msg.GetEntityChains() {
+	for i, chain := range resp.GetEntityChains() {
 		if len(chain.GetEntities()) == 0 {
 			t.Errorf("Chain %d has no entities", i)
 			continue
@@ -883,20 +902,35 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		totalEntities += len(chain.GetEntities())
 
 		entity := chain.GetEntities()[0]
+		claims := chainEntityClaimsMap(t, entity)
 		expectedUsername := fmt.Sprintf("chain-user-%d", i+1)
-		if entity.GetUserName() != expectedUsername {
-			t.Errorf("Chain %d: Expected username '%s', got '%s'", i, expectedUsername, entity.GetUserName())
+		if got := claims["username"]; got != expectedUsername {
+			t.Errorf("Chain %d: Expected username '%s', got '%v'", i, expectedUsername, got)
 		}
 
-		t.Logf("Chain %d: EphemeralId=%s, Username=%s, Entities=%d",
-			i, chain.GetEphemeralId(), entity.GetUserName(), len(chain.GetEntities()))
+		t.Logf("Chain %d: EphemeralId=%s, Username=%v, Entities=%d",
+			i, chain.GetEphemeralId(), claims["username"], len(chain.GetEntities()))
 	}
 
 	t.Logf("✅ Entity chain creation test passed: Created %d chains with %d total entities",
-		len(resp.Msg.GetEntityChains()), totalEntities)
+		len(resp.GetEntityChains()), totalEntities)
 }
 
 // Helper functions
+
+func chainEntityClaimsMap(t *testing.T, ent *entity.Entity) map[string]interface{} {
+	t.Helper()
+	claims := ent.GetClaims()
+	if claims == nil {
+		t.Fatalf("chain entity %q carries no claims; entity type is %T", ent.GetEphemeralId(), ent.GetEntityType())
+	}
+
+	var claimsStruct structpb.Struct
+	if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+		t.Fatalf("failed to decode chain entity claims: %v", err)
+	}
+	return claimsStruct.AsMap()
+}
 
 func createComprehensiveTestJWT(sub, email string) string {
 	// This creates a properly formatted JWT for testing purposes (not cryptographically signed)
@@ -987,7 +1021,16 @@ func startSeededLDAPContainer(ctx context.Context, t *testing.T) (testcontainers
 				FileMode:          0o644,
 			},
 		},
-		WaitingFor: wait.ForListeningPort("389/tcp").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("389/tcp"),
+			wait.ForExec([]string{
+				"sh", "-c",
+				"ldapsearch -x -H ldap://localhost:389 " +
+					"-D cn=admin,dc=opentdf,dc=test -w admin123 " +
+					"-b ou=users,dc=opentdf,dc=test '(uid=alice)' dn " +
+					"| grep -q '^dn: uid=alice,ou=users,dc=opentdf,dc=test$'",
+			}),
+		).WithDeadline(60 * time.Second),
 	}
 
 	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

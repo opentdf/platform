@@ -7,11 +7,10 @@ import (
 	"log/slog"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
-	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
+	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connectv2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
@@ -44,10 +43,10 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:      "authorization",
-			Version:        "v2",
-			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
+			Namespace:              "authorization",
+			Version:                "v2",
+			ServiceDesc:            &authzV2.AuthorizationService_ServiceDesc,
+			ConnectRPCRegisterFunc: authzV2Connect.RegisterAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 				l := srp.Logger
@@ -98,7 +97,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				retriever := access.NewEntitlementPolicyRetriever(as.sdk)
-				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval)
+				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval, authZCfg.AllowDynamicValueMappings)
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))
@@ -133,17 +132,21 @@ func (as *Service) Close() {
 // }
 
 // GetEntitlements for an entity chain
-func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
+func (as *Service) GetEntitlements(ctx context.Context, req *authzV2.GetEntitlementsRequest) (*authzV2.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 
 	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
-	entityIdentifier := req.Msg.GetEntityIdentifier()
-	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
+	if err := as.validateGetEntitlementsRequest(req); err != nil {
+		return nil, err
+	}
+
+	entityIdentifier := req.GetEntityIdentifier()
+	withComprehensiveHierarchy := req.GetWithComprehensiveHierarchy()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, ErrFailedToInitPDP, err))
 	}
@@ -156,22 +159,26 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 		Entitlements: entitlements,
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 // GetDecision for an entity chain and an action on a single resource
-func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
+func (as *Service) GetDecision(ctx context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
 	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	if err := as.validateGetDecisionRequest(req); err != nil {
+		return nil, err
+	}
+
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 
-	request := req.Msg
+	request := req
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resource := request.GetResource()
@@ -202,21 +209,25 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	resp := &authzV2.GetDecisionResponse{
 		Decision: resourceDecisions[0],
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 // GetDecisionMultiResource for an entity chain and action on multiple resources
-func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
+func (as *Service) GetDecisionMultiResource(ctx context.Context, req *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
 	as.logger.DebugContext(ctx, "getting decision multi resource")
 
 	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	if err := as.validateGetDecisionMultiResourceRequest(req, ""); err != nil {
+		return nil, err
+	}
+
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
-	request := req.Msg
+	request := req
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resources := request.GetResources()
@@ -251,22 +262,26 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		ResourceDecisions: resourceDecisions,
 	}
 
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 // GetDecisionBulk for multiple requests, each comprising a combination of entity chain, action, and one or more resources
-func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
+func (as *Service) GetDecisionBulk(ctx context.Context, req *authzV2.GetDecisionBulkRequest) (*authzV2.GetDecisionBulkResponse, error) {
 	as.logger.DebugContext(ctx, "getting decision bulk")
 
 	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	if err := as.validateGetDecisionBulkRequest(req); err != nil {
+		return nil, err
+	}
+
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 
-	multiRequests := req.Msg.GetDecisionRequests()
+	multiRequests := req.GetDecisionRequests()
 	decisionResponses := make([]*authzV2.GetDecisionMultiResourceResponse, len(multiRequests))
 
 	reqContext, err := as.getDecisionRequestContext(ctx)
@@ -304,7 +319,7 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 	rsp := &authzV2.GetDecisionBulkResponse{
 		DecisionResponses: decisionResponses,
 	}
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 // Builds a decision request context out of contextual metadata for the downstream obligation trigger/fulfillment decisioning

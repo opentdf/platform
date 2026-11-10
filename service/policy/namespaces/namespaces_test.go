@@ -161,6 +161,7 @@ func Test_GetNamespaceRequest(t *testing.T) {
 		{
 			name: "Valid Deprecated Id",
 			req: &namespaces.GetNamespaceRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 			},
 			expectError: false,
@@ -168,6 +169,7 @@ func Test_GetNamespaceRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (empty string)",
 			req: &namespaces.GetNamespaceRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "",
 			},
 			expectError:  true,
@@ -176,6 +178,7 @@ func Test_GetNamespaceRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (invalid UUID)",
 			req: &namespaces.GetNamespaceRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "invalid-uuid",
 			},
 			expectError:  true,
@@ -223,6 +226,7 @@ func Test_GetNamespaceRequest(t *testing.T) {
 		{
 			name: "Invalid can't have both Id and Identifier",
 			req: &namespaces.GetNamespaceRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 				Identifier: &namespaces.GetNamespaceRequest_Fqn{
 					Fqn: "https://namespace.org",
@@ -374,6 +378,21 @@ func Test_ListNamespacesRequest_Sort(t *testing.T) {
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
+}
+
+func Test_ListNamespacesRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&namespaces.ListNamespacesRequest{
+		Search: &policy.Search{Term: "namespace"},
+	}))
+	require.NoError(t, v.Validate(&namespaces.ListNamespacesRequest{}))
+
+	err := v.Validate(&namespaces.ListNamespacesRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
 }
 
 func Test_RemovePublicKeyFromNamespace(t *testing.T) {

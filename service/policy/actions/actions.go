@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
-	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
+	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -37,6 +37,8 @@ type ActionService struct {
 	config   *policyconfig.Config
 }
 
+var errNamespacedPolicyNamespaceRequired = errors.New("either namespace_id or namespace_fqn must be provided")
+
 func OnConfigUpdate(actionsSvc *ActionService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -52,19 +54,19 @@ func OnConfigUpdate(actionsSvc *ActionService) serviceregistry.OnConfigUpdateHoo
 	}
 }
 
-func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[actionsconnect.ActionServiceHandler] {
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[actionsconnectv2.ActionServiceHandler] {
 	actionsSvc := new(ActionService)
 	onUpdateConfigHook := OnConfigUpdate(actionsSvc)
 
-	return &serviceregistry.Service[actionsconnect.ActionServiceHandler]{
+	return &serviceregistry.Service[actionsconnectv2.ActionServiceHandler]{
 		Close: actionsSvc.Close,
-		ServiceOptions: serviceregistry.ServiceOptions[actionsconnect.ActionServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &actions.ActionService_ServiceDesc,
-			ConnectRPCFunc: actionsconnect.NewActionServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (actionsconnect.ActionServiceHandler, serviceregistry.HandlerServer) {
+		ServiceOptions: serviceregistry.ServiceOptions[actionsconnectv2.ActionServiceHandler]{
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &actions.ActionService_ServiceDesc,
+			ConnectRPCRegisterFunc: actionsconnectv2.RegisterActionServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (actionsconnectv2.ActionServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -87,34 +89,34 @@ func (a *ActionService) Close() {
 	a.dbClient.Close()
 }
 
-func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
+func (a *ActionService) GetAction(ctx context.Context, req *actions.GetActionRequest) (*actions.GetActionResponse, error) {
 	rsp := &actions.GetActionResponse{}
 
-	a.logger.DebugContext(ctx, "getting action", slog.Any("identifier", req.Msg.GetIdentifier()))
+	a.logger.DebugContext(ctx, "getting action", slog.Any("identifier", req.GetIdentifier()))
 
-	action, err := a.dbClient.GetAction(ctx, req.Msg)
+	action, err := a.dbClient.GetAction(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.GetIdentifier()))
 	}
 	rsp.Action = action
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error) {
+func (a *ActionService) ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error) {
 	a.logger.DebugContext(ctx, "listing actions")
-	rsp, err := a.dbClient.ListActions(ctx, req.Msg)
+	rsp, err := a.dbClient.ListActions(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextListRetrievalFailed)
 	}
 	a.logger.DebugContext(ctx, "listed actions")
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
-	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
-	if a.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+func (a *ActionService) CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*actions.CreateActionResponse, error) {
+	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.GetName()))
+	if a.config.NamespacedPolicy && req.GetNamespaceId() == "" && req.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired.Error()).WithCause(errNamespacedPolicyNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{
@@ -124,27 +126,27 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 	rsp := &actions.CreateActionResponse{}
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		action, err := txClient.CreateAction(ctx, req.Msg)
+		action, err := txClient.CreateAction(ctx, req)
 		if err != nil {
 			return err
 		}
 
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = action
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.String()))
 	}
-	return connect.NewResponse(rsp), nil
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
+	return rsp, nil
 }
 
-func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
-	actionID := req.Msg.GetId()
+func (a *ActionService) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*actions.UpdateActionResponse, error) {
+	actionID := req.GetId()
 	a.logger.DebugContext(ctx, "updating action", slog.String("id", actionID))
 	rsp := &actions.UpdateActionResponse{}
 
@@ -164,29 +166,29 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 			return err
 		}
 
-		updated, err := txClient.UpdateAction(ctx, req.Msg)
+		updated, err := txClient.UpdateAction(ctx, req)
 		if err != nil {
 			return err
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = updated
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.String()))
 	}
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
+func (a *ActionService) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*actions.DeleteActionResponse, error) {
 	rsp := &actions.DeleteActionResponse{}
-	actionID := req.Msg.GetId()
+	actionID := req.GetId()
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -195,14 +197,14 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 	}
 	a.logger.DebugContext(ctx, "deleting action", slog.String("id", actionID))
 
-	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
+	deleted, err := a.dbClient.DeleteAction(ctx, req)
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.String()))
 	}
 
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	rsp.Action = deleted
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }

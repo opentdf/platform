@@ -20,56 +20,107 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy        KasPolicy
-	IsSuccess     bool
-	TDFFormat     string
-	Algorithm     string
-	PolicyBinding string
-	KeyID         string
+	Policy   KasPolicy
+	PolicyID string
+
+	// IsSuccess is retained for callers of CreateRewrapAuditEvent.
+	//
+	// Deprecated: use Logger.Rewrap or one of the Logger rewrap helpers.
+	IsSuccess       bool
+	FailureReason   string
+	SuspectedTamper bool
+	PolicyVerified  bool
+	KAOID           string
+	TDFFormat       string
+	Algorithm       string
+	PolicyBinding   string
+	KeyID           string
+	SessionKeyType  string
+	isDenied        bool
 }
 
+// CreateRewrapAuditEvent retains the legacy IsSuccess/isDenied result mapping.
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
+	result := ActionResultError
+	switch {
+	case params.IsSuccess:
+		result = ActionResultSuccess
+	case params.isDenied:
+		result = ActionResultFailure
+	}
+	// This legacy helper predates PolicyVerified and was only used after policy
+	// verification. Preserve its original UUID and attribute behavior.
+	params.PolicyVerified = true
+	return createRewrapAuditEvent(ctx, result, params)
+}
+
+func createRewrapAuditEvent(ctx context.Context, result ActionResult, params RewrapAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
-	// Assign action result
-	auditEventActionResult := ActionResultError
-	if params.IsSuccess {
-		auditEventActionResult = ActionResultSuccess
+	eventMetadata := auditEventMetadata{
+		"keyID":            params.KeyID,
+		"policyBinding":    params.PolicyBinding,
+		"tdfFormat":        params.TDFFormat,
+		"algorithm":        params.Algorithm,
+		"sessionKeyType":   params.SessionKeyType,
+		"policy_verified":  params.PolicyVerified,
+		"suspected_tamper": params.SuspectedTamper,
+	}
+	if params.FailureReason != "" {
+		eventMetadata["failure_reason"] = params.FailureReason
+	}
+	if params.KAOID != "" {
+		eventMetadata["kao_id"] = params.KAOID
 	}
 
-	attrFQNS := make([]string, len(params.Policy.Body.DataAttributes))
-	for i, attr := range params.Policy.Body.DataAttributes {
-		attrFQNS[i] = attr.URI
+	objectID := params.PolicyID
+	if params.Policy.UUID != uuid.Nil {
+		if params.PolicyVerified {
+			objectID = params.Policy.UUID.String()
+		} else {
+			eventMetadata["claimed_policy_uuid"] = params.Policy.UUID.String()
+		}
+	}
+
+	attrFQNS := make([]string, 0)
+	if params.PolicyVerified {
+		attrFQNS = make([]string, len(params.Policy.Body.DataAttributes))
+		for i, attr := range params.Policy.Body.DataAttributes {
+			attrFQNS[i] = attr.URI
+		}
 	}
 
 	return &EventObject{
 		Object: auditEventObject{
 			Type: ObjectTypeKeyObject,
-			ID:   params.Policy.UUID.String(),
+			ID:   objectID,
 			Attributes: eventObjectAttributes{
-				Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
-				Attrs:       attrFQNS,
-				Permissions: []string{}, // Currently always empty
+				EventObjectAttributes: EventObjectAttributes{
+					Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
+					Attrs:       attrFQNS,
+					Permissions: []string{}, // Currently always empty
+				},
 			},
 		},
 		Action: eventAction{
-			Type:   ActionTypeRewrap,
-			Result: auditEventActionResult,
+			EventObjectAction: EventObjectAction{
+				Type:   ActionTypeRewrap,
+				Result: result,
+			},
 		},
 		Actor: auditEventActor{
-			ID:         auditDataFromContext.ActorID,
-			Attributes: make([]any, 0),
+			EventObjectActor: EventObjectActor{
+				ID:         auditDataFromContext.ActorID,
+				Attributes: make([]any, 0),
+			},
 		},
-		EventMetaData: auditEventMetadata{
-			"keyID":         params.KeyID,
-			"policyBinding": params.PolicyBinding,
-			"tdfFormat":     params.TDFFormat,
-			"algorithm":     params.Algorithm,
-		},
+		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
-			Platform:  "kas",
-			UserAgent: auditDataFromContext.UserAgent,
-			RequestIP: auditDataFromContext.RequestIP,
+			EventClientInfo: EventClientInfo{
+				Platform:  "kas",
+				UserAgent: auditDataFromContext.UserAgent,
+				RequestIP: auditDataFromContext.RequestIP,
+			},
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),

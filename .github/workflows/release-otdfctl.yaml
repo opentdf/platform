@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
-          go-version-file: otdfctl/go.mod
+          go-version-file: go.work
 
       - name: Extract version from tag
         id: version
@@ -32,8 +32,9 @@ jobs:
       - name: Build cross-platform binaries
         working-directory: otdfctl
         env:
-          # Build the maintenance artifact from its published dependency set,
-          # not the newer modules present in the historical monorepo workspace.
+          # Build strictly from otdfctl/go.mod, not the monorepo go.work, so the
+          # published binaries use the pinned (released) sdk/protocol/lib versions
+          # rather than whatever is in-tree on this branch.
           GOWORK: "off"
           SEM_VER: ${{ steps.version.outputs.version }}
           COMMIT_SHA: ${{ github.sha }}

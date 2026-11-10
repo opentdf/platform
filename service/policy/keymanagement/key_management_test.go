@@ -15,6 +15,7 @@ const (
 	errMessageConfig     = "config_json"
 	errMessageIdentifier = "identifier"
 	errMessageUUID       = "uuid"
+	errMessageMinLen     = "string.min_len"
 )
 
 var (
@@ -119,9 +120,10 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
-			name: "Invalid ConfigId (invalid UUID)",
+			name: "Invalid Name (empty) identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
+					//nolint:staticcheck // exercises the deprecated Name identifier, which must keep validating until it is removed
 					Name: "",
 				},
 			},
@@ -138,10 +140,47 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Name",
+			name: "Valid Name Identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
+					//nolint:staticcheck // exercises the deprecated Name identifier, which must keep validating until it is removed
 					Name: validName,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Name and Manager identifier (empty name)",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
+						Manager: validManager,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Invalid Name and Manager identifier (empty manager)",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
+						Name: validName,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Valid Name and Manager identifier",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
+						Name:    validName,
+						Manager: validManager,
+					},
 				},
 			},
 			expectError: false,

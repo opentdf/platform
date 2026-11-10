@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -183,10 +184,20 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
-	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
+	return k.handleKeyResponse(response)
+}
+
+// handleKeyResponse unwraps a rewrap response with the handler matching the
+// session key type.
+func (k *KASClient) handleKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	switch {
+	case ocrypto.IsECKeyType(k.sessionKey.GetKeyType()):
 		return k.handleECKeyResponse(response)
+	case ocrypto.IsMLKEMKeyType(k.sessionKey.GetKeyType()):
+		return k.handleKEMKeyResponse(response)
+	default:
+		return k.handleRSAKeyResponse(response)
 	}
-	return k.handleRSAKeyResponse(response)
 }
 
 func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
@@ -213,29 +224,7 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed: %w", err)
 	}
 
-	return k.processECResponse(response, aesGcm)
-}
-
-func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
-	policyResults := make(map[string][]kaoResult)
-	for _, results := range response.GetResponses() {
-		var kaoKeys []kaoResult
-		for _, kao := range results.GetResults() {
-			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
-			if kao.GetStatus() == statusPermit {
-				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
-				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
-				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
-				}
-			} else {
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
-			}
-		}
-		policyResults[results.GetPolicyId()] = kaoKeys
-	}
-	return policyResults, nil
+	return k.processResponse(response, aesGcm)
 }
 
 /*
@@ -273,22 +262,46 @@ func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[stri
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	decryptor, err := ocrypto.FromPrivatePEM(clientPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+	}
+	asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+	if !ok {
+		return nil, fmt.Errorf("session key is not an RSA private key: %T", decryptor)
 	}
 
-	return k.processRSAResponse(response, asymDecryption)
+	return k.processResponse(response, asymDecryption)
 }
 
-func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecryption ocrypto.AsymDecryption) (map[string][]kaoResult, error) {
+func (k *KASClient) handleKEMKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	decryptor, err := ocrypto.FromPrivatePEM(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+	}
+
+	if _, isRSA := decryptor.(ocrypto.AsymDecryption); isRSA {
+		return nil, fmt.Errorf("session key is not an ML-KEM private key: %T", decryptor)
+	}
+
+	return k.processResponse(response, decryptor)
+}
+
+// processResponse unwraps each permitted KAO's key with decryptor, which is
+// specific to the session key type (RSA, EC-derived AES-GCM, or ML-KEM).
+func (k *KASClient) processResponse(response *kas.RewrapResponse, decryptor ocrypto.PrivateKeyDecryptor) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
-				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
+				key, err := decryptor.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
@@ -377,22 +390,35 @@ type timeStampedKASInfo struct {
 	time.Time
 }
 
-// Caches the most recent key info for a given KAS URL and algorithm
+// How long a cached KAS key stays usable before get() evicts it.
+const kasKeyCacheTTL = 5 * time.Minute
+
+// Caches the most recent key info for a given KAS URL and algorithm.
+//
+// A single cache is shared by every operation on an SDK instance (see the
+// embedded field on SDK), so all access must hold cacheMu. Lookups dominate, hence
+// RWMutex: an exclusive lock here serializes every concurrent TDF operation on
+// one mutex and gets slower as cores are added.
 type kasKeyCache struct {
-	c map[kasKeyRequest]timeStampedKASInfo
+	cacheMu sync.RWMutex
+	c       map[kasKeyRequest]timeStampedKASInfo
 }
 
 func newKasKeyCache() *kasKeyCache {
-	return &kasKeyCache{make(map[kasKeyRequest]timeStampedKASInfo)}
+	return &kasKeyCache{c: make(map[kasKeyRequest]timeStampedKASInfo)}
 }
 
 func (c *kasKeyCache) clear() {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
 	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
 }
 
 func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
+
+	c.cacheMu.RLock()
 	cv, ok := c.c[cacheKey]
 	if !ok && kid == "" {
 		for k, v := range c.c {
@@ -403,19 +429,35 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 			}
 		}
 	}
+	c.cacheMu.RUnlock()
+
 	if !ok {
 		return nil
 	}
-	ago := now.Add(-5 * time.Minute)
+	ago := now.Add(-kasKeyCacheTTL)
 	if ago.After(cv.Time) {
-		delete(c.c, cacheKey)
+		c.evictIfUnchanged(cacheKey, cv.Time)
 		return nil
 	}
+	// cv is a copy, so this pointer is not shared with any other caller.
 	return &cv.KASInfo
+}
+
+// evictIfUnchanged drops an expired entry, unless another goroutine refreshed
+// it after the read lock was released. Go has no lock upgrade, so the entry has
+// to be re-read under the write lock rather than assumed still stale.
+func (c *kasKeyCache) evictIfUnchanged(cacheKey kasKeyRequest, staleAt time.Time) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	if current, ok := c.c[cacheKey]; ok && current.Equal(staleAt) {
+		delete(c.c, cacheKey)
+	}
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
 	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 

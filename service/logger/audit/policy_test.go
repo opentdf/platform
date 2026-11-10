@@ -55,25 +55,31 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeCreate,
-		Result: ActionResultSuccess,
+		EventObjectAction: EventObjectAction{
+			Type:   ActionTypeCreate,
+			Result: ActionResultSuccess,
+		},
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)
 	}
 
 	expectedEventActor := auditEventActor{
-		ID:         TestActorID,
-		Attributes: make([]interface{}, 0),
+		EventObjectActor: EventObjectActor{
+			ID:         TestActorID,
+			Attributes: make([]interface{}, 0),
+		},
 	}
 	if !reflect.DeepEqual(event.Actor, expectedEventActor) {
 		t.Fatalf("event actor did not match expected: got %+v, want %+v", event.Actor, expectedEventActor)
 	}
 
 	expectedClientInfo := eventClientInfo{
-		Platform:  "policy",
-		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP.String(),
+		EventClientInfo: EventClientInfo{
+			Platform:  "policy",
+			UserAgent: TestUserAgent,
+			RequestIP: TestRequestIP.String(),
+		},
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 )
 
 const (
@@ -23,9 +24,22 @@ type Writer interface {
 type SegmentWriter interface {
 	Writer
 	WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error)
+	// Finalize writes the trailer (data descriptor, manifest, central
+	// directory) for the segments recorded so far. Segment 0 must be among
+	// them: it carries the payload local file header that every recorded
+	// offset is measured from. Finalize returns ErrNoSegmentZero when index 0
+	// was never written or was cleaned up, and ErrSegmentMissing when no
+	// segments remain at all -- none were written, or every one was cleaned
+	// up. Gaps between the remaining indices are accepted; order is inferred
+	// by sorting whichever indices are present.
 	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
-	// CleanupSegment removes the presence marker for a segment index.
-	// Calling this before Finalize will cause IsComplete() to fail for that index.
+	// CleanupSegment drops a segment index, rolling back both its presence
+	// marker and the payload size it contributed. A cleaned-up index becomes
+	// indistinguishable from one that was never written: it falls out of the
+	// order Finalize infers, exactly as a gap in the write set would, and the
+	// caller must leave its bytes out of the assembled archive. Index 0 is the
+	// exception -- Finalize rejects its absence with ErrNoSegmentZero.
+	// Cleaning up an index that was never written is a no-op.
 	CleanupSegment(index int) error
 }
 
@@ -34,6 +48,20 @@ type Error struct {
 	Op   string // Operation that failed
 	Type string // Writer type: "sequential", "streaming", "segment"
 	Err  error  // Underlying error
+
+	// Mutated reports whether the writer had already changed its own state
+	// when the operation failed. False means the writer is byte-for-byte as it
+	// was before the call and the caller may retry; true means the partial
+	// change is not rolled back and a retry compounds it rather than
+	// recovering from it.
+	//
+	// Only Finalize sets it. WriteSegment validates everything before it
+	// mutates anything, so every error it returns is Mutated false.
+	//
+	// An implementation that wraps a zipstream writer must not pass the
+	// delegate's error through unchanged if it performed mutations of its own:
+	// the flag describes the whole operation, not one layer of it.
+	Mutated bool
 }
 
 func (e *Error) Error() string {
@@ -51,8 +79,10 @@ var (
 	ErrOutOfOrder       = errors.New("segment out of order")
 	ErrDuplicateSegment = errors.New("duplicate segment already written")
 	ErrSegmentMissing   = errors.New("segment missing")
+	ErrNoSegmentZero    = errors.New("segment 0 missing; it carries the payload local file header")
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
+	ErrFieldOverflow    = errors.New("value too large for zip field")
 )
 
 // Config holds configuration options for writers
@@ -60,6 +90,14 @@ type Config struct {
 	Zip64         Zip64Mode
 	MaxSegments   int
 	EnableLogging bool
+	// Now returns the current time for header/metadata timestamps.
+	// Defaults to time.Now; tests inject a pinned clock for
+	// deterministic ZIP output.
+	Now func() time.Time
+	// MaxNonZip64Value is the largest size or offset written into a 32-bit
+	// zip field before the archive switches to ZIP64. Zero means
+	// maxNonZip64Value (2 GiB - 1). See WithMaxNonZip64Value.
+	MaxNonZip64Value uint64
 }
 
 // Option is a functional option for configuring writers
@@ -100,12 +138,38 @@ func WithLogging() Option {
 	}
 }
 
+// WithClock overrides the time source used to stamp ZIP headers and
+// segment metadata. Tests inject a pinned clock to make output byte-
+// for-byte deterministic.
+func WithClock(now func() time.Time) Option {
+	return func(c *Config) {
+		if now != nil {
+			c.Now = now
+		}
+	}
+}
+
+// WithMaxNonZip64Value lowers the point at which the writer switches to
+// ZIP64. This exists as a test seam -- mirroring java-sdk's injectable
+// MAX_NON_ZIP64_VALUE -- so the ZIP64 path can be exercised without
+// materializing a 2 GiB payload. Production callers should leave it alone;
+// zero or a value above the default is ignored.
+func WithMaxNonZip64Value(maxValue uint64) Option {
+	return func(c *Config) {
+		if maxValue > 0 && maxValue <= maxNonZip64Value {
+			c.MaxNonZip64Value = maxValue
+		}
+	}
+}
+
 // defaultConfig returns default configuration
 func defaultConfig() *Config {
 	return &Config{
-		Zip64:         Zip64Auto,
-		MaxSegments:   defaultMaxSegments,
-		EnableLogging: false,
+		Zip64:            Zip64Auto,
+		MaxSegments:      defaultMaxSegments,
+		EnableLogging:    false,
+		Now:              time.Now,
+		MaxNonZip64Value: maxNonZip64Value,
 	}
 }
 
@@ -114,6 +178,20 @@ func applyOptions(opts []Option) *Config {
 	cfg := defaultConfig()
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	// Now is an exported field on an exported Config and Option is a
+	// bare func(*Config), so an option is free to clear it even though
+	// WithClock will not. Restore the default rather than let the
+	// writers panic on the first header stamp; NewSegmentMetadata
+	// already defends the same way.
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	// Same defence for the ZIP64 switch point: an option is free to zero
+	// the exported field, and zero would mean "switch to ZIP64 for
+	// everything" to the comparisons in Finalize.
+	if cfg.MaxNonZip64Value == 0 {
+		cfg.MaxNonZip64Value = maxNonZip64Value
 	}
 	return cfg
 }

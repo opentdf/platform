@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,7 +44,10 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
+	dpopDecryptor, err := ocrypto.FromPrivatePEM(dpopPEM)
+	require.NoError(t, err)
+	decryption, ok := dpopDecryptor.(ocrypto.AsymDecryption)
+	require.True(t, ok, "expected RSA decryptor, got %T", dpopDecryptor)
 	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
 	encryption, _ := ocrypto.FromPublicPEM(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
@@ -130,7 +135,8 @@ func TestCreatingRequest(t *testing.T) {
 }
 
 func Test_StoreKASKeys(t *testing.T) {
-	s, err := New("http://localhost:8080",
+	s, err := New(
+		"http://localhost:8080",
 		WithPlatformConfiguration(PlatformConfiguration{
 			"idp": map[string]interface{}{
 				"issuer":                 "https://example.org",
@@ -391,6 +397,119 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	assert.False(t, exists, "Expired key should be removed from cache")
 }
 
+// The cache hangs off the SDK struct, so every operation on a single SDK
+// instance shares it. Concurrent use must not race: an unsynchronized map is a
+// fatal runtime error ("concurrent map writes"), which no caller can recover
+// from. Note that concurrent reads are not safe either, because get() deletes
+// expired entries.
+func TestKasKeyCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers    = 8
+		iterations = 200
+	)
+
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := range iterations {
+				cache.store(KASInfo{
+					URL:       fmt.Sprintf("https://kas%d.example.org", j%4),
+					Algorithm: "ec:secp256r1",
+					KID:       fmt.Sprintf("kid-%d", worker),
+					PublicKey: "test-public-key",
+				})
+				cache.get(fmt.Sprintf("https://kas%d.example.org", j%4), "ec:secp256r1", "")
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+// clear() swaps the map wholesale rather than mutating it, so it races against
+// concurrent get/store as a plain field write. The Go runtime's "concurrent map
+// writes" check does not catch a pointer swap -- only the race detector does.
+func TestKasKeyCache_ConcurrentClear(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers    = 8
+		iterations = 200
+	)
+
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := range iterations {
+				// One worker invalidates while the others keep using the cache.
+				if worker == 0 {
+					cache.clear()
+					continue
+				}
+				cache.store(KASInfo{
+					URL:       "https://kas.example.org",
+					Algorithm: "ec:secp256r1",
+					KID:       fmt.Sprintf("kid-%d", j%4),
+					PublicKey: "test-public-key",
+				})
+				cache.get("https://kas.example.org", "ec:secp256r1", fmt.Sprintf("kid-%d", j%4))
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+// get() evicts expired entries, so readers mutate the map too. Concurrent
+// readers alone -- no store() in sight -- must still be safe.
+func TestKasKeyCache_ConcurrentExpiryEviction(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers = 8
+		entries = 64
+	)
+
+	// Seed entries that are already past the TTL, so every get() below takes
+	// the eviction branch.
+	keys := make([]kasKeyRequest, 0, entries)
+	for i := range entries {
+		ki := KASInfo{
+			URL:       fmt.Sprintf("https://kas%d.example.org", i),
+			Algorithm: "ec:secp256r1",
+			KID:       "expired-kid",
+			PublicKey: "test-public-key",
+		}
+		cache.store(ki)
+		cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
+		expired := cache.c[cacheKey]
+		expired.Time = time.Now().Add(-kasKeyCacheTTL - time.Minute)
+		cache.c[cacheKey] = expired
+		keys = append(keys, cacheKey)
+	}
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, k := range keys {
+				assert.Nil(t, cache.get(k.url, k.algorithm, k.kid), "Expired key should not be returned")
+			}
+		}()
+	}
+	wg.Wait()
+
+	assert.Empty(t, cache.c, "Expired entries should have been evicted")
+}
+
 func Test_newConnectRewrapRequest(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, []string{"https://example.com/attr/attr1/value/val1"})
 	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{})
@@ -449,92 +568,107 @@ func Test_retrieveObligationsFromMetadata_EmptyList(t *testing.T) {
 	require.Empty(t, fqns)
 }
 
-func Test_processRSAResponse(t *testing.T) {
-	c := newKASClient(nil, nil, nil, nil, nil)
+func Test_processAsymResponse(t *testing.T) {
+	// RSA and ML-KEM session keys share the same response handling and differ
+	// only in how the client-side decryptor is derived from the session key.
+	for _, kt := range []ocrypto.KeyType{ocrypto.RSA2048Key, ocrypto.MLKEM768Key, ocrypto.MLKEM1024Key} {
+		t.Run(string(kt), func(t *testing.T) {
+			sessionKey, err := ocrypto.NewKeyPair(kt)
+			require.NoError(t, err)
+			c := newKASClient(nil, nil, nil, sessionKey, nil)
 
-	// Create a mock AsymDecryption
-	mockPrivateKey, err := ocrypto.NewRSAKeyPair(2048)
-	require.NoError(t, err)
-	privateKeyPEM, err := mockPrivateKey.PrivateKeyInPemFormat()
-	require.NoError(t, err)
-	mockDecryptor, err := ocrypto.NewAsymDecryption(privateKeyPEM)
-	require.NoError(t, err)
+			publicKeyPEM, err := sessionKey.PublicKeyInPemFormat()
+			require.NoError(t, err)
+			salt := sha256.Sum256([]byte("TDF"))
+			mockEncryptor, err := ocrypto.FromPublicPEMWithSalt(publicKeyPEM, salt[:], nil)
+			require.NoError(t, err)
 
-	// Create a mock AsymEncryption to create the wrapped key
-	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()
-	require.NoError(t, err)
-	mockEncryptor, err := ocrypto.FromPublicPEM(publicKeyPEM)
-	require.NoError(t, err)
+			symmetricKey := []byte("supersecretkey")
+			wrappedKey, err := mockEncryptor.Encrypt(symmetricKey)
+			require.NoError(t, err)
 
-	symmetricKey := []byte("supersecretkey")
-	wrappedKey, err := mockEncryptor.Encrypt(symmetricKey)
-	require.NoError(t, err)
-
-	response := &kaspb.RewrapResponse{
-		Responses: []*kaspb.PolicyRewrapResult{
-			{
-				PolicyId: "policy1",
-				Results: []*kaspb.KeyAccessRewrapResult{
+			response := &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
 					{
-						KeyAccessObjectId: "kao1",
-						Status:            "fail",
-						Result: &kaspb.KeyAccessRewrapResult_Error{
-							Error: "Access denied",
+						PolicyId: "policy1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao1",
+								Status:            "fail",
+								Result: &kaspb.KeyAccessRewrapResult_Error{
+									Error: "Access denied",
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val1",
+								}),
+							},
+							{
+								KeyAccessObjectId: "kao2",
+								Status:            "fail",
+								Result: &kaspb.KeyAccessRewrapResult_Error{
+									Error: "Access denied",
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val2",
+								}),
+							},
 						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val1",
-						}),
 					},
 					{
-						KeyAccessObjectId: "kao2",
-						Status:            "fail",
-						Result: &kaspb.KeyAccessRewrapResult_Error{
-							Error: "Access denied",
+						PolicyId: "policy2",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao1",
+								Status:            "permit",
+								Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+									KasWrappedKey: wrappedKey,
+								},
+								Metadata: createMetadataWithObligations([]string{
+									"https://example.com/attr/attr1/value/val3",
+								}),
+							},
+							{
+								// A corrupt wrapped key is a per-KAO error, not a failure of the whole response.
+								KeyAccessObjectId: "kao2",
+								Status:            "permit",
+								Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+									KasWrappedKey: []byte("not a wrapped key"),
+								},
+							},
 						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val2",
-						}),
 					},
 				},
-			},
-			{
-				PolicyId: "policy2",
-				Results: []*kaspb.KeyAccessRewrapResult{
-					{
-						KeyAccessObjectId: "kao1",
-						Status:            "permit",
-						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
-							KasWrappedKey: wrappedKey,
-						},
-						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val3",
-						}),
-					},
-				},
-			},
-		},
+			}
+
+			policyResults, err := c.handleKeyResponse(response)
+			require.NoError(t, err)
+			assert.Len(t, policyResults, 2)
+
+			// Length checks guard the indexing below, so they stay fatal.
+			result := policyResults["policy1"]
+			require.Len(t, result, 2)
+			assert.Nil(t, result[0].SymmetricKey)
+			assert.Nil(t, result[1].SymmetricKey)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val1"}, result[0].RequiredObligations)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val2"}, result[1].RequiredObligations)
+
+			result2 := policyResults["policy2"]
+			require.Len(t, result2, 2)
+			assert.Equal(t, symmetricKey, result2[0].SymmetricKey)
+			assert.Equal(t, []string{"https://example.com/attr/attr1/value/val3"}, result2[0].RequiredObligations)
+			require.Error(t, result2[1].Error)
+			assert.Nil(t, result2[1].SymmetricKey)
+		})
 	}
+}
 
-	policyResults, err := c.processRSAResponse(response, mockDecryptor)
+func Test_handleKEMKeyResponse_RejectsRSASessionKey(t *testing.T) {
+	sessionKey, err := ocrypto.NewKeyPair(ocrypto.RSA2048Key)
 	require.NoError(t, err)
-	require.Len(t, policyResults, 2)
+	c := newKASClient(nil, nil, nil, sessionKey, nil)
 
-	result, ok := policyResults["policy1"]
-	require.True(t, ok)
-	require.Len(t, result, 2)
-	require.Nil(t, result[0].SymmetricKey)
-	require.Nil(t, result[1].SymmetricKey)
-	require.Len(t, result[0].RequiredObligations, 1)
-	require.Len(t, result[1].RequiredObligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result[0].RequiredObligations[0])
-	require.Equal(t, "https://example.com/attr/attr1/value/val2", result[1].RequiredObligations[0])
-
-	result2, ok := policyResults["policy2"]
-	require.True(t, ok)
-	require.Len(t, result2, 1)
-	require.Equal(t, symmetricKey, result2[0].SymmetricKey)
-	require.Len(t, result2[0].RequiredObligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val3", result2[0].RequiredObligations[0])
+	_, err = c.handleKEMKeyResponse(&kaspb.RewrapResponse{})
+	assert.ErrorContains(t, err, "not an ML-KEM private key")
 }
 
 func Test_processECResponse(t *testing.T) {
@@ -620,7 +754,7 @@ func Test_processECResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	// 7. Process the response
-	policyResults, err := c.processECResponse(response, decryptor)
+	policyResults, err := c.processResponse(response, decryptor)
 	require.NoError(t, err)
 	require.Len(t, policyResults, 2)
 

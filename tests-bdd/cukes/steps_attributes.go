@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/cucumber/godog"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -17,6 +20,19 @@ const (
 
 type AttributesStepDefinitions struct {
 	PlatformCukesContext *PlatformTestSuiteContext
+}
+
+func parseAttributeRule(rule string) (policy.AttributeRuleTypeEnum, error) {
+	switch strings.TrimSpace(rule) {
+	case "anyOf":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, nil
+	case "allOf":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, nil
+	case "hierarchy":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, nil
+	default:
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED, fmt.Errorf("unknown attribute rule type %s", rule)
+	}
 }
 
 func (s *AttributesStepDefinitions) aAttributeDef(ctx context.Context, _ string, _ string) (context.Context, error) {
@@ -56,10 +72,10 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 						return nil, errors.New("unable to extract namespace ID")
 					}
 					createAttributeRequest.NamespaceId = id
-				case "name":
-					createAttributeRequest.Name = cell.Value
+				case nameKey:
+					createAttributeRequest.Name = strings.TrimSpace(cell.Value)
 				case "rule":
-					switch cell.Value {
+					switch strings.TrimSpace(cell.Value) {
 					case "anyOf":
 						createAttributeRequest.Rule = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
 					case "allOf":
@@ -85,10 +101,175 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 	return requests, nil
 }
 
+// iSendARequestToCreateAnAttributeWithGeneratedValues creates an attribute with valueCount
+// programmatically-generated values (v0000, v0001, ...), too many to list inline. It records the
+// created attribute under referenceID so a subject mapping can later be added for each value,
+// reproducing the many-values shape of opentdf/platform#3821.
+func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithGeneratedValues(ctx context.Context, referenceID, namespaceRef, name, rule string, valueCount int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	nsID, ok := scenarioContext.GetObject(strings.TrimSpace(namespaceRef)).(string)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
+	}
+
+	ruleType, err := parseAttributeRule(rule)
+	if err != nil {
+		return ctx, err
+	}
+
+	values := make([]string, 0, valueCount)
+	for i := range valueCount {
+		values = append(values, fmt.Sprintf("v%04d", i))
+	}
+
+	resp, err := scenarioContext.SDK.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        strings.TrimSpace(name),
+		Rule:        ruleType,
+		Values:      values,
+	})
+	if resp != nil {
+		scenarioContext.RecordObject(strings.TrimSpace(referenceID), resp.GetAttribute())
+	}
+	scenarioContext.SetError(err)
+	return ctx, nil
+}
+
+// iDeactivateTheAttributeValue resolves the value by FQN and deactivates it. A deactivated value
+// must no longer entitle an entity nor be satisfiable on a resource, so decisions and KAS rewraps
+// touching it must fail closed.
+func (s *AttributesStepDefinitions) iDeactivateTheAttributeValue(ctx context.Context, fqn string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	value, err := scenarioContext.GetAttributeValue(ctx, strings.TrimSpace(fqn))
+	if err != nil {
+		return ctx, fmt.Errorf("resolve attribute value %s: %w", fqn, err)
+	}
+
+	_, err = scenarioContext.SDK.Attributes.DeactivateAttributeValue(ctx, &attributes.DeactivateAttributeValueRequest{
+		Id: value.GetId(),
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("deactivate attribute value %s: %w", fqn, err)
+	}
+	return ctx, nil
+}
+
+// iDeactivateTheAttributeDefinition resolves the definition by FQN and deactivates it. The
+// cascade_deactivation trigger deactivates its values too, and the definition itself drops out of
+// the active policy load, so every decision path must deny.
+func (s *AttributesStepDefinitions) iDeactivateTheAttributeDefinition(ctx context.Context, fqn string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	trimmed := strings.TrimSpace(fqn)
+	resp, err := scenarioContext.SDK.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: trimmed},
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("resolve attribute definition %s: %w", fqn, err)
+	}
+
+	_, err = scenarioContext.SDK.Attributes.DeactivateAttribute(ctx, &attributes.DeactivateAttributeRequest{
+		Id: resp.GetAttribute().GetId(),
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("deactivate attribute definition %s: %w", fqn, err)
+	}
+	return ctx, nil
+}
+
+func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithBatchedGeneratedValues(ctx context.Context, referenceID, namespaceRef, name, rule string, valueCount, batchSize int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+	if valueCount < 1 {
+		return ctx, errors.New("generated value count must be positive")
+	}
+	if batchSize < 1 {
+		return ctx, errors.New("generated value batch size must be positive")
+	}
+
+	namespaceID, ok := scenarioContext.GetObject(strings.TrimSpace(namespaceRef)).(string)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
+	}
+	ruleType, err := parseAttributeRule(rule)
+	if err != nil {
+		return ctx, err
+	}
+
+	created, err := scenarioContext.SDK.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: namespaceID,
+		Name:        strings.TrimSpace(name),
+		Rule:        ruleType,
+	})
+	if err != nil {
+		scenarioContext.SetError(err)
+		return ctx, nil
+	}
+	if created.GetAttribute() == nil {
+		return ctx, errors.New("create attribute returned no attribute")
+	}
+
+	started := time.Now()
+	values := make([]*policy.Value, valueCount)
+	for batchStart := 0; batchStart < valueCount; batchStart += batchSize {
+		batchEnd := min(batchStart+batchSize, valueCount)
+		batchCtx, cancel := context.WithCancel(ctx)
+		errCh := make(chan error, batchEnd-batchStart)
+		var wg sync.WaitGroup
+		for i := batchStart; i < batchEnd; i++ {
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				resp, createErr := scenarioContext.SDK.Attributes.CreateAttributeValue(batchCtx, &attributes.CreateAttributeValueRequest{
+					AttributeId: created.GetAttribute().GetId(),
+					Value:       fmt.Sprintf("v%04d", index),
+				})
+				if createErr != nil {
+					errCh <- fmt.Errorf("create generated attribute value v%04d: %w", index, createErr)
+					cancel()
+					return
+				}
+				if resp.GetValue() == nil {
+					errCh <- fmt.Errorf("create generated attribute value v%04d returned no value", index)
+					cancel()
+					return
+				}
+				values[index] = resp.GetValue()
+			}(i)
+		}
+		wg.Wait()
+		cancel()
+		close(errCh)
+		if batchErr, hasBatchErr := <-errCh; hasBatchErr {
+			scenarioContext.SetError(batchErr)
+			return ctx, nil
+		}
+	}
+
+	created.GetAttribute().Values = values
+	scenarioContext.RecordObject(strings.TrimSpace(referenceID), created.GetAttribute())
+	scenarioContext.TestSuiteContext.Logger.Info(
+		"created generated attribute values in batches",
+		slog.Int("value_count", valueCount),
+		slog.Int("batch_size", batchSize),
+		slog.Duration("duration", time.Since(started)),
+	)
+	return ctx, nil
+}
+
 func RegisterAttributeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTestSuiteContext) {
 	stepDefinitions := AttributesStepDefinitions{
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^a (anyOf|allOf|hierarchy) attribute definition with values: "([^"]*)"$`, stepDefinitions.aAttributeDef)
+	ctx.Step(`^I deactivate the attribute value "([^"]*)"$`, stepDefinitions.iDeactivateTheAttributeValue)
+	ctx.Step(`^I deactivate the attribute definition "([^"]*)"$`, stepDefinitions.iDeactivateTheAttributeDefinition)
 	ctx.Step(`^I send a request to create an attribute with:$`, stepDefinitions.iSendARequestToCreateAnAttributeWith)
+	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values$`, stepDefinitions.iSendARequestToCreateAnAttributeWithGeneratedValues)
+	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values in batches of (\d+)$`, stepDefinitions.iSendARequestToCreateAnAttributeWithBatchedGeneratedValues)
 }

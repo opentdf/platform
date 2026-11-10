@@ -33,7 +33,7 @@ This document focuses on the first category, go `error` typed return values.
   will require us to support the variable or deprecate it
   - Wrap with an non-exported type or `fmt.Errorf` to provide additional context to ops
     without exposing more handling capabilities to the application
-- Returned errors may be explicity ignored with an `_`.
+- Returned errors may be explicitly ignored with an `_`.
 - Errors in `defer` blocks should either be returned or wrapped and returned using named return types
   OR logged in place
 
@@ -108,7 +108,7 @@ The value of Ant Design as a product excuses some of the grammar and language ba
 but anecdotally, it seems that English-as-a-second-language (ESL) speakers (who also don’t know Chinese) tend to favor English-driven tooling.
 
 Errors should use proper grammar and spelling.
-Usefulness and accuracy of errors is reenforced by the quality of the grammar and spelling of errors.
+Usefulness and accuracy of errors is reinforced by the quality of the grammar and spelling of errors.
 This is especially true when we are striving for international usage while not having the capacity for internationalization.
 
 Errors should be idiomatic with the language.

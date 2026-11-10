@@ -22,6 +22,16 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
 	case policy.Algorithm_ALGORITHM_EC_P521: // ALGORITHM_EC_P521 is an alias
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 	default:
@@ -86,6 +96,7 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 			grant := &policy.KeyAccessServer{
 				Uri: key.GetKasUri(),
 				Id:  key.GetKasId(),
+				//nolint:staticcheck // grants are mapped back onto the deprecated PublicKey field for clients that have not moved to multiple key pairs
 				PublicKey: &policy.PublicKey{
 					PublicKey: &policy.PublicKey_Cached{
 						Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{newKasPublicKey}},

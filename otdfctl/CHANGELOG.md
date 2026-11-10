@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/opentdf/platform/compare/otdfctl/v0.27.0...otdfctl/v0.27.1) (2026-11-10)
+
+
+### Features
+
+* **cli:** migrate otdfctl into platform monorepo ([#3205](https://github.com/opentdf/platform/issues/3205)) ([5177bec](https://github.com/opentdf/platform/commit/5177bec0a2f67aa1395e45a1b8a72570910f6208))
+
 ## [0.27.0](https://github.com/opentdf/otdfctl/compare/v0.26.0...v0.27.0) (2025-12-03)
 
 

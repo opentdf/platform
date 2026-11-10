@@ -37,7 +37,13 @@ func (h Handler) CreateObligation(ctx context.Context, namespace, name string, v
 		Values:   values,
 		Metadata: metadata,
 	}
-	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+
+	_, err := uuid.Parse(namespace)
+	if err != nil {
+		req.NamespaceFqn = namespace
+	} else {
+		req.NamespaceId = namespace
+	}
 
 	resp, err := h.sdk.Obligations.CreateObligation(ctx, req)
 	if err != nil {
@@ -71,7 +77,12 @@ func (h Handler) ListObligations(ctx context.Context, limit, offset int32, names
 		},
 	}
 	if namespace != "" {
-		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+		_, err := uuid.Parse(namespace)
+		if err != nil {
+			req.NamespaceFqn = namespace
+		} else {
+			req.NamespaceId = namespace
+		}
 	}
 	return h.sdk.Obligations.ListObligations(ctx, req)
 }
@@ -226,7 +237,12 @@ func (h Handler) ListObligationTriggers(ctx context.Context, namespace string, l
 	}
 
 	if namespace != "" {
-		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+		_, err := uuid.Parse(namespace)
+		if err != nil {
+			req.NamespaceFqn = namespace
+		} else {
+			req.NamespaceId = namespace
+		}
 	}
 
 	return h.sdk.Obligations.ListObligationTriggers(ctx, req)

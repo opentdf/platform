@@ -6,35 +6,27 @@ setup_file() {
     export WITH_CREDS='--with-client-creds-file ./creds.json'
     export HOST='--host http://localhost:8080'
 
-    # create namespace first (needed for registered resource creation)
-    export NS_NAME="test-rr.org"
-    NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$NS_NAME" --json | jq -r '.id')
-    export NS_ID
-
     # create registered resource used in registered resource values tests
     export RR_NAME="test_rr_for_values"
-    RR_ID=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "$RR_NAME" --namespace "$NS_ID" --json | jq -r '.id')
-    export RR_ID
+    export RR_ID=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "$RR_NAME" --json | jq -r '.id')
 
     # create custom action to be used in registered resource values tests
     export CUSTOM_ACTION_NAME="test_action_for_values"
-    CUSTOM_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$CUSTOM_ACTION_NAME" --namespace "$NS_ID" --json | jq -r '.id')
-    export CUSTOM_ACTION_ID
+    export CUSTOM_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$CUSTOM_ACTION_NAME" --json | jq -r '.id')
 
-    # get standard read action id in the same namespace used for RR tests
+    # get standard read action id to use in registered resource values tests
     export READ_ACTION_NAME="read"
-    READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --namespace "$NS_ID" --json | jq -r '.id')
-    export READ_ACTION_ID
+    export READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --json | jq -r '.id')
+
+    # create attribute value to be used in registered resource values tests
+    export NS_NAME="test-rr.org"
+    export NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$NS_NAME" --json | jq -r '.id')
     export ATTR_NAME=test_rr_attr
     attr_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "$ATTR_NAME" --rule ANY_OF -l key=value --json | jq -r '.id')
-    ATTR_VAL_1_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_1 --json | jq -r '.id')
-    export ATTR_VAL_1_ID
-    ATTR_VAL_1_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_1_ID" --json | jq -r '.fqn')
-    export ATTR_VAL_1_FQN
-    ATTR_VAL_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_2 --json | jq -r '.id')
-    export ATTR_VAL_2_ID
-    ATTR_VAL_2_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_2_ID" --json | jq -r '.fqn')
-    export ATTR_VAL_2_FQN
+    export ATTR_VAL_1_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_1 --json | jq -r '.id')
+    export ATTR_VAL_1_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_1_ID" --json | jq -r '.fqn')
+    export ATTR_VAL_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_2 --json | jq -r '.id')
+    export ATTR_VAL_2_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_2_ID" --json | jq -r '.fqn')
 
     echo "FQN: $ATTR_VAL_1_FQN"
 }
@@ -67,11 +59,9 @@ teardown_file() {
 }
 
 @test "Create a registered resource - Good" {
-  # with a namespace
-  run_otdfctl_reg_res create --name test_create_rr --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_create_rr
     assert_output --partial "SUCCESS"
     assert_line --regexp "Name.*test_create_rr"
-    assert_line --regexp "Namespace.*https://$NS_NAME"
     assert_output --partial "Id"
     assert_output --partial "Created At"
     assert_line --partial "Updated At"
@@ -79,37 +69,27 @@ teardown_file() {
   # cleanup
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
   run_otdfctl_reg_res delete --id $created_id --force
-
-  # without a namespace (should default to un-namespaced)
-  run_otdfctl_reg_res create --name test_create_rr_no_ns --json
-    assert_success
-    [ "$(echo "$output" | jq -r '.name')" = "test_create_rr_no_ns" ]
-    # ensure namespace is empty for un-namespaced resources
-    [ "$(echo "$output" | jq -r '.namespace.fqn // empty')" = "" ]
-
-  created_id=$(echo "$output" | jq -r '.id')
-  run_otdfctl_reg_res delete --id $created_id --force
 }
 
 @test "Create a registered resource - Bad" {
   # bad resource names
-  run_otdfctl_reg_res create --name ends_underscored_ --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name ends_underscored_
     assert_failure
-  run_otdfctl_reg_res create --name -first-char-hyphen --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name -first-char-hyphen
     assert_failure
-  run_otdfctl_reg_res create --name inval!d.chars --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name inval!d.chars
     assert_failure
 
-  # missing flags
+  # missing flag
   run_otdfctl_reg_res create
     assert_failure
     assert_output --partial "Flag '--name' is required"
-
+  
   # conflict
-  run_otdfctl_reg_res create --name test_create_rr_conflict --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_create_rr_conflict
     assert_output --partial "SUCCESS"
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
-  run_otdfctl_reg_res create --name test_create_rr_conflict --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_create_rr_conflict
       assert_failure
       assert_output --partial "already_exists"
 
@@ -119,7 +99,7 @@ teardown_file() {
 
 @test "Get a registered resource - Good" {
   # setup a resource to get
-  run_otdfctl_reg_res create --name test_get_rr --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_get_rr
     assert_success
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
@@ -131,19 +111,6 @@ teardown_file() {
 
   # get by name
   run_otdfctl_reg_res get --name test_get_rr --json
-    assert_success
-    [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
-    [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
-
-  # get by name + namespace ID
-  run_otdfctl_reg_res get --name test_get_rr --namespace "$NS_ID" --json
-    assert_success
-    [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
-    [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
-    [ "$(echo "$output" | jq -r '.namespace.fqn')" = "https://$NS_NAME" ]
-
-  # get by name + namespace FQN
-  run_otdfctl_reg_res get --name test_get_rr --namespace "https://$NS_NAME" --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
@@ -164,9 +131,9 @@ teardown_file() {
 
 @test "List registered resources" {
   # setup registered resources to list
-  run_otdfctl_reg_res create --name test_list_rr_1 --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_list_rr_1
   reg_res1_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
-  run_otdfctl_reg_res create --name test_list_rr_2 --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_list_rr_2
   reg_res2_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
   run_otdfctl_reg_res list
@@ -193,7 +160,7 @@ teardown_file() {
 
 @test "Update registered resource" {
   # setup a resource to update
-  run_otdfctl_reg_res create --name test_update_rr --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_update_rr
     assert_success
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
@@ -220,7 +187,7 @@ teardown_file() {
 
 @test "Delete registered resource - Good" {
   # setup a resource to delete
-  run_otdfctl_reg_res create --name test_delete_rr --namespace "$NS_ID"
+  run_otdfctl_reg_res create --name test_delete_rr
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
   run_otdfctl_reg_res delete --id "$created_id" --force
@@ -261,8 +228,7 @@ teardown_file() {
   created_id_simple_by_res_name=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
   # with action attribute values
-  # TODO(namespaced-actions): switch custom action identifier back to name when RR action resolution is namespaced.
-  run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val_with_action_attr_vals --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --json
+  run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val_with_action_attr_vals --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_NAME;$ATTR_VAL_2_ID\"" --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" != "" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_create_rr_val_with_action_attr_vals" ]
@@ -440,8 +406,7 @@ teardown_file() {
     [ "$(echo "$output" | jq -r 'any(.action_attribute_values[]; .action.id == "'"$READ_ACTION_ID"'" and .action.name == "'"$READ_ACTION_NAME"'" and .attribute_value.id == "'"$ATTR_VAL_1_ID"'" and .attribute_value.fqn == "'"$ATTR_VAL_1_FQN"'")')" = "true" ]
 
   # update action attribute values
-  # TODO(namespaced-actions): switch action identifiers back to names when RR action resolution is namespaced.
-  run_otdfctl_reg_res_values update --id "$created_id" --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --force --json
+  run_otdfctl_reg_res_values update --id "$created_id" --action-attribute-value "\"$READ_ACTION_NAME;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --force --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r 'any(.action_attribute_values[]; .action.id == "'"$READ_ACTION_ID"'" and .action.name == "'"$READ_ACTION_NAME"'" and .attribute_value.id == "'"$ATTR_VAL_1_ID"'" and .attribute_value.fqn == "'"$ATTR_VAL_1_FQN"'")')" = "true" ]

@@ -19,9 +19,9 @@ setup_file() {
     
     # create shared actions for tests
     export ACTION_1_NAME="test_action_1"
-    export ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_1_NAME" --namespace "$NS_ID" --json | jq -r '.id')
+    export ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_1_NAME" --json | jq -r '.id')
     export ACTION_2_NAME="test_action_2"
-    export ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_2_NAME" --namespace "$NS_ID" --json | jq -r '.id')
+    export ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_2_NAME" --json | jq -r '.id')
     
     # create shared attributes for tests
     export ATTR_NAME="test_attr_for_triggers"
@@ -46,13 +46,6 @@ setup_file() {
     export LIST_NS_2_NAME="list-test-ns2.org"
     export LIST_NS_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$LIST_NS_2_NAME" --json | jq -r '.id')
     export LIST_NS_2_FQN="https://$LIST_NS_2_NAME"
-
-    # Create actions in each list namespace for trigger creation
-    export LIST_ACTION_1_NAME="list_test_action_1"
-    export LIST_ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$LIST_ACTION_1_NAME" --namespace "$LIST_NS_1_ID" --json | jq -r '.id')
-
-    export LIST_ACTION_2_NAME="list_test_action_2"
-    export LIST_ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$LIST_ACTION_2_NAME" --namespace "$LIST_NS_2_ID" --json | jq -r '.id')
     
     # Create attributes for list triggers tests
     # Namespace 1 attributes
@@ -249,7 +242,7 @@ setup() {
         assert_success
         export LIST_OBL_VAL_1_ID=$(echo "$output" | jq -r '.id')
 
-        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_1_VAL_1_ID" --action "$LIST_ACTION_1_ID" --obligation-value "$LIST_OBL_VAL_1_ID" --client-id "$CLIENT_ID_LIST" --json"
+        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_1_VAL_1_ID" --action "$ACTION_1_ID" --obligation-value "$LIST_OBL_VAL_1_ID" --client-id "$CLIENT_ID_LIST" --json"
         assert_success
         export LIST_TRIGGER_1_ID=$(echo "$output" | jq -r '.id')
       else
@@ -268,7 +261,7 @@ setup() {
         assert_success
         export LIST_OBL_VAL_2_ID=$(echo "$output" | jq -r '.id')
 
-        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_2_VAL_1_ID" --action "$LIST_ACTION_2_ID" --obligation-value "$LIST_OBL_VAL_2_ID" --client-id "$CLIENT_ID_LIST" --json"
+        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_2_VAL_1_ID" --action "$ACTION_2_ID" --obligation-value "$LIST_OBL_VAL_2_ID" --client-id "$CLIENT_ID_LIST" --json"
         assert_success
         export LIST_TRIGGER_2_ID=$(echo "$output" | jq -r '.id')
       else
@@ -305,8 +298,6 @@ teardown_file() {
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$NS_ID" --force
   
   # remove list triggers test namespaces
-  ./otdfctl $HOST $WITH_CREDS policy actions delete --id "$LIST_ACTION_1_ID" --force
-  ./otdfctl $HOST $WITH_CREDS policy actions delete --id "$LIST_ACTION_2_ID" --force
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$LIST_NS_1_ID" --force
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$LIST_NS_2_ID" --force
   
@@ -316,7 +307,6 @@ teardown_file() {
   # clear out all test env vars
   unset HOST WITH_CREDS OBL_NAME OBL_ID NS_NAME NS_ID ACTION_1_NAME ACTION_1_ID ACTION_2_NAME ACTION_2_ID ATTR_NAME ATTR_VAL_NAME ATTR_ID ATTR_VAL_ID ATTR_VAL_FQN ATTR_2_NAME ATTR_2_VAL_NAME ATTR_2_ID ATTR_2_VAL_ID ATTR_2_VAL_FQN
   unset CLIENT_ID_LIST LIST_NS_1_NAME LIST_NS_1_ID LIST_NS_1_FQN LIST_NS_2_NAME LIST_NS_2_ID LIST_NS_2_FQN
-  unset LIST_ACTION_1_NAME LIST_ACTION_1_ID LIST_ACTION_2_NAME LIST_ACTION_2_ID
   unset LIST_ATTR_1_ID LIST_ATTR_1_VAL_1_ID LIST_ATTR_1_VAL_1_FQN LIST_ATTR_2_ID LIST_ATTR_2_VAL_1_ID LIST_ATTR_2_VAL_1_FQN
 }
 
@@ -385,19 +375,11 @@ teardown_file() {
 @test "Get an obligation - Bad" {
   run_otdfctl_obl get
     assert_failure
-    assert_output --partial "Error: at least one of the flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
+    assert_output --partial "one of id, fqn must be set [message.oneof]"
 
   run_otdfctl_obl get --id 'not_a_uuid'
     assert_failure
     assert_output --partial "must be a valid UUID"
-  
-  run_otdfctl_obl get --id '08db7417-bd97-4455-b308-7d9e94e43440' --fqn 'https://example.com/obl/example'
-    assert_failure
-    assert_output --partial "Error: if any flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
 }
 
 @test "List obligations" {
@@ -465,21 +447,12 @@ teardown_file() {
   # no id
   run_otdfctl_obl delete
     assert_failure
-    assert_output --partial "Error: at least one of the flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
+    assert_output --partial "one of id, fqn must be set [message.oneof]"
 
   # invalid id
   run_otdfctl_obl delete --id 'not_a_uuid'
     assert_failure
     assert_output --partial "must be a valid UUID"
-
-  # id and fqn exclusive
-  run_otdfctl_obl delete --id '08db7417-bd97-4455-b308-7d9e94e43440' --fqn 'https://example.com/obl/example'
-    assert_failure
-    assert_output --partial "Error: if any flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
 }
 
 # Tests for obligation values
@@ -683,9 +656,7 @@ EOF
 @test "Get an obligation value - Bad" {
   run_otdfctl_obl_values get
     assert_failure
-    assert_output --partial "Error: at least one of the flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
+    assert_output --partial "one of id, fqn must be set [message.oneof]"
 
   # invalid id
   run_otdfctl_obl_values get --id 'not_a_uuid'
@@ -696,13 +667,6 @@ EOF
   run_otdfctl_obl_values get --fqn 'not_a_fqn'
     assert_failure
     assert_output --partial "must be a valid URI"
-
-  # id and fqn exclusive
-  run_otdfctl_obl_values get --id '08db7417-bd97-4455-b308-7d9e94e43440' --fqn 'https://example.com/obl/example/value/value1'
-    assert_failure
-    assert_output --partial "Error: if any flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
 }
 
 @test "Update obligation values" {
@@ -820,21 +784,12 @@ EOF
   # no id
   run_otdfctl_obl_values delete
     assert_failure
-    assert_output --partial "Error: at least one of the flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
+    assert_output --partial "one of id, fqn must be set [message.oneof]"
 
   # invalid id
   run_otdfctl_obl_values delete --id 'not_a_uuid'
     assert_failure
     assert_output --partial "must be a valid UUID"
-
-  # id and fqn exclusive
-  run_otdfctl_obl_values delete --id '08db7417-bd97-4455-b308-7d9e94e43440' --fqn 'https://example.com/obl/example/value/value1'
-    assert_failure
-    assert_output --partial "Error: if any flags in the group"
-    assert_output --partial "id"
-    assert_output --partial "fqn"
 }
 
 # Tests for obligation triggers
@@ -921,35 +876,6 @@ EOF
   cleanup_obligation_value "$obl_val_id"
 }
 
-@test "Create an obligation trigger - Same tuple different client IDs - Success" {
-  # setup an obligation value to use
-  run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_multi_peps" --json
-  assert_success
-  obl_val_id=$(echo "$output" | jq -r '.id')
-
-  # create first client-scoped trigger
-  client_id_1="a-pep"
-  run_otdfctl_obl_triggers create --attribute-value "$ATTR_VAL_ID" --action "$ACTION_2_ID" --obligation-value "$obl_val_id" --client-id "$client_id_1" --json
-  assert_success
-  trigger_id_1=$(echo "$output" | jq -r '.id')
-  assert_not_equal "$trigger_id_1" "null"
-  assert_equal "$(echo "$output" | jq -r '.context[0].pep.client_id')" "$client_id_1"
-
-  # create second client-scoped trigger with same tuple but different client id
-  client_id_2="b-pep"
-  run_otdfctl_obl_triggers create --attribute-value "$ATTR_VAL_ID" --action "$ACTION_2_ID" --obligation-value "$obl_val_id" --client-id "$client_id_2" --json
-  assert_success
-  trigger_id_2=$(echo "$output" | jq -r '.id')
-  assert_not_equal "$trigger_id_2" "null"
-  assert_not_equal "$trigger_id_1" "$trigger_id_2"
-  assert_equal "$(echo "$output" | jq -r '.context[0].pep.client_id')" "$client_id_2"
-
-  # cleanup
-  cleanup_trigger "$trigger_id_1"
-  cleanup_trigger "$trigger_id_2"
-  cleanup_obligation_value "$obl_val_id"
-}
-
 @test "Create an obligation trigger - Bad" {
   # missing flags
   run_otdfctl_obl_triggers create --attribute-value "http://example.com/attr/attr_name/value/attr_value" --action "read" 
@@ -995,7 +921,7 @@ EOF
   # Verify all our triggers are present
   actual_triggers=$(echo "$output" | jq -r '.triggers | length')
   assert [ "$actual_triggers" -ge 2 ]
-  validate_triggers "$output" "2" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "2" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "null" "2" "null"
 }
 
@@ -1004,13 +930,13 @@ EOF
   run_otdfctl_obl_triggers list --limit 1 --offset 0 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
   validate_pagination "$output" "null" "2" "1"
 
   run_otdfctl_obl_triggers list --limit 1 --offset 1 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "1" "2" "null"
 }
 
@@ -1019,7 +945,7 @@ EOF
   run_otdfctl_obl_triggers list --namespace "$LIST_NS_1_ID" --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "null" "1" "null"
 }
 
@@ -1028,6 +954,6 @@ EOF
   run_otdfctl_obl_triggers list --namespace "https://$LIST_NS_2_NAME" --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
   validate_pagination "$output" "null" "1" "null"
 }

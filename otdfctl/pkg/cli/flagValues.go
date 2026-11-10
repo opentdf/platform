@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type FlagsStringSliceOptions struct {
@@ -90,15 +89,6 @@ func (f flagHelper) GetOptionalInt32(flag string) int32 {
 func (f flagHelper) GetOptionalBool(flag string) bool {
 	v, _ := f.cmd.Flags().GetBool(flag)
 	return v
-}
-
-// Returns nil when the flag is not explicitly set.
-func (f flagHelper) GetOptionalBoolWrapper(flag string) *wrapperspb.BoolValue {
-	if !f.cmd.Flags().Changed(flag) {
-		return nil
-	}
-	v, _ := f.cmd.Flags().GetBool(flag)
-	return wrapperspb.Bool(v)
 }
 
 func (f flagHelper) GetRequiredBool(flag string) bool {

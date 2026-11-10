@@ -2,13 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"log/slog"
-	"os"
 
 	"github.com/opentdf/platform/otdfctl/cmd/auth"
-	cfg "github.com/opentdf/platform/otdfctl/cmd/config"
+	configCmd "github.com/opentdf/platform/otdfctl/cmd/config"
 	"github.com/opentdf/platform/otdfctl/cmd/dev"
-	"github.com/opentdf/platform/otdfctl/cmd/migrate"
 	"github.com/opentdf/platform/otdfctl/cmd/policy"
 	"github.com/opentdf/platform/otdfctl/cmd/tdf"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -48,14 +45,8 @@ func init() {
 				SchemaVersion: sdk.TDFSpecVersion,
 			}
 
-			version := fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha)
-			slog.Debug("otdfctl version",
-				slog.String("app", config.AppName),
-				slog.String("version", config.Version),
-				slog.String("build_time", config.BuildTime),
-				slog.String("commit_sha", config.CommitSha),
-			)
-			c.ExitWith(version, v, cli.ExitCodeSuccess, os.Stdout)
+			c.Println(fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha))
+			c.ExitWithJSON(v)
 			return
 		}
 
@@ -65,33 +56,9 @@ func init() {
 
 	RootCmd = &rootCmd.Command
 
-	// Run logger setup for all commands
-	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		c := cli.New(cmd, args)
-		isDebug := c.Flags.GetOptionalBool("debug")
-		logLevel := c.Flags.GetOptionalString("log-level")
-		if isDebug {
-			logLevel = "DEBUG"
-		}
-
-		// log-level from flag will take precedence over env var
-		if logLevel != "" {
-			l := new(slog.LevelVar)
-			if err := l.UnmarshalText([]byte(logLevel)); err != nil {
-				return fmt.Errorf("invalid log level: %s", logLevel)
-			}
-			logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-				Level: l,
-			}))
-
-			slog.SetDefault(logger)
-		}
-		return nil
-	}
-
 	RootCmd.AddCommand(
 		// config
-		cfg.Cmd,
+		configCmd.Cmd,
 		// tdf
 		tdf.EncryptCmd,
 		tdf.DecryptCmd,
@@ -100,8 +67,6 @@ func init() {
 		auth.Cmd,
 		// policy
 		policy.Cmd,
-		// migrate
-		migrate.Cmd,
 		// dev
 		dev.Cmd,
 	)
@@ -110,6 +75,12 @@ func init() {
 		rootCmd.GetDocFlag("version").Name,
 		rootCmd.GetDocFlag("version").DefaultAsBool(),
 		rootCmd.GetDocFlag("version").Description,
+	)
+
+	RootCmd.PersistentFlags().Bool(
+		rootCmd.GetDocFlag("debug").Name,
+		rootCmd.GetDocFlag("debug").DefaultAsBool(),
+		rootCmd.GetDocFlag("debug").Description,
 	)
 
 	RootCmd.PersistentFlags().Bool(
@@ -139,14 +110,6 @@ func init() {
 		rootCmd.GetDocFlag("log-level").Default,
 		rootCmd.GetDocFlag("log-level").Description,
 	)
-	RootCmd.PersistentFlags().Bool(
-		rootCmd.GetDocFlag("debug").Name,
-		rootCmd.GetDocFlag("debug").DefaultAsBool(),
-		rootCmd.GetDocFlag("debug").Description,
-	)
-	if err := RootCmd.PersistentFlags().MarkDeprecated(rootCmd.GetDocFlag("debug").Name, "use --log-level"); err != nil {
-		panic(fmt.Sprintf("failed to mark debug flag deprecated: %v", err))
-	}
 	RootCmd.PersistentFlags().StringVar(
 		&clientCredsFile,
 		rootCmd.GetDocFlag("with-client-creds-file").Name,
@@ -167,9 +130,8 @@ func init() {
 	RootCmd.AddGroup(&cobra.Group{ID: tdf.GroupID})
 
 	// Initialize all subcommands that have been refactored to use explicit initialization
-	cfg.InitCommands()
 	auth.InitCommands()
-	migrate.InitCommands()
+	configCmd.InitCommands()
 	policy.InitCommands()
 	dev.InitCommands()
 	tdf.InitEncryptCommand()

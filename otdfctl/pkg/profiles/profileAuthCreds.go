@@ -10,7 +10,6 @@ type AuthCredentials struct {
 	ClientID string `json:"clientId"`
 	// Used for client credentials
 	ClientSecret string                     `json:"clientSecret,omitempty"`
-	Scopes       []string                   `json:"scopes,omitempty"`
 	AccessToken  AuthCredentialsAccessToken `json:"accessToken,omitempty"`
 }
 

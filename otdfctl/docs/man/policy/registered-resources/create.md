@@ -9,11 +9,8 @@ command:
   flags:
     - name: name
       shorthand: n
-      description: Name of the registered resource (must be unique within a Namespace)
+      description: Name of the registered resource (must be unique within Policy)
       required: true
-    - name: namespace
-      shorthand: s
-      description: Namespace ID or FQN
     - name: value
       shorthand: v
       description: Value of the registered resource (i.e. 'value1', must be unique within the Registered Resource)

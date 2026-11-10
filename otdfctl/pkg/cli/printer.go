@@ -1,13 +1,12 @@
+//nolint:forbidigo // print statements require flexibility
 package cli
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 )
 
-var ErrPrinterExpectsCommand = errors.New("printer expects a command")
+var ErrPrinterExpectsCommand = fmt.Errorf("printer expects a command")
 
 type Printer struct {
 	enabled bool
@@ -26,6 +25,9 @@ func newPrinter(cli *Cli) *Printer {
 	printJSON := cli.Flags.GetOptionalBool("json")
 	p.setJSON(printJSON)
 
+	isDebug := cli.Flags.GetOptionalBool("debug")
+	p.setDebug(isDebug)
+
 	return p
 }
 
@@ -34,26 +36,63 @@ func (p *Printer) setJSON(json bool) {
 	p.enabled = !json
 }
 
+func (p *Printer) setDebug(debug bool) {
+	p.debug = debug
+}
+
+const debugPrefix = "DEBUG: "
+
+func (c *Cli) Debug(args ...interface{}) {
+	if c.printer.debug {
+		args = append([]interface{}{debugPrefix}, args...)
+		c.Print(args...)
+	}
+}
+
+func (c *Cli) Debugf(format string, args ...interface{}) {
+	format = "DEBUG: " + format
+	if c.printer.debug {
+		c.Printf(format, args...)
+	}
+}
+
+func (c *Cli) Debugln(args ...interface{}) {
+	if c.printer.debug {
+		args = append([]interface{}{"DEBUG: "}, args...)
+		c.Println(args...)
+	}
+}
+
 // PrintJSON prints the given value as json
 // ignores the printer enabled flag
-func (c *Cli) printJSON(v interface{}, w io.Writer) {
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(v); err != nil {
-		ExitWithError("failed to encode json", err)
+func (c *Cli) PrintJSON(v interface{}) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		ExitWithError("failed to marshal json", err)
+	}
+	fmt.Println(string(b))
+}
+
+func (c *Cli) PrintIfJSON(v interface{}) {
+	if c.printer.json {
+		c.PrintJSON(v)
 	}
 }
 
-func (c *Cli) println(w io.Writer, args ...interface{}) {
+func (c *Cli) Print(args ...interface{}) {
 	if c.printer.enabled {
-		fmt.Fprintln(w, args...)
+		fmt.Print(args...)
 	}
 }
 
-func (c *Cli) SetJSONOutput(enabled bool) {
-	if c.printer == nil {
-		return
+func (c *Cli) Printf(format string, args ...interface{}) {
+	if c.printer.enabled {
+		fmt.Printf(format, args...)
 	}
-	c.printer.setJSON(enabled)
+}
+
+func (c *Cli) Println(args ...interface{}) {
+	if c.printer.enabled {
+		fmt.Println(args...)
+	}
 }

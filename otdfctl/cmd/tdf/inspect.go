@@ -2,6 +2,8 @@ package tdf
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -25,6 +27,13 @@ type tdfInspectManifest struct {
 	EncryptionInformation sdk.EncryptionInformation `json:"encryptionInformation"`
 	Assertions            []sdk.Assertion           `json:"assertions,omitempty"`
 	SchemaVersion         string                    `json:"schemaVersion,omitempty"`
+}
+
+type nanoInspectResult struct {
+	Cipher       string `json:"cipher"`
+	ECDSAEnabled bool   `json:"ecdsaEnabled"`
+	Kas          string `json:"kas"`
+	KID          string `json:"kid"`
 }
 
 type tdfInspectResult struct {
@@ -56,6 +65,7 @@ func inspectRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	//nolint:gocritic,nestif // this is more readable than a switch statement
 	if result.ZTDFManifest != nil {
 		m := tdfInspectResult{
 			Manifest: tdfInspectManifest{
@@ -76,9 +86,35 @@ func inspectRun(cmd *cobra.Command, args []string) {
 			Attributes: result.Attributes,
 		}
 
-		c.ExitWithJSON(m, cli.ExitCodeSuccess)
+		c.PrintJSON(m)
+	} else if result.NanoHeader != nil {
+		kas, err := result.NanoHeader.GetKasURL().GetURL()
+		if err != nil {
+			c.ExitWithError("not a valid NanoTDF", err)
+		}
+		kid, err := result.NanoHeader.GetKasURL().GetIdentifier()
+		if err != nil {
+			c.ExitWithError("not a valid NanoTDF", err)
+		}
+		cipher := result.NanoHeader.GetCipher()
+		cipherBytes, err := sdk.SizeOfAuthTagForCipher(cipher)
+		if err != nil {
+			c.ExitWithError("not a valid NanoTDF", err)
+		}
+		aesMultiplier := 8
+		cipherName := fmt.Sprintf("AES-%d", aesMultiplier*cipherBytes)
+
+		n := nanoInspectResult{
+			Kas:          kas,
+			KID:          strings.TrimRight(kid, "\u0000"),
+			ECDSAEnabled: result.NanoHeader.IsEcdsaBindingEnabled(),
+			Cipher:       cipherName,
+		}
+
+		c.PrintJSON(n)
+	} else {
+		c.ExitWithError("failed to inspect TDF", nil)
 	}
-	c.ExitWithError("failed to inspect TDF", nil)
 }
 
 func InitInspectCommand() {

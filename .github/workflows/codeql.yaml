@@ -41,9 +41,20 @@ jobs:
           languages: ${{ matrix.language }}
         timeout-minutes: 5
 
+      - name: Isolate released otdfctl dependencies
+        if: ${{ matrix.language == 'go' }}
+        run: go work edit -dropuse ./otdfctl
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@16140ae1a102900babc80a33c44059580f687047 # v4.30.9
         timeout-minutes: 10
+
+      - name: Build otdfctl with released dependencies
+        if: ${{ matrix.language == 'go' }}
+        working-directory: otdfctl
+        env:
+          GOWORK: "off"
+        run: go build ./...
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@16140ae1a102900babc80a33c44059580f687047 # v4.30.9

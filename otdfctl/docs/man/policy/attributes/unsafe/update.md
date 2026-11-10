@@ -20,8 +20,6 @@ command:
     - name: values-order
       shorthand: o
       description: Order of the attribute values (IDs)
-    - name: allow-traversal
-      description: Allow for platform to use the attribute definition when the value is missing during encryption
 ---
 
 # Unsafe Update Warning

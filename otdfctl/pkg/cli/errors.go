@@ -1,16 +1,10 @@
 package cli
 
 import (
-	"io"
 	"os"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-const (
-	ExitCodeSuccess = 0
-	ExitCodeError   = 1
 )
 
 func ExitWithError(errMsg string, err error) {
@@ -31,52 +25,36 @@ func ExitWithWarning(warnMsg string) {
 // ExitWithError prints an error message and exits with a non-zero status code.
 func (c *Cli) ExitWithError(errMsg string, err error) {
 	c.ExitWithNotFoundError(errMsg, err)
-	c.ExitWith(ErrorMessage(errMsg, err), ErrorJSON(errMsg, err), ExitCodeError, os.Stderr)
+	c.Println(ErrorMessage(errMsg, err))
+	os.Exit(1)
 }
 
 // ExitWithNotFoundError prints an error message and exits with a non-zero status code if the error is a NotFound error.
 func (c *Cli) ExitWithNotFoundError(errMsg string, err error) {
 	if err != nil {
 		if e, ok := status.FromError(err); ok && e.Code() == codes.NotFound {
-			c.ExitWith(
-				ErrorMessage(errMsg+": not found", nil),
-				MessageJSON("ERROR", errMsg+": not found"),
-				ExitCodeError,
-				os.Stderr,
-			)
+			c.Println(ErrorMessage(errMsg+": not found", nil))
+			os.Exit(1)
 		}
 	}
 }
 
+func (c *Cli) ExitWithMessage(msg string, code int) {
+	c.Println(msg)
+	os.Exit(code)
+}
+
 func (c *Cli) ExitWithWarning(warnMsg string) {
-	c.ExitWith(WarningMessage(warnMsg), WarningJSON(warnMsg), ExitCodeError, os.Stderr)
+	c.ExitWithMessage(WarningMessage(warnMsg), 1)
 }
 
 func (c *Cli) ExitWithSuccess(msg string) {
-	c.ExitWith(SuccessMessage(msg), SuccessJSON(msg), ExitCodeSuccess, os.Stdout)
+	c.ExitWithMessage(SuccessMessage(msg), 0)
 }
 
-func (c *Cli) ExitWithMessage(msg string, code int) {
-	if c.printer.enabled {
-		c.println(os.Stdout, msg)
-		os.Exit(code)
-	}
-}
-
-func (c *Cli) ExitWithJSON(v interface{}, code int) {
+func (c *Cli) ExitWithJSON(v interface{}) {
 	if c.printer.json {
-		c.printJSON(v, os.Stdout)
-		os.Exit(code)
+		c.PrintJSON(v)
+		os.Exit(0)
 	}
-}
-
-// exitWith is the core exit function that handles both JSON and styled output
-// It writes to the appropriate stream (stdout for success, stderr for errors/warnings)
-func (c *Cli) ExitWith(styledMsg string, jsonMsg interface{}, code int, w io.Writer) {
-	if c.printer.json {
-		c.printJSON(jsonMsg, w)
-	} else {
-		c.println(w, styledMsg)
-	}
-	os.Exit(code)
 }

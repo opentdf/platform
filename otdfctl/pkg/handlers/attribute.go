@@ -9,7 +9,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // TODO: Might be useful to map out the attribute rule definitions for help text in the CLI and TUI
@@ -65,7 +64,7 @@ func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnu
 }
 
 // Creates and returns the created attribute
-func (h Handler) CreateAttribute(ctx context.Context, name string, rule string, namespace string, values []string, metadata *common.MetadataMutable, allowTraversal *wrapperspb.BoolValue) (*policy.Attribute, error) {
+func (h Handler) CreateAttribute(ctx context.Context, name string, rule string, namespace string, values []string, metadata *common.MetadataMutable) (*policy.Attribute, error) {
 	r, err := GetAttributeRuleFromReadableString(rule)
 	if err != nil {
 		return nil, err
@@ -77,9 +76,6 @@ func (h Handler) CreateAttribute(ctx context.Context, name string, rule string, 
 		Rule:        r,
 		Metadata:    metadata,
 		Values:      values,
-	}
-	if allowTraversal != nil {
-		attrReq.AllowTraversal = allowTraversal
 	}
 
 	resp, err := h.sdk.Attributes.CreateAttribute(ctx, attrReq)
@@ -140,7 +136,7 @@ func (h Handler) UnsafeDeleteAttribute(ctx context.Context, id, fqn string) erro
 }
 
 // Deletes and returns error if deletion failed
-func (h Handler) UnsafeUpdateAttribute(ctx context.Context, id, name, rule string, valuesOrder []string, allowTraversal *wrapperspb.BoolValue) (*policy.Attribute, error) {
+func (h Handler) UnsafeUpdateAttribute(ctx context.Context, id, name, rule string, valuesOrder []string) error {
 	req := &unsafe.UnsafeUpdateAttributeRequest{
 		Id:   id,
 		Name: name,
@@ -149,22 +145,16 @@ func (h Handler) UnsafeUpdateAttribute(ctx context.Context, id, name, rule strin
 	if rule != "" {
 		r, err := GetAttributeRuleFromReadableString(rule)
 		if err != nil {
-			return nil, fmt.Errorf("invalid attribute rule: %s", rule)
+			return fmt.Errorf("invalid attribute rule: %s", rule)
 		}
 		req.Rule = r
 	}
 	if len(valuesOrder) > 0 {
 		req.ValuesOrder = valuesOrder
 	}
-	if allowTraversal != nil {
-		req.AllowTraversal = allowTraversal
-	}
 
 	_, err := h.sdk.Unsafe.UnsafeUpdateAttribute(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	return h.GetAttribute(ctx, id)
+	return err
 }
 
 func (h Handler) AssignKeyToAttribute(ctx context.Context, attr, keyID string) (*attributes.AttributeKey, error) {

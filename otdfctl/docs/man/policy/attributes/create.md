@@ -27,9 +27,6 @@ command:
       shorthand: s
       description: Namespace ID of the attribute
       required: true
-    - name: allow-traversal
-      description: Allow for platform to use the attribute definition when the value is missing during encryption
-      default: false
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l
@@ -59,12 +56,6 @@ propagate down through the hierarchy, so a mapping of a `read` action on the hig
 to each hierarchically lower value, and so on.
 
 For more general information about attributes, see the `attributes` subcommand.
-
-### Allow Traversal
-
-Setting the `allow_traversal` flag on an attribute definition allows a TDF to be created with a missing attribute value.
-During encryption while `autoconfigure` is true, if the attribute value is missing and the definition has `allow_traversal`
-set our system will encrypt using the attribute definitions key, if a key has been mapped to the definition.
 
 ## Example
 

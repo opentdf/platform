@@ -23,14 +23,20 @@ command:
       description: The MIME type of the input data. If not provided, the MIME type is inferred from the input data.
     - name: tdf-type
       shorthand: t
-      description: The type of TDF to encrypt as (tdf3 is an alias for ztdf).
+      description: The type of tdf to encrypt as. ZTDF supports structured manifests and larger payloads. NanoTDF has a smaller footprint and more performant, but does not support structured manifests or large payloads. (tdf3 is an alias for ztdf)
       enum:
         - ztdf
         - tdf3
+        - nano
       default: ztdf
+    - name: ecdsa-binding
+      description: For nano type containers only, enables ECDSA policy binding
     - name: kas-url-path
       description: URL path to the KAS service at the platform endpoint domain. Leading slash is required if needed.
       default: /kas
+    - name: policy-mode
+      description: How the policy is stored within the object (currently nanoTDF only) [plaintext|encrypted]. Defaults to encrypted.
+      default: ""
     - name: target-mode
       description: The target TDF spec version (e.g., "4.3.0"); intended for legacy compatibility and subject to removal.
       default: ""
@@ -96,6 +102,16 @@ restrict access to the data based on entity entitlements.
 ```shell
 # output to hello.txt.tdf with attribute
 otdfctl encrypt hello.txt --out hello.txt.tdf --attr https://example.com/attr/attr1/value/value1
+```
+
+## NanoTDF
+
+NanoTDF is a lightweight TDF format that is more performant and has a smaller footprint than ZTDF. NanoTDF does not
+support structured manifests or large payloads.
+
+```shell
+# output to nano.tdf
+otdfctl encrypt hello.txt --tdf-type nano --out hello.txt.tdf
 ```
 
 ## ZTDF Assertions (experimental)

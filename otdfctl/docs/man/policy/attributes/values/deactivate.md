@@ -6,8 +6,6 @@ command:
     - name: id
       shorthand: i
       description: The ID of the attribute value to deactivate
-    - name: force
-      description: Force deactivation without interactive confirmation (dangerous)
 ---
 
 Deactivation preserves uniqueness of the attribute value within policy and all existing relations, essentially reserving it.

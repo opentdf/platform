@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"fmt"
-
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/auth"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -14,6 +12,8 @@ import (
 func codeLogin(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 	cp := common.InitProfile(c)
+
+	c.Print("Initiating login...")
 	clientID := c.FlagHelper.GetRequiredString("client-id")
 	port := c.FlagHelper.GetOptionalString("port")
 	tok, err := auth.LoginWithPKCE(
@@ -24,8 +24,10 @@ func codeLogin(cmd *cobra.Command, args []string) {
 		port,
 	)
 	if err != nil {
+		c.Println("failed")
 		c.ExitWithError("could not authenticate", err)
 	}
+	c.Println("ok")
 
 	// Set the auth credentials to profile
 	if err := cp.SetAuthCredentials(profiles.AuthCredentials{
@@ -39,7 +41,7 @@ func codeLogin(cmd *cobra.Command, args []string) {
 	}); err != nil {
 		c.ExitWithError("failed to set auth credentials", err)
 	}
-	c.ExitWithMessage(fmt.Sprintf("Code login complete for profile: [%s]", cp.Name()), cli.ExitCodeSuccess)
+	c.Println("ok")
 }
 
 // newLoginCmd creates and configures the login command with all flags.

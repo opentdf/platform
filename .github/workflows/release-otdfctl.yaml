@@ -32,6 +32,9 @@ jobs:
       - name: Build cross-platform binaries
         working-directory: otdfctl
         env:
+          # Build the maintenance artifact from its published dependency set,
+          # not the newer modules present in the historical monorepo workspace.
+          GOWORK: "off"
           SEM_VER: ${{ steps.version.outputs.version }}
           COMMIT_SHA: ${{ github.sha }}
         run: make build

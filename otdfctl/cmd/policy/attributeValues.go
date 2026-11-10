@@ -2,15 +2,12 @@ package policy
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/evertras/bubble-table/table"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
-	policycommon "github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/spf13/cobra"
 )
 
@@ -54,52 +51,6 @@ func getAttributeValue(cmd *cobra.Command, args []string) {
 	handleValueSuccess(cmd, v)
 }
 
-func filterValuesByState(values []*policy.Value, state policycommon.ActiveStateEnum) []*policy.Value {
-	var shouldBeActive bool
-	switch state {
-	case policycommon.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE:
-		shouldBeActive = true
-	case policycommon.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE:
-		shouldBeActive = false
-	case policycommon.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		policycommon.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED:
-		return values
-	}
-
-	filtered := make([]*policy.Value, 0, len(values))
-	for _, v := range values {
-		if v.GetActive().GetValue() == shouldBeActive {
-			filtered = append(filtered, v)
-		}
-	}
-	return filtered
-}
-
-func paginateValues(values []*policy.Value, limit, offset int32) ([]*policy.Value, *policy.PageResponse) {
-	total := len(values)
-	pagination := &policy.PageResponse{
-		Total:         int32(min(total, math.MaxInt32)),
-		CurrentOffset: offset,
-	}
-
-	off := int(offset)
-	if off < 0 {
-		return nil, pagination
-	}
-	if off >= total {
-		return nil, pagination
-	}
-	values = values[off:]
-
-	lim := int(limit)
-	if lim > 0 && lim < len(values) {
-		values = values[:lim]
-		pagination.NextOffset = offset + limit
-	}
-
-	return values, pagination
-}
-
 func listAttributeValue(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 	h := common.NewHandler(c)
@@ -110,14 +61,10 @@ func listAttributeValue(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 
-	values, err := h.ListAttributeValues(cmd.Context(), attrID)
+	resp, err := h.ListAttributeValues(cmd.Context(), attrID, state, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list attribute values", err)
 	}
-
-	filtered := filterValuesByState(values, state)
-	paged, pagination := paginateValues(filtered, limit, offset)
-
 	t := cli.NewTable(
 		cli.NewUUIDColumn(),
 		table.NewFlexColumn("fqn", "Fqn", cli.FlexColumnWidthFour),
@@ -127,7 +74,7 @@ func listAttributeValue(cmd *cobra.Command, args []string) {
 		table.NewFlexColumn("updated_at", "Updated At", cli.FlexColumnWidthOne),
 	)
 	rows := []table.Row{}
-	for _, val := range paged {
+	for _, val := range resp.GetValues() {
 		v := cli.GetSimpleAttributeValue(val)
 		rows = append(rows, table.NewRow(table.RowData{
 			"id":         v.ID,
@@ -139,12 +86,7 @@ func listAttributeValue(cmd *cobra.Command, args []string) {
 		}))
 	}
 	t = t.WithRows(rows)
-	t = cli.WithListPaginationFooter(t, pagination)
-
-	resp := &attributes.ListAttributeValuesResponse{
-		Values:     paged,
-		Pagination: pagination,
-	}
+	t = cli.WithListPaginationFooter(t, resp.GetPagination())
 	common.HandleSuccess(cmd, "", t, resp)
 }
 
@@ -177,14 +119,13 @@ func deactivateAttributeValue(cmd *cobra.Command, args []string) {
 
 	ctx := cmd.Context()
 	id := c.Flags.GetRequiredID("id")
-	force := c.Flags.GetOptionalBool("force")
 
 	value, err := h.GetAttributeValue(ctx, id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to get attribute value (%s)", id), err)
 	}
 
-	cli.ConfirmAction(cli.ActionDeactivate, "attribute value", value.GetValue(), force)
+	cli.ConfirmAction(cli.ActionDeactivate, "attribute value", value.GetValue(), false)
 
 	deactivated, err := h.DeactivateAttributeValue(ctx, id)
 	if err != nil {
@@ -401,11 +342,6 @@ func initAttributeValuesCommands() {
 		deactivateCmd.GetDocFlag("id").Shorthand,
 		deactivateCmd.GetDocFlag("id").Default,
 		deactivateCmd.GetDocFlag("id").Description,
-	)
-	deactivateCmd.Flags().Bool(
-		deactivateCmd.GetDocFlag("force").Name,
-		false,
-		deactivateCmd.GetDocFlag("force").Description,
 	)
 
 	keyCmd := man.Docs.GetCommand("policy/attributes/values/key")

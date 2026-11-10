@@ -14,14 +14,13 @@ import (
 )
 
 type SimpleAttribute struct {
-	ID             string
-	Name           string
-	Rule           string
-	Values         []string
-	Namespace      string
-	Active         string
-	AllowTraversal string
-	Metadata       map[string]string
+	ID        string
+	Name      string
+	Rule      string
+	Values    []string
+	Namespace string
+	Active    string
+	Metadata  map[string]string
 }
 
 type SimpleAttributeValue struct {
@@ -58,14 +57,13 @@ func GetSimpleAttribute(a *policy.Attribute) SimpleAttribute {
 	}
 
 	return SimpleAttribute{
-		ID:             a.GetId(),
-		Name:           a.GetName(),
-		Rule:           handlers.GetAttributeRuleFromAttributeType(a.GetRule()),
-		Values:         values,
-		Namespace:      a.GetNamespace().GetName(),
-		Active:         strconv.FormatBool(a.GetActive().GetValue()),
-		AllowTraversal: strconv.FormatBool(a.GetAllowTraversal().GetValue()),
-		Metadata:       ConstructMetadata(a.GetMetadata()),
+		ID:        a.GetId(),
+		Name:      a.GetName(),
+		Rule:      handlers.GetAttributeRuleFromAttributeType(a.GetRule()),
+		Values:    values,
+		Namespace: a.GetNamespace().GetName(),
+		Active:    strconv.FormatBool(a.GetActive().GetValue()),
+		Metadata:  ConstructMetadata(a.GetMetadata()),
 	}
 }
 

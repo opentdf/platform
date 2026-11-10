@@ -55,13 +55,6 @@ teardown_file() {
   assert_success
   [ "$(echo "$output" | jq -r '.values[0].value')" = "val1" ]
   [ "$(echo "$output" | jq -r '.values[1].value')" = "val2" ]
-  [ "$(echo "$output" | jq -r '.allow_traversal')" = {} ]
-}
-
-@test "Create an attribute - Allow Traversal" {
-  run_otdfctl_attr create --name attrAllowTraversal --namespace "$NS_ID" --rule HIERARCHY --allow-traversal --json
-  assert_success
-  [ "$(echo "$output" | jq -r '.allow_traversal.value')" = true ]
 }
 
 @test "Create an attribute - Bad" {
@@ -88,7 +81,6 @@ teardown_file() {
   assert_line --regexp "Name.*$LOWERED"
   assert_output --partial "ANY_OF"
   assert_line --regexp "Namespace.*$NS_NAME"
-  assert_line --regexp "Allow Traversal.*false"
 
   run_otdfctl_attr get --id "$ATTR_ID" --json
   assert_success
@@ -189,7 +181,6 @@ teardown_file() {
 
   run_otdfctl_attr deactivate --id "$ATTR_ID" --force
   assert_success
-  assert_output --regexp "Allow Traver*"
 
   run_otdfctl_attr get --id "$ATTR_ID" --json
   assert_success
@@ -231,45 +222,6 @@ teardown_file() {
   assert_success
   [ "$(echo "$output" | jq -r '.values[0].value')" = "val2" ]
   [ "$(echo "$output" | jq -r '.values[1].value')" = "val1" ]
-
-  # ensure non-JSON output reflects reordered values immediately
-  run_otdfctl_attr unsafe update --id "$CREATED_ID" --values-order "$VAL1_ID" --values-order "$VAL2_ID" --force
-  assert_success
-  assert_line --regexp "Value IDs\\s+│\\[$VAL1_ID, $VAL2_ID\\]"
-
-  run_otdfctl_attr unsafe update --id "$CREATED_ID" --allow-traversal --json --force
-  assert_success
-  run_otdfctl_attr get --id "$CREATED_ID" --json
-  assert_success
-  [ "$(echo "$output" | jq -r '.allow_traversal.value')" = true ]
-}
-
-@test "Unsafe Update preserves allow traversal when unchanged" {
-  run_otdfctl_attr create --name attr-allow-traversal-update --namespace "$NS_ID" --rule HIERARCHY --allow-traversal --json
-  assert_success
-  CREATED_ID=$(echo "$output" | jq -r '.id')
-
-  run_otdfctl_attr unsafe update --id "$CREATED_ID" --name updated-name --json --force
-  assert_success
-  run_otdfctl_attr get --id "$CREATED_ID" --json
-  assert_success
-  [ "$(echo "$output" | jq -r '.allow_traversal.value')" = true ]
-
-  ./otdfctl $HOST $WITH_CREDS policy attributes unsafe delete --force --id "$CREATED_ID"
-}
-
-@test "Unsafe Update can disallow traversal" {
-  run_otdfctl_attr create --name attr-disallow-traversal-update --namespace "$NS_ID" --rule HIERARCHY --allow-traversal --json
-  assert_success
-  CREATED_ID=$(echo "$output" | jq -r '.id')
-
-  run_otdfctl_attr unsafe update --id "$CREATED_ID" --allow-traversal=false --json --force
-  assert_success
-  run_otdfctl_attr get --id "$CREATED_ID" --json
-  assert_success
-  [ "$(echo "$output" | jq -r '.allow_traversal')" = {} ]
-
-  ./otdfctl $HOST $WITH_CREDS policy attributes unsafe delete --force --id "$CREATED_ID"
 }
 
 @test "Assign/Remove KAS key from attribute definition - With Attribute Id" {

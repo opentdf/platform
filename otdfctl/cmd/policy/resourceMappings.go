@@ -1,7 +1,7 @@
 package policy
 
 import (
-	_ "embed" // required for go:embed directives
+	_ "embed"
 	"fmt"
 	"strings"
 

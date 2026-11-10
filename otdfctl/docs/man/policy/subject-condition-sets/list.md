@@ -6,9 +6,6 @@ command:
   aliases:
     - l
   flags:
-    - name: namespace
-      shorthand: n
-      description: Namespace ID or FQN to filter results
     - name: limit
       shorthand: l
       description: Limit retrieved count
@@ -23,6 +20,4 @@ For more information about subject condition sets, see the `subject-condition-se
 
 ```shell
 otdfctl policy subject-condition-set list
-
-otdfctl policy subject-condition-set list --namespace "https://example.com"
 ```

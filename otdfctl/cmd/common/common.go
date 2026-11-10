@@ -17,22 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var profileOutputFormat = profiles.OutputStyled
-
-func shouldUseProfileJSONOutput() bool {
-	return profileOutputFormat == profiles.OutputJSON
-}
-
-func applyOutputFormatPreference(c *cli.Cli, store *profiles.OtdfctlProfileStore) {
-	if store == nil {
-		return
-	}
-
-	profileOutputFormat = profiles.NormalizeOutputFormat(store.GetOutputFormat())
-	if shouldUseProfileJSONOutput() {
-		c.SetJSONOutput(true)
-	}
-}
+var OtdfctlCfg config.Config
 
 // InitProfile initializes the profile store and loads the profile specified in the flags
 // if onlyNew is set to true, a new profile will be created and returned
@@ -43,12 +28,10 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 
 	hasKeyringStore, err := osprofiles.HasGlobalStore(config.AppName, osprofiles.WithKeyringStore())
 	if err != nil {
-		slog.Warn("could not determine whether any profiles were stored on the keyring, defaulting to filesystem",
-			slog.Any("error", err),
-		)
+		slog.Warn("Could not determine whether any profiles were stored on the keyring, defaulting to filesystem.", "error", err)
 	}
 	if hasKeyringStore {
-		slog.Debug("keyring store still active, migrating profiles to filesystem")
+		slog.Debug("Keyring store still active, migrating profiles to filesystem.")
 		err := profiles.Migrate(profiles.ProfileDriverFileSystem, profiles.ProfileDriverKeyring)
 		if err != nil {
 			cli.ExitWithError(fmt.Sprintf("Error during profile migration from %s, to %s. %s cannot continue with profiles being stored within %s, please use the `profile migrate` command to manually migrate profiles", profiles.ProfileDriverKeyring, profiles.ProfileDriverFileSystem, config.AppName, profiles.ProfileDriverKeyring), err)
@@ -69,15 +52,13 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 		profileName = defaultProfileName
 	}
 
-	slog.Debug("using profile", slog.String("profile", profileName))
+	c.Printf("Using profile [%s]\n", profileName)
 
 	// load profile
 	store, err := profiles.LoadOtdfctlProfileStore(profiles.ProfileDriverFileSystem, profileName)
 	if err != nil {
-		c.ExitWithError("Failed to load profile: "+profileName, err)
+		c.ExitWithError(fmt.Sprintf("Failed to load profile: %s", profileName), err)
 	}
-
-	applyOutputFormatPreference(c, store)
 
 	return store
 }
@@ -170,12 +151,9 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 				AuthType:     profiles.AuthTypeClientCredentials,
 				ClientID:     cc.ClientID,
 				ClientSecret: cc.ClientSecret,
-				Scopes:       cc.Scopes,
 			}); err != nil {
 				cli.ExitWithError("Failed to set client credentials", err)
 			}
-
-			applyOutputFormatPreference(c, cp)
 		}
 	} else {
 		cp = InitProfile(c)
@@ -220,9 +198,8 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 func HandleSuccess(command *cobra.Command, id string, t table.Model, policyObject interface{}) {
 	c := cli.New(command, []string{})
 	jsonFlag := c.Flags.GetOptionalBool("json")
-	if jsonFlag || shouldUseProfileJSONOutput() {
-		c.SetJSONOutput(true)
-		c.ExitWithJSON(policyObject, cli.ExitCodeSuccess)
+	if OtdfctlCfg.Output.Format == config.OutputJSON || jsonFlag {
+		c.ExitWithJSON(policyObject)
 	}
 	cli.PrintSuccessTable(command, id, t)
 }

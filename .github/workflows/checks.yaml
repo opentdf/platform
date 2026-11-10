@@ -25,6 +25,10 @@ permissions: {}
 jobs:
   go:
     runs-on: ubuntu-22.04
+    env:
+      # The v0.27 maintenance module must resolve its released SDK and protocol
+      # dependencies instead of the newer modules in this historical workspace.
+      GOWORK: ${{ matrix.directory == 'otdfctl' && 'off' || '' }}
     permissions:
       checks: write
       contents: read
@@ -69,7 +73,7 @@ jobs:
       - run: go mod verify
         working-directory: ${{ matrix.directory }}
       - run: go work use .
-        if: env.IS_RELEASE_BRANCH == 'true'
+        if: env.IS_RELEASE_BRANCH == 'true' && matrix.directory != 'otdfctl'
         working-directory: ${{ matrix.directory }}
       - name: govulncheck
         id: govulncheck

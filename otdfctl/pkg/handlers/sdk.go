@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"log/slog"
 
 	"github.com/opentdf/platform/otdfctl/pkg/auth"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
@@ -77,25 +76,20 @@ func New(opts ...handlerOptsFunc) (Handler, error) {
 		return Handler{}, err
 	}
 
+	if o.TLSNoVerify {
+		o.sdkOpts = append(o.sdkOpts, sdk.WithInsecureSkipVerifyConn())
+	}
+
 	// get auth
 	authSDKOpt, err := auth.GetSDKAuthOptionFromProfile(o.profile)
 	if err != nil {
 		return Handler{}, err
 	}
-
-	defaultSDKOpts := []sdk.Option{
-		authSDKOpt,
-		sdk.WithConnectionValidation(),
-		sdk.WithLogger(slog.Default()),
-	}
-	if o.TLSNoVerify {
-		defaultSDKOpts = append(defaultSDKOpts, sdk.WithInsecureSkipVerifyConn())
-	}
+	o.sdkOpts = append(o.sdkOpts, authSDKOpt, sdk.WithConnectionValidation())
 
 	if u.Scheme == "http" {
-		defaultSDKOpts = append(defaultSDKOpts, sdk.WithInsecurePlaintextConn())
+		o.sdkOpts = append(o.sdkOpts, sdk.WithInsecurePlaintextConn())
 	}
-	o.sdkOpts = append(defaultSDKOpts, o.sdkOpts...)
 
 	s, err := sdk.New(u.String(), o.sdkOpts...)
 	if err != nil {

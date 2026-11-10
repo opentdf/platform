@@ -1,6 +1,7 @@
 package tdf
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -8,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +43,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	tdfType := c.Flags.GetOptionalString("tdf-type")
 	kasURLPath := c.Flags.GetOptionalString("kas-url-path")
 	wrappingKeyAlgStr := c.Flags.GetOptionalString("wrapping-key-algorithm")
+	policyMode := c.Flags.GetOptionalString("policy-mode")
 	targetMode := c.Flags.GetOptionalString("target-mode")
 	var wrappingKeyAlgorithm ocrypto.KeyType
 	switch wrappingKeyAlgStr {
@@ -88,7 +90,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 
 	// auto-detect mime type if not provided
 	if fileMimeType == "" {
-		slog.Debug("detecting mime type of file")
+		slog.Debug("Detecting mime type of file")
 		// get the mime type of the file
 		mimetype.SetLimit(Size1MB) // limit to 1MB
 		m := mimetype.Detect(bytesSlice)
@@ -101,9 +103,9 @@ func encryptRun(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
-	slog.Debug("encrypting file",
-		slog.Int("file_len", len(bytesSlice)),
-		slog.String("mime_type", fileMimeType),
+	slog.Debug("Encrypting file",
+		slog.Int("file-len", len(bytesSlice)),
+		slog.String("mime-type", fileMimeType),
 	)
 
 	// Do the encryption
@@ -113,8 +115,10 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		attrValues,
 		fileMimeType,
 		kasURLPath,
+		c.Flags.GetOptionalBool("ecdsa-binding"),
 		assertions,
 		wrappingKeyAlgorithm,
+		policyMode,
 		targetMode,
 	)
 	if err != nil {
@@ -130,7 +134,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		}
 		tdfFile, err := os.Create(out)
 		if err != nil {
-			cli.ExitWithError("Failed to write encrypted file "+out, err)
+			cli.ExitWithError(fmt.Sprintf("Failed to write encrypted file %s", out), err)
 		}
 		defer tdfFile.Close()
 		dest = tdfFile
@@ -181,10 +185,20 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("wrapping-key-algorithm").Default,
 		encryptDoc.GetDocFlag("wrapping-key-algorithm").Description,
 	)
+	encryptDoc.Flags().Bool(
+		encryptDoc.GetDocFlag("ecdsa-binding").Name,
+		false,
+		encryptDoc.GetDocFlag("ecdsa-binding").Description,
+	)
 	encryptDoc.Flags().String(
 		encryptDoc.GetDocFlag("kas-url-path").Name,
 		encryptDoc.GetDocFlag("kas-url-path").Default,
 		encryptDoc.GetDocFlag("kas-url-path").Description,
+	)
+	encryptDoc.Flags().String(
+		encryptDoc.GetDocFlag("policy-mode").Name,
+		encryptDoc.GetDocFlag("policy-mode").Default,
+		encryptDoc.GetDocFlag("policy-mode").Description,
 	)
 	encryptDoc.Flags().String(
 		encryptDoc.GetDocFlag("target-mode").Name,

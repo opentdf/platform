@@ -17,7 +17,9 @@ The main goals are to:
 
 ## Usage
 
-The CLI is configured via profiles. Use `otdfctl profile create <name> <endpoint>` (and optionally `--set-default`) to define how the CLI should connect to your platform instance.
+The CLI is configured via the `otdfctl.yaml`. There is an example provided in `otdfctl-example.yaml`.
+
+Run `cp otdfctl-example.yaml otdfctl.yaml` to copy the example config when running the CLI.
 
 Load up the platform (see its [README](https://github.com/opentdf/platform?tab=readme-ov-file#run) for instructions).
 
@@ -29,7 +31,7 @@ The CLI is built using [cobra](https://cobra.dev/).
 
 The primary function is to support CRUD operations using commands as arguments and flags as the values.
 
-The output format (currently `styled` or `json`) is stored with each profile (via `otdfctl profile create --output-format <styled|json>` or `otdfctl profile set-output-format <profile> <styled|json>`) and can still be overridden per command with the `--json` flag.
+The output format (currently `styled` or `json`) is configurable in the `otdfctl.yaml` or via CLI flag.
 
 #### To add a command
 
@@ -141,6 +143,7 @@ Or nested for better organization:
 Alternatively, get the TAP test report from the CI pipeline artifacts.
 2. Upload results to TestRail:
 `TESTRAIL_CLI_RUN_NAME=*optional-testrail-run-name* ./testrail-integration/upload-bats-test-results-to-testrail.sh`
+
 
 
 

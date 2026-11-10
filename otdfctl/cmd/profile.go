@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -71,22 +70,19 @@ var profileCreateCmd = &cobra.Command{
 
 		setDefault := c.FlagHelper.GetOptionalBool("set-default")
 		tlsNoVerify := c.FlagHelper.GetOptionalBool("tls-no-verify")
-		outputFormat := c.FlagHelper.GetOptionalString("output-format")
-		if !profiles.IsValidOutputFormat(outputFormat) {
-			c.ExitWithError("Output format must be either 'styled' or 'json'", nil)
-		}
 
+		c.Printf("Creating profile %s...", profileName)
 		profileConfig := profiles.ProfileConfig{
-			Name:         profileName,
-			Endpoint:     endpoint,
-			TLSNoVerify:  tlsNoVerify,
-			OutputFormat: profiles.NormalizeOutputFormat(outputFormat),
+			Name:        profileName,
+			Endpoint:    endpoint,
+			TLSNoVerify: tlsNoVerify,
 		}
 		_, err := profiles.NewOtdfctlProfileStore(profiles.ProfileDriverFileSystem, &profileConfig, setDefault)
 		if err != nil {
+			c.Println("failed")
 			c.ExitWithError("Failed to create profile", err)
 		}
-		c.ExitWithSuccess(fmt.Sprintf("Profile %s created", profileName))
+		c.Printf("ok")
 	},
 }
 
@@ -101,18 +97,14 @@ var profileListCmd = &cobra.Command{
 		globalCfg := osprofiles.GetGlobalConfig(profiler)
 		defaultProfile := globalCfg.GetDefaultProfile()
 
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "Listing profiles from %s\n", driverType)
-
+		c.Printf("Listing profiles from %s\n", string(driverType))
 		for _, p := range osprofiles.ListProfiles(profiler) {
 			if p == defaultProfile {
-				fmt.Fprintf(&sb, "* %s\n", p)
+				c.Printf("* %s\n", p)
 				continue
 			}
-			fmt.Fprintf(&sb, "  %s\n", p)
+			c.Printf("  %s\n", p)
 		}
-
-		c.ExitWithMessage(sb.String(), cli.ExitCodeSuccess)
 	},
 }
 
@@ -127,7 +119,7 @@ var profileGetCmd = &cobra.Command{
 		driverType := getDriverTypeFromUser(c)
 		profileStore, err := profiles.LoadOtdfctlProfileStore(driverType, profileName)
 		if err != nil {
-			cli.ExitWithError("Error loading profile store for profile "+profileName, err)
+			cli.ExitWithError(fmt.Sprintf("Error loading profile store for profile %s", profileName), err)
 		}
 
 		isDefault := "false"
@@ -146,11 +138,10 @@ var profileGetCmd = &cobra.Command{
 			[]string{"Profile", profileStore.Name()},
 			[]string{"Endpoint", profileStore.GetEndpoint()},
 			[]string{"Is default", isDefault},
-			[]string{"Output format", profileStore.GetOutputFormat()},
 			[]string{"Auth type", auth},
 		)
 
-		c.ExitWithMessage(t.View(), cli.ExitCodeSuccess)
+		c.Print(t.View())
 	},
 }
 
@@ -165,13 +156,14 @@ var profileDeleteCmd = &cobra.Command{
 		driverType := getDriverTypeFromUser(c)
 		profiler := newProfilerFromCLI(c)
 
+		c.Printf("Deleting profile %s, from %s...", profileName, driverType)
 		if err := osprofiles.DeleteProfile[*profiles.ProfileConfig](profiler, profileName); err != nil {
 			if errors.Is(err, osprofiles.ErrCannotDeleteDefaultProfile) {
 				c.ExitWithWarning("Profile is set as default. Please set another profile as default before deleting.")
 			}
 			c.ExitWithError("Failed to delete profile", err)
 		}
-		c.ExitWithMessage(fmt.Sprintf("Deleted profile %s from %s", profileName, driverType), cli.ExitCodeSuccess)
+		c.Println("ok")
 	},
 }
 
@@ -188,16 +180,17 @@ var profileDeleteAllCmd = &cobra.Command{
 
 		profilesList := osprofiles.ListProfiles(profiler)
 		if len(profilesList) == 0 {
-			c.ExitWithMessage("No profiles found to delete", cli.ExitCodeSuccess)
+			c.Println("No profiles found to delete.")
 			return
 		}
 
 		cli.ConfirmAction(cli.ActionDelete, fmt.Sprintf("all profiles from %s", driverType), config.AppName, force)
 
+		c.Printf("Deleting %d profiles from %s...", len(profilesList), driverType)
 		if err := profiler.DeleteAllProfiles(); err != nil {
 			c.ExitWithError("Failed to delete all profiles", err)
 		}
-		c.ExitWithMessage(fmt.Sprintf("Deleted %d profiles from %s", len(profilesList), driverType), cli.ExitCodeSuccess)
+		c.Println("ok")
 	},
 }
 
@@ -210,10 +203,11 @@ var profileSetDefaultCmd = &cobra.Command{
 		profileName := args[0]
 		profiler := newProfilerFromCLI(c)
 
+		c.Printf("Setting profile %s as default...", profileName)
 		if err := osprofiles.SetDefaultProfile(profiler, profileName); err != nil {
 			c.ExitWithError("Failed to set default profile", err)
 		}
-		c.ExitWithMessage(fmt.Sprintf("Set profile %s as default", profileName), cli.ExitCodeSuccess)
+		c.Println("ok")
 	},
 }
 
@@ -243,36 +237,12 @@ var profileSetEndpointCmd = &cobra.Command{
 			c.ExitWithError("Failed to set endpoint", err)
 		}
 
+		c.Printf("Setting endpoint for profile %s... ", profileName)
 		p.Endpoint = u.String()
 		if err := store.Save(); err != nil {
 			c.ExitWithError("Failed to set endpoint", err)
 		}
-		c.ExitWithMessage(fmt.Sprintf("Set endpoint %s for profile %s ", endpoint, profileName), cli.ExitCodeSuccess)
-	},
-}
-
-var profileSetOutputFormatCmd = &cobra.Command{
-	Use:   "set-output-format <profile> <format>",
-	Short: "Set the preferred output format for a profile",
-	Args:  cobra.ExactArgs(2), //nolint:mnd // ignore argument as magic number, self-explanatory
-	Run: func(cmd *cobra.Command, args []string) {
-		c := cli.New(cmd, args)
-		profileName := args[0]
-		format := args[1]
-
-		if !profiles.IsValidOutputFormat(format) {
-			c.ExitWithError("Output format must be either 'styled' or 'json'", nil)
-		}
-
-		store, err := profiles.LoadOtdfctlProfileStore(profiles.ProfileDriverFileSystem, profileName)
-		if err != nil {
-			cli.ExitWithError("Failed to load profile", err)
-		}
-
-		if err := store.SetOutputFormat(format); err != nil {
-			c.ExitWithError("Failed to set output format", err)
-		}
-		c.ExitWithSuccess(fmt.Sprintf("Set output format to %s for profile %s", format, profileName))
+		c.Println("ok")
 	},
 }
 
@@ -287,7 +257,7 @@ var profileMigrateCmd = &cobra.Command{
 		if err != nil {
 			c.ExitWithError("Failed to migrate", err)
 		}
-		c.ExitWithMessage("Migration complete.", cli.ExitCodeSuccess)
+		c.Printf("Migration complete.")
 	},
 }
 
@@ -306,17 +276,17 @@ var profileKeyringCleanupCmd = &cobra.Command{
 			c.ExitWithError("Failed to initialize keyring profile store", err)
 		}
 
+		c.Println("Cleaning up keyring profile store...")
 		if err := keyringProfiler.Cleanup(force); err != nil {
 			cli.ExitWithError(profiles.ErrCleaningUpProfiles.Error(), err)
 		}
-		c.ExitWithMessage("Keyring profile store cleanup complete", cli.ExitCodeSuccess)
+		c.Println("Keyring profile store cleanup complete.")
 	},
 }
 
 func InitProfileCommands() {
 	profileCreateCmd.Flags().Bool("set-default", false, "Set the profile as default")
 	profileCreateCmd.Flags().Bool("tls-no-verify", false, "Disable TLS verification")
-	profileCreateCmd.Flags().String("output-format", profiles.OutputStyled, "Preferred output format: styled or json")
 
 	profileListCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
 	profileGetCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
@@ -335,7 +305,6 @@ func InitProfileCommands() {
 	profileCmd.AddCommand(profileDeleteAllCmd)
 	profileCmd.AddCommand(profileSetDefaultCmd)
 	profileCmd.AddCommand(profileSetEndpointCmd)
-	profileCmd.AddCommand(profileSetOutputFormatCmd)
 	profileCmd.AddCommand(profileMigrateCmd)
 	profileCmd.AddCommand(profileKeyringCleanupCmd)
 

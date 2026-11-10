@@ -574,6 +574,7 @@ jobs:
         with:
           use-local-source: "true"
         env:
+          GOWORK: off
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
 

@@ -69,6 +69,9 @@ var _ http.RoundTripper = (*DPoPTransport)(nil)
 // RoundTrip implements http.RoundTripper, adding DPoP proofs to requests.
 func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.DPoPKey == nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
 		return nil, errors.New("DPoP transport has no signing key")
 	}
 
@@ -83,32 +86,51 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Avoid modifying the original
 	req2 := cloneRequest(req)
+	// The transport owns the body even when authentication fails before Base runs.
+	sent := false
+	defer func() {
+		if !sent && req2.Body != nil {
+			_ = req2.Body.Close()
+		}
+	}()
+
+	isTokenRequest := t.isTokenEndpointRequest(req2.URL)
+	var credential AccessTokenCredential
+	if !isTokenRequest && t.TokenSource != nil {
+		var err error
+		credential, err = t.resourceCredential(req2.Context(), base)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get access token: %w", err)
+		}
+	}
+	usesDPoP := isTokenRequest || credential.Type == TokenTypeDPoP || t.TokenSource == nil
 
 	// Buffer the body and install GetBody on the clone so a DPoP-Nonce retry
 	// can replay it. ConnectRPC/gRPC clients set Body and ContentLength but
 	// not GetBody, so without this the retry path would send an empty body
 	// against a non-zero ContentLength and net/http would abort the request.
-	if err := bufferRequestBody(req2); err != nil {
-		return nil, err
+	if usesDPoP && req2.GetBody == nil {
+		if err := bufferRequestBody(req2); err != nil {
+			return nil, err
+		}
 	}
-
-	isTokenRequest := t.isTokenEndpointRequest(req2.URL)
 
 	origin := getOrigin(req2.URL)
 	nonce := t.getCachedNonce(origin)
 
-	if err := t.addDPoPProof(req2, base, nonce, isTokenRequest); err != nil {
+	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential); err != nil {
 		return nil, fmt.Errorf("failed to add DPoP proof: %w", err)
 	}
 
+	sent = true
 	resp, err := base.RoundTrip(req2)
 	if err != nil {
 		return resp, err
 	}
 
 	// Handle DPoP-Nonce challenge (RFC 9449 §8).
-	if resp.StatusCode == http.StatusUnauthorized ||
-		(resp.StatusCode == http.StatusBadRequest && resp.Header.Get("DPoP-Nonce") != "") {
+	if usesDPoP && (resp.StatusCode == http.StatusUnauthorized ||
+		(resp.StatusCode == http.StatusBadRequest && resp.Header.Get("DPoP-Nonce") != "")) {
 		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
 		if err != nil {
 			return nil, err
@@ -119,7 +141,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	// Handle DPoP-Nonce updates (RFC 9449 §8.2).
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if usesDPoP && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		if newNonce := resp.Header.Get("DPoP-Nonce"); newNonce != "" {
 			t.setCachedNonce(origin, newNonce)
 		}
@@ -167,7 +189,21 @@ func (t *DPoPTransport) retryWithNonce(
 		req3.Body = body
 	}
 
-	if err := t.addDPoPProof(req3, base, newNonce, isTokenRequest); err != nil {
+	var credential AccessTokenCredential
+	if !isTokenRequest && t.TokenSource != nil {
+		var err error
+		credential, err = t.resourceCredential(req3.Context(), base)
+		if err != nil {
+			if req3.Body != nil {
+				_ = req3.Body.Close()
+			}
+			return nil, false, fmt.Errorf("failed to get access token for nonce retry: %w", err)
+		}
+	}
+	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential); err != nil {
+		if req3.Body != nil {
+			_ = req3.Body.Close()
+		}
 		return nil, false, fmt.Errorf("failed to add DPoP proof with nonce: %w", err)
 	}
 
@@ -177,22 +213,11 @@ func (t *DPoPTransport) retryWithNonce(
 
 // addDPoPProof generates and adds DPoP proof to the request headers.
 //
-// For a resource request it first resolves the access token and its scheme. A
-// bearer token source (one whose AccessTokenCredentialSource reports a non-DPoP
-// scheme) short-circuits to Authorization: Bearer with no proof, mirroring the
-// credential interceptor so it is not forced onto DPoP. Otherwise the proof is
-// bound to the token via the ath claim and Authorization: DPoP is set.
-func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, nonce string, isTokenRequest bool) error {
-	// Resolve the resource-request credential up front so a bearer token source
-	// short-circuits before any proof is built. Token-endpoint requests skip this:
-	// they always carry a proof (no ath) regardless of the eventual token scheme.
-	var credential AccessTokenCredential
+// The caller resolves resource credentials before handling the request body.
+// A Bearer credential sets Authorization without a proof. DPoP credentials
+// produce a proof bound to the access token via the ath claim.
+func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential) error {
 	if !isTokenRequest && t.TokenSource != nil {
-		var err error
-		credential, err = t.resourceCredential(req.Context(), base)
-		if err != nil {
-			return fmt.Errorf("failed to get access token: %w", err)
-		}
 		if credential.Type != TokenTypeDPoP {
 			// A bearer token is not sender-constrained: send no ath and no proof.
 			// Drop any inherited DPoP header so a bearer request never carries a
@@ -402,21 +427,52 @@ func bufferRequestBody(req *http.Request) error {
 	if req.Body == nil || req.Body == http.NoBody || req.ContentLength < 0 {
 		return nil
 	}
-	buf := bytes.NewBuffer(make([]byte, 0, req.ContentLength))
-	_, readErr := buf.ReadFrom(req.Body)
+	var data []byte
+	var readErr error
+	if req.ContentLength > 0 {
+		data, readErr = readKnownLengthBody(req.Body, req.ContentLength)
+	} else {
+		data, readErr = io.ReadAll(req.Body)
+	}
 	closeErr := req.Body.Close()
+	req.Body = http.NoBody
 	if readErr != nil {
 		return fmt.Errorf("buffering DPoP request body: %w", readErr)
 	}
 	if closeErr != nil {
 		return fmt.Errorf("closing DPoP request body: %w", closeErr)
 	}
-	data := buf.Bytes()
 	req.Body = io.NopCloser(bytes.NewReader(data))
 	req.GetBody = func() (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader(data)), nil
 	}
 	return nil
+}
+
+// readKnownLengthBody avoids bytes.Buffer growth just to discover EOF after an
+// exact-length read. An understated ContentLength still preserves the full body.
+func readKnownLengthBody(body io.Reader, length int64) ([]byte, error) {
+	data := make([]byte, length)
+	n, err := io.ReadFull(body, data)
+	data = data[:n]
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return data, nil
+	}
+	if err != nil {
+		return data, err
+	}
+	var next [1]byte
+	extra, err := io.ReadFull(body, next[:])
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	if err != nil || extra == 0 {
+		return data, err
+	}
+	buf := bytes.NewBuffer(data)
+	_, _ = buf.Write(next[:extra])
+	_, err = buf.ReadFrom(body)
+	return buf.Bytes(), err
 }
 
 // NewDPoPHTTPClient creates a new HTTP client with DPoP transport wrapping.

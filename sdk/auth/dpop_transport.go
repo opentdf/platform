@@ -194,12 +194,16 @@ func (t *DPoPTransport) retryWithNonce(
 		var err error
 		credential, err = t.resourceCredential(req3.Context(), base)
 		if err != nil {
-			_ = req3.Body.Close()
+			if req3.Body != nil {
+				_ = req3.Body.Close()
+			}
 			return nil, false, fmt.Errorf("failed to get access token for nonce retry: %w", err)
 		}
 	}
 	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential); err != nil {
-		_ = req3.Body.Close()
+		if req3.Body != nil {
+			_ = req3.Body.Close()
+		}
 		return nil, false, fmt.Errorf("failed to add DPoP proof with nonce: %w", err)
 	}
 

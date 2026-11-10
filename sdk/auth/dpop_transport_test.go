@@ -14,11 +14,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -655,6 +653,103 @@ func TestDPoPTransport_ClosesBodyOnCredentialError(t *testing.T) {
 	require.True(t, body.closed)
 }
 
+// failAfterTokenSource returns a token for the first ok calls, then err. It
+// simulates a token refresh that fails between the first attempt and a retry.
+type failAfterTokenSource struct {
+	mockTokenSource
+	ok    int
+	calls int
+}
+
+func (f *failAfterTokenSource) AccessToken(_ context.Context, _ *http.Client) (AccessToken, error) {
+	f.calls++
+	if f.calls > f.ok {
+		return "", f.err
+	}
+	return AccessToken(f.token), nil
+}
+
+func nonceChallengeBase(t *testing.T) http.RoundTripper {
+	t.Helper()
+	return roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Body != nil {
+			_, _ = io.Copy(io.Discard, r.Body)
+			_ = r.Body.Close()
+		}
+		resp := emptyResponse(r, http.StatusUnauthorized)
+		resp.Header.Set("DPoP-Nonce", "challenge")
+		return resp, nil
+	})
+}
+
+func TestDPoPTransport_RetryCredentialErrorWithoutBody(t *testing.T) {
+	ts := &failAfterTokenSource{mockTokenSource: mockTokenSource{token: "t", err: errors.New("refresh failed")}, ok: 1}
+	transport := &DPoPTransport{Base: nonceChallengeBase(t), DPoPKey: generateTestKey(t), TokenSource: ts}
+	req, err := http.NewRequest(http.MethodGet, "https://example.invalid/resource", nil)
+	require.NoError(t, err)
+	require.Nil(t, req.Body)
+	_, err = transport.RoundTrip(req)
+	require.ErrorContains(t, err, "failed to get access token for nonce retry")
+	require.ErrorContains(t, err, "refresh failed")
+}
+
+func TestDPoPTransport_RetryCredentialErrorClosesReplayBody(t *testing.T) {
+	ts := &failAfterTokenSource{mockTokenSource: mockTokenSource{token: "t", err: errors.New("refresh failed")}, ok: 1}
+	transport := &DPoPTransport{Base: nonceChallengeBase(t), DPoPKey: generateTestKey(t), TokenSource: ts}
+	req, err := http.NewRequest(http.MethodPut, "https://example.invalid/part", strings.NewReader("replayable"))
+	require.NoError(t, err)
+	var replay *trackedReadCloser
+	req.GetBody = func() (io.ReadCloser, error) {
+		replay = &trackedReadCloser{Reader: strings.NewReader("replayable")}
+		return replay, nil
+	}
+	_, err = transport.RoundTrip(req)
+	require.ErrorContains(t, err, "failed to get access token for nonce retry")
+	require.NotNil(t, replay, "retry should request a fresh body")
+	require.True(t, replay.closed)
+}
+
+func TestDPoPTransport_ClosesBodyOnBearerCredentialError(t *testing.T) {
+	ts := &mockCredentialTokenSource{mockTokenSource: mockTokenSource{err: errors.New("token unavailable")}, tokenType: TokenTypeBearer}
+	transport := &DPoPTransport{DPoPKey: generateTestKey(t), TokenSource: ts}
+	body := &trackedReadCloser{Reader: strings.NewReader("upload part")}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+	require.NoError(t, err)
+	req.Body = body
+	req.ContentLength = int64(len("upload part"))
+	_, err = transport.RoundTrip(req)
+	require.ErrorContains(t, err, "token unavailable")
+	require.True(t, body.closed)
+}
+
+func TestDPoPTransport_ClosesBodyOnProofError(t *testing.T) {
+	rawKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	// Without an alg the key cannot sign, so proof generation fails.
+	key, err := jwk.FromRaw(rawKey)
+	require.NoError(t, err)
+	transport := &DPoPTransport{DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	body := &trackedReadCloser{Reader: strings.NewReader("upload part")}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+	require.NoError(t, err)
+	req.Body = body
+	req.ContentLength = int64(len("upload part"))
+	_, err = transport.RoundTrip(req)
+	require.ErrorContains(t, err, "failed to add DPoP proof")
+	require.True(t, body.closed)
+}
+
+func TestDPoPTransport_NilKeyClosesBody(t *testing.T) {
+	transport := &DPoPTransport{}
+	body := &trackedReadCloser{Reader: strings.NewReader("upload part")}
+	req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
+	require.NoError(t, err)
+	req.Body = body
+	_, err = transport.RoundTrip(req)
+	require.Error(t, err)
+	require.True(t, body.closed)
+}
+
 func TestDPoPTransport_UsesExistingGetBody(t *testing.T) {
 	key := generateTestKey(t)
 	var calls int
@@ -722,66 +817,57 @@ func TestBufferRequestBodyLengths(t *testing.T) {
 	}
 }
 
-// BenchmarkDPoPTransportBody measures the one-shot body path used by multipart
-// clients. Run each sub-benchmark in a separate process for comparable max RSS.
-func BenchmarkDPoPTransportBody(b *testing.B) {
-	const partSize = 64 << 20
-	payload := make([]byte, partSize)
-	rawKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		b.Fatal(err)
+type errReader struct {
+	data []byte
+	err  error
+}
+
+func (r *errReader) Read(p []byte) (int, error) {
+	if len(r.data) == 0 {
+		return 0, r.err
 	}
-	key, err := jwk.FromRaw(rawKey)
-	if err != nil {
-		b.Fatal(err)
-	}
-	if err := key.Set(jwk.AlgorithmKey, jwa.ES256); err != nil {
-		b.Fatal(err)
-	}
-	base := roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		_, err := io.Copy(io.Discard, r.Body)
-		if err != nil {
-			return nil, err
-		}
-		if err := r.Body.Close(); err != nil {
-			return nil, err
-		}
-		return emptyResponse(r, http.StatusOK), nil
-	})
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+	return n, nil
+}
+
+type errCloser struct {
+	io.Reader
+	closeErr error
+	closed   bool
+}
+
+func (c *errCloser) Close() error {
+	c.closed = true
+	return c.closeErr
+}
+
+func TestBufferRequestBodyErrors(t *testing.T) {
+	readErr := errors.New("read failed")
+	closeErr := errors.New("close failed")
 	for _, tc := range []struct {
-		name   string
-		source AccessTokenSource
+		name    string
+		body    *errCloser
+		length  int64
+		wantErr error
+		wantMsg string
 	}{
-		{"bearer", &mockCredentialTokenSource{mockTokenSource: mockTokenSource{token: "token"}, tokenType: TokenTypeBearer}},
-		{"dpop", &mockCredentialTokenSource{mockTokenSource: mockTokenSource{token: "token"}, tokenType: TokenTypeDPoP}},
+		{"read error within length", &errCloser{Reader: &errReader{data: []byte("ab"), err: readErr}}, 5, readErr, "buffering DPoP request body"},
+		{"read error past length", &errCloser{Reader: &errReader{data: []byte("abc"), err: readErr}}, 2, readErr, "buffering DPoP request body"},
+		{"read error unknown length", &errCloser{Reader: &errReader{data: []byte("abc"), err: readErr}}, 0, readErr, "buffering DPoP request body"},
+		{"close error", &errCloser{Reader: strings.NewReader("abc"), closeErr: closeErr}, 3, closeErr, "closing DPoP request body"},
 	} {
-		b.Run(tc.name, func(b *testing.B) {
-			transport := &DPoPTransport{Base: base, DPoPKey: key, TokenSource: tc.source}
-			b.SetBytes(partSize)
-			b.ReportAllocs()
-			b.ResetTimer()
-			for range b.N {
-				req, err := http.NewRequest(http.MethodPut, "https://storage.invalid/part", nil)
-				if err != nil {
-					b.Fatal(err)
-				}
-				req.Body = io.NopCloser(bytes.NewReader(payload))
-				req.ContentLength = partSize
-				resp, err := transport.RoundTrip(req)
-				if err != nil {
-					b.Fatal(err)
-				}
-				_ = resp.Body.Close()
-			}
-			var usage syscall.Rusage
-			if err := syscall.Getrusage(syscall.RUSAGE_SELF, &usage); err != nil {
-				b.Fatal(err)
-			}
-			peakRSS := float64(usage.Maxrss)
-			if runtime.GOOS == "linux" {
-				peakRSS *= 1024
-			}
-			b.ReportMetric(peakRSS, "process-peak-RSS-B")
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost, "https://example.com", nil)
+			require.NoError(t, err)
+			req.Body = tc.body
+			req.ContentLength = tc.length
+			err = bufferRequestBody(req)
+			require.ErrorIs(t, err, tc.wantErr)
+			require.ErrorContains(t, err, tc.wantMsg)
+			require.True(t, tc.body.closed)
+			require.Equal(t, http.NoBody, req.Body)
+			require.Nil(t, req.GetBody)
 		})
 	}
 }

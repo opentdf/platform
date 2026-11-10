@@ -35,16 +35,11 @@ jobs:
       pull-requests: read
     strategy:
       matrix:
+        # This maintenance branch publishes only the legacy otdfctl module.
+        # The surrounding platform snapshot is retained for repository and
+        # release automation compatibility, not as a maintained release line.
         directory:
-          - examples
           - otdfctl
-          - sdk
-          - service
-          - lib/ocrypto
-          - lib/fixtures
-          - lib/flattening
-          - lib/identifier
-          - tests-bdd
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -176,6 +171,7 @@ jobs:
           delete: true
 
   integration:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     permissions:
       contents: read
     name: integration tests
@@ -253,6 +249,7 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     permissions:
       contents: read
     name: benchmark tests
@@ -407,7 +404,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent + '\n');
 
   comment-benchmark:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && github.base_ref != 'release/otdfctl/v0.27'
     permissions:
       contents: read
       pull-requests: write
@@ -462,6 +459,7 @@ jobs:
           fi
 
   image:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     permissions:
       contents: read
     name: image build
@@ -480,6 +478,7 @@ jobs:
           push: false
 
   platform-xtest:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     permissions:
       contents: read
       packages: read
@@ -492,6 +491,7 @@ jobs:
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
   tests-bdd:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -577,7 +577,7 @@ jobs:
 
   buflint:
     needs: changes
-    if: needs.changes.outputs.proto == 'true' || github.event_name != 'pull_request'
+    if: (needs.changes.outputs.proto == 'true' || github.event_name != 'pull_request') && github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27'
     permissions:
       contents: read
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -647,6 +647,7 @@ jobs:
         run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
 
   license:
+    if: ${{ github.base_ref != 'release/otdfctl/v0.27' && github.ref != 'refs/heads/release/otdfctl/v0.27' }}
     permissions:
       contents: read
     name: license check

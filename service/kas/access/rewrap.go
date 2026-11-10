@@ -1395,6 +1395,15 @@ func (p *Provider) auditRewrapOutcomes(
 }
 
 func (p *Provider) recordRewrapAuditEvent(ctx context.Context, result audit.ActionResult, params audit.RewrapAuditEventParams) {
+	if result != audit.ActionResultSuccess &&
+		params.FailureReason != rewrapReasonPolicyDenied &&
+		params.FailureReason != rewrapReasonAuthzRejected {
+		p.Logger.WarnContext(ctx, "rewrap failed",
+			slog.String("failure_reason", params.FailureReason),
+			slog.String("rewrap_outcome", result.String()),
+			slog.String("kao_id", params.KAOID),
+			slog.String("policy_id", params.PolicyID))
+	}
 	if auditErr := p.Logger.Audit.Rewrap(ctx, result, params); auditErr != nil {
 		p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 			slog.String("kao_id", params.KAOID),

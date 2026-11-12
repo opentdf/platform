@@ -218,7 +218,7 @@ func (s *AuthSuite) Test_ConnectAuthN_TrustedOrigins() {
 }
 
 // With trusted origins configured, the HTTP handler ignores the request's
-// Origin header and Host/TLS state when building the expected htu.
+// Host/TLS state (and the Origin header) when building the expected htu.
 func (s *AuthSuite) Test_MuxHandler_TrustedOrigins() {
 	a := s.newAuthWithDPoPConfig(DPoPConfig{
 		Enforce:        true,
@@ -310,4 +310,35 @@ func TestDPoPOrigins(t *testing.T) {
 	assert.Equal(t, []string{"https://req.example"}, a.dpopOrigins("https://req.example"))
 	a.dpopTrustedOrigins = []string{trustedOrigin}
 	assert.Equal(t, []string{trustedOrigin}, a.dpopOrigins("https://req.example"))
+}
+
+// The HTTP handler never uses the Origin request header: it names the calling
+// page, not this server. Without trusted origins the expected htu comes from
+// the request Host and TLS state only.
+func (s *AuthSuite) Test_MuxHandler_IgnoresOriginHeader() {
+	a := s.newAuthWithDPoPConfig(DPoPConfig{Enforce: true, StrictHTU: false})
+	c := s.newDPoPBoundCredential()
+	const path = "/attributes/example/value"
+
+	newReq := func(origin string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, trustedOrigin+path, nil)
+		r.TLS = &tls.ConnectionState{}
+		if origin != "" {
+			r.Header.Set("Origin", origin)
+		}
+		return r
+	}
+
+	withoutOrigin := s.muxReceiverInfo(a, newReq(""))
+	s.Equal([]string{trustedOrigin + path}, withoutOrigin.u)
+
+	for _, origin := range []string{"https://app.example.com", "https://other.example.com", "null"} {
+		s.Run(origin, func() {
+			ri := s.muxReceiverInfo(a, newReq(origin))
+			s.Equal(withoutOrigin.u, ri.u, "Origin header must not change the expected htu")
+			s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodGet, trustedOrigin+path)))
+			err := s.checkProof(a, c, ri, s.proof(c, http.MethodGet, origin+path))
+			s.Require().Error(err)
+		})
+	}
 }

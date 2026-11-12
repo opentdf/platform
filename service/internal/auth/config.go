@@ -79,8 +79,8 @@ type DPoPConfig struct {
 	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
 	// TrustedOrigins lists the public origins (scheme://host[:port]) that
 	// clients use to reach this server. When set, the origin of a full-URL htu
-	// must be one of them and the request's Origin and Host headers are not
-	// consulted. When empty, the expected origin is taken from the request.
+	// must be one of them and the request's Host is not consulted. When empty,
+	// the expected origin is taken from the request's Host and TLS state.
 	TrustedOrigins []string `mapstructure:"trusted_origins" json:"trusted_origins"`
 }
 

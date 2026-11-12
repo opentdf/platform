@@ -428,12 +428,10 @@ func originFromHost(host string, secure bool) string {
 }
 
 // httpRequestOrigin returns the origin of a plain HTTP request as seen by this
-// server: the Origin header when present, otherwise the Host header with the
-// scheme of the inbound connection.
+// server: its Host with the scheme of the inbound connection. The Origin
+// header is deliberately ignored; it identifies the calling page, not this
+// server.
 func httpRequestOrigin(r *http.Request) string {
-	if origin := r.Header.Get("Origin"); origin != "" {
-		return origin
-	}
 	return originFromHost(r.Host, r.TLS != nil)
 }
 

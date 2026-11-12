@@ -1,11 +1,85 @@
 package ocrypto
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestECPublicKeyCompression(t *testing.T) {
+	for _, tc := range []struct {
+		curve elliptic.Curve
+		mode  ECCMode
+	}{
+		{elliptic.P224(), ECCModeSecp256k1}, // Decompression also supports P-224.
+		{elliptic.P256(), ECCModeSecp256r1},
+		{elliptic.P384(), ECCModeSecp384r1},
+		{elliptic.P521(), ECCModeSecp521r1},
+	} {
+		t.Run(tc.curve.Params().Name, func(t *testing.T) {
+			for _, negateY := range []bool{false, true} {
+				x, y := tc.curve.Params().Gx, tc.curve.Params().Gy
+				if negateY {
+					y = new(big.Int).Sub(tc.curve.Params().P, y)
+				}
+				coordinateHexSize := 2 * ((tc.curve.Params().BitSize + 7) / 8)
+				uncompressed, err := hex.DecodeString(fmt.Sprintf("04%0*x%0*x", coordinateHexSize, x, coordinateHexSize, y))
+				require.NoError(t, err)
+				compressed := elliptic.MarshalCompressed(tc.curve, x, y)
+				pub, err := UncompressECPubKey(tc.curve, compressed)
+				require.NoError(t, err)
+				encoded, err := pub.Bytes()
+				require.NoError(t, err)
+				require.Equal(t, uncompressed, encoded)
+
+				if tc.curve != elliptic.P224() {
+					encoded, err = CompressedECPublicKey(tc.mode, *pub)
+					require.NoError(t, err)
+					require.Equal(t, compressed, encoded)
+				}
+			}
+
+			x, y := tc.curve.Params().Gx, tc.curve.Params().Gy
+			compressed := elliptic.MarshalCompressed(tc.curve, x, y)
+			invalidPoint := make([]byte, len(compressed))
+			invalidPoint[0] = 2
+			for i := 1; i < len(invalidPoint); i++ {
+				invalidPoint[i] = 0xff // x is outside the curve's field.
+			}
+			for _, invalid := range [][]byte{nil, {0}, compressed[:len(compressed)-1], append([]byte{4}, compressed[1:]...), invalidPoint} {
+				pub, err := UncompressECPubKey(tc.curve, invalid)
+				require.Error(t, err)
+				require.Nil(t, pub)
+			}
+		})
+	}
+}
+
+func TestCompressedECPublicKeyInvalidKey(t *testing.T) {
+	keyPair, err := NewECKeyPair(ECCModeSecp256r1)
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+		pub  ecdsa.PublicKey
+	}{
+		{"unsupported mode", ECCModeSecp256k1, keyPair.PrivateKey.PublicKey},
+		{"mismatched curve", ECCModeSecp384r1, keyPair.PrivateKey.PublicKey},
+		{"unsupported key curve", ECCModeSecp256r1, ecdsa.PublicKey{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			compressed, err := CompressedECPublicKey(tc.mode, tc.pub)
+			require.Error(t, err)
+			require.Nil(t, compressed)
+		})
+	}
+}
 
 func TestECKeyPair(t *testing.T) {
 	for _, modeGood := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {

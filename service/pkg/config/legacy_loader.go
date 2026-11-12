@@ -42,6 +42,7 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	v.SetDefault("logger.trace_correlation", true)
 	v.SetDefault("logger.audit_timeout", "5s")
 	v.SetDefault("server.http.trustedProxies", []string{})
+	v.SetDefault("server.auth.dpop.trusted_origins", []string{})
 
 	// Environment variable settings
 	v.SetEnvPrefix(key)

@@ -2,6 +2,10 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
@@ -73,13 +77,53 @@ type DPoPConfig struct {
 	// (scheme + host). When false (default), a path-only htu is accepted as
 	// long as the path matches, easing SDK skew during rollout.
 	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
+	// TrustedOrigins lists the public origins (scheme://host[:port]) that
+	// clients use to reach this server. When set, the origin of a full-URL htu
+	// must be one of them and the request's Origin and Host headers are not
+	// consulted. When empty, the expected origin is taken from the request.
+	TrustedOrigins []string `mapstructure:"trusted_origins" json:"trusted_origins"`
 }
 
 func (c DPoPConfig) Validate() error {
 	if c.RequireNonce && c.NonceExpiration <= 0 {
 		return errors.New("auth.dpop.nonce_expiration must be positive when require_nonce is true")
 	}
+	if _, err := c.normalizedTrustedOrigins(); err != nil {
+		return err
+	}
 	return nil
+}
+
+// normalizedTrustedOrigins validates TrustedOrigins and returns each as a
+// normalized scheme://host[:port] origin, matching the normalization applied to
+// received htu values. Surrounding whitespace and empty entries are ignored.
+func (c DPoPConfig) normalizedTrustedOrigins() ([]string, error) {
+	var origins []string
+	for _, raw := range c.TrustedOrigins {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			return nil, fmt.Errorf("auth.dpop.trusted_origins: invalid origin %q: %w", raw, err)
+		}
+		scheme := strings.ToLower(u.Scheme)
+		if scheme != httpScheme && scheme != httpsScheme {
+			return nil, fmt.Errorf("auth.dpop.trusted_origins: origin %q must use the http or https scheme", raw)
+		}
+		if u.Host == "" || u.Hostname() == "" {
+			return nil, fmt.Errorf("auth.dpop.trusted_origins: origin %q must include a host", raw)
+		}
+		if u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+			return nil, fmt.Errorf("auth.dpop.trusted_origins: origin %q must be scheme://host[:port] with no path, query, fragment, or user info", raw)
+		}
+		origin := originFromHost(u.Host, scheme == httpsScheme)
+		if !slices.Contains(origins, origin) {
+			origins = append(origins, origin)
+		}
+	}
+	return origins, nil
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
@@ -101,6 +145,12 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if err := c.DPoP.Validate(); err != nil {
 		return err
+	}
+
+	if origins, _ := c.DPoP.normalizedTrustedOrigins(); c.DPoP.StrictHTU && len(origins) == 0 {
+		logger.Warn("config server.auth.dpop.strict_htu is set without server.auth.dpop.trusted_origins; " +
+			"the expected DPoP htu origin is taken from each request's Origin or Host header. " +
+			"Set server.auth.dpop.trusted_origins to the server's public origins")
 	}
 
 	return nil

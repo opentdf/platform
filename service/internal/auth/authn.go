@@ -93,6 +93,9 @@ const (
 type Authentication struct {
 	enforceDPoP   bool
 	strictDPoPHTU bool
+	// dpopTrustedOrigins, when non-empty, replaces the request-derived origin
+	// when building the acceptable htu values for a DPoP proof.
+	dpopTrustedOrigins []string
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
@@ -205,11 +208,17 @@ func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
+	trustedOrigins, err := cfg.DPoP.normalizedTrustedOrigins()
+	if err != nil {
+		return nil, err
+	}
+
 	a := &Authentication{
-		enforceDPoP:      cfg.dpopEnforced(),
-		strictDPoPHTU:    cfg.DPoP.StrictHTU,
-		logger:           logger,
-		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
+		enforceDPoP:        cfg.dpopEnforced(),
+		strictDPoPHTU:      cfg.DPoP.StrictHTU,
+		dpopTrustedOrigins: trustedOrigins,
+		logger:             logger,
+		dpopNonceManager:   newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
 		// Remember DPoP `jti` values for as long as a proof can pass the `iat`
 		// checks so a captured proof cannot be replayed.
 		dpopReplayCache: newDPoPReplayCache(cfg.dpopReplayTTL()),
@@ -521,7 +530,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		origins := []string{httpRequestOrigin(r)}
+		origins := a.dpopOrigins(httpRequestOrigin(r))
 		acceptableURIs := make([]string, 0, len(origins))
 		for _, o := range origins {
 			acceptableURIs = append(acceptableURIs, normalizeURL(o, r.URL))
@@ -940,6 +949,16 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
+// dpopOrigins returns the origins used to build the acceptable htu values for
+// a request: the configured trusted origins when set, otherwise the origins
+// derived from the request.
+func (a Authentication) dpopOrigins(requestOrigins ...string) []string {
+	if len(a.dpopTrustedOrigins) > 0 {
+		return a.dpopTrustedOrigins
+	}
+	return requestOrigins
+}
+
 // ipcServerContext returns the handler context for an in-process request: it
 // moves IPC headers into incoming metadata, reauthenticates configured routes,
 // and rehydrates the propagated auth context.
@@ -995,7 +1014,7 @@ func (a Authentication) authenticateConnect(ctx context.Context, procedure, http
 
 	log := a.logger
 
-	origins := connectRequestOrigins(header)
+	origins := a.dpopOrigins(connectRequestOrigins(header)...)
 	acceptableURIs := make([]string, 0, len(origins))
 	for _, o := range origins {
 		acceptableURIs = append(acceptableURIs, o+procedure)

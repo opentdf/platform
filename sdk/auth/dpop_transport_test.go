@@ -933,7 +933,7 @@ func TestDPoPTransport_BearerStripsInheritedProof(t *testing.T) {
 	require.NoError(t, err, "create request")
 	req.Header.Set("DPoP", "stale-proof")
 
-	require.NoError(t, transport.addDPoPProof(req, "", false, AccessTokenCredential{Token: "bearer-access-token", Type: TokenTypeBearer}), "addDPoPProof")
+	require.NoError(t, transport.addDPoPProof(req, "", false, AccessTokenCredential{Token: "bearer-access-token", Type: TokenTypeBearer}, false), "addDPoPProof")
 	assert.Empty(t, req.Header.Get("DPoP"), "inherited DPoP proof should be stripped for a bearer request")
 	assert.Equal(t, "Bearer bearer-access-token", req.Header.Get("Authorization"), "Authorization header")
 }

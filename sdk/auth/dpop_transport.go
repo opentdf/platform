@@ -57,11 +57,21 @@ type DPoPTransport struct {
 	// client's Timeout so a hung IdP cannot stall the request indefinitely.
 	tokenFetchTimeout time.Duration
 
+	// Mode selects the htu form for resource request proofs. The zero value,
+	// DPoPModeRFC9449, always signs the full request URI. Like TokenEndpoint it
+	// must not be changed after the transport is first used.
+	Mode DPoPMode
+
 	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex
 	nonceCache        map[string]string
 	cachedTokenURL    *url.URL
 	cachedTokenURLStr string
+
+	// rfc9449ByOrigin caches, per normalized origin, whether the server accepts
+	// RFC 9449 proofs. Only consulted in DPoPModeAuto.
+	styleMu         sync.RWMutex
+	rfc9449ByOrigin map[string]bool
 }
 
 var _ http.RoundTripper = (*DPoPTransport)(nil)
@@ -117,8 +127,9 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	origin := getOrigin(req2.URL)
 	nonce := t.getCachedNonce(origin)
+	legacy := usesDPoP && !isTokenRequest && t.useLegacyProof(req2.Context(), base, origin)
 
-	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential); err != nil {
+	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential, legacy); err != nil {
 		return nil, fmt.Errorf("failed to add DPoP proof: %w", err)
 	}
 
@@ -131,7 +142,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Handle DPoP-Nonce challenge (RFC 9449 §8).
 	if usesDPoP && (resp.StatusCode == http.StatusUnauthorized ||
 		(resp.StatusCode == http.StatusBadRequest && resp.Header.Get("DPoP-Nonce") != "")) {
-		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
+		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest, legacy)
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +161,23 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
+// SetServerRFC9449Support records whether the server at serverURL accepts RFC 9449
+// proofs, so DPoPModeAuto needn't discover it. Callers that have already fetched
+// the server's well-known configuration can pass ServerSupportsRFC9449 of it.
+func (t *DPoPTransport) SetServerRFC9449Support(serverURL string, supported bool) {
+	u, err := url.Parse(serverURL)
+	if err != nil || u.Host == "" {
+		return
+	}
+	origin := getOrigin(u)
+	t.styleMu.Lock()
+	defer t.styleMu.Unlock()
+	if t.rfc9449ByOrigin == nil {
+		t.rfc9449ByOrigin = make(map[string]bool)
+	}
+	t.rfc9449ByOrigin[origin] = supported
+}
+
 // retryWithNonce handles a DPoP-Nonce server challenge. It returns the retried
 // response and true when a retry was performed, or the original response and
 // false when no retry was needed.
@@ -162,7 +190,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // as-is even if it is itself a 401.
 func (t *DPoPTransport) retryWithNonce(
 	req *http.Request, base http.RoundTripper,
-	resp *http.Response, origin, nonce string, isTokenRequest bool,
+	resp *http.Response, origin, nonce string, isTokenRequest, legacy bool,
 ) (*http.Response, bool, error) {
 	newNonce := resp.Header.Get("DPoP-Nonce")
 	if newNonce == "" || newNonce == nonce {
@@ -200,7 +228,7 @@ func (t *DPoPTransport) retryWithNonce(
 			return nil, false, fmt.Errorf("failed to get access token for nonce retry: %w", err)
 		}
 	}
-	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential); err != nil {
+	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential, legacy); err != nil {
 		if req3.Body != nil {
 			_ = req3.Body.Close()
 		}
@@ -215,8 +243,9 @@ func (t *DPoPTransport) retryWithNonce(
 //
 // The caller resolves resource credentials before handling the request body.
 // A Bearer credential sets Authorization without a proof. DPoP credentials
-// produce a proof bound to the access token via the ath claim.
-func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential) error {
+// produce a proof bound to the access token via the ath claim. legacy selects
+// the step-One htu form (see legacyHTU) in place of the full request URI.
+func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential, legacy bool) error {
 	if !isTokenRequest && t.TokenSource != nil {
 		if credential.Type != TokenTypeDPoP {
 			// A bearer token is not sender-constrained: send no ath and no proof.
@@ -230,6 +259,9 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenReq
 
 	// Normalize the htu (RFC 9449 HTTP URI Normalization)
 	htu := normalizeURI(req.URL)
+	if legacy {
+		htu = legacyHTU(req)
+	}
 
 	// Build base proof claims
 	builder := jwt.NewBuilder().
@@ -305,6 +337,32 @@ func (t *DPoPTransport) resourceCredential(ctx context.Context, base http.RoundT
 		return AccessTokenCredential{}, err
 	}
 	return AccessTokenCredential{Token: token, Type: TokenTypeDPoP}, nil
+}
+
+// useLegacyProof reports whether resource proofs for origin use the legacy htu.
+// In DPoPModeAuto the answer is discovered once per origin and cached; a failed
+// discovery falls back to legacy for this request only and is retried next time.
+func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripper, origin string) bool {
+	switch t.Mode {
+	case DPoPModeRFC9449:
+		return false
+	case DPoPModeLegacy:
+		return true
+	case DPoPModeAuto:
+	}
+
+	t.styleMu.RLock()
+	supported, known := t.rfc9449ByOrigin[origin]
+	t.styleMu.RUnlock()
+	if known {
+		return !supported
+	}
+
+	supported, definitive := discoverRFC9449(ctx, base, origin)
+	if definitive {
+		t.SetServerRFC9449Support(origin, supported)
+	}
+	return !supported
 }
 
 // isTokenEndpointRequest checks if the URL matches the configured token endpoint.

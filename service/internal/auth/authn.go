@@ -93,9 +93,9 @@ const (
 type Authentication struct {
 	enforceDPoP   bool
 	strictDPoPHTU bool
-	// dpopTrustedOrigins, when non-empty, replaces the request-derived origin
+	// dpopHTUOrigins, when non-empty, replaces the request-derived origin
 	// when building the acceptable htu values for a DPoP proof.
-	dpopTrustedOrigins []string
+	dpopHTUOrigins []string
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
@@ -208,17 +208,17 @@ func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
-	trustedOrigins, err := cfg.DPoP.normalizedTrustedOrigins()
+	htuOrigins, err := cfg.DPoP.HTU.normalizedOrigins()
 	if err != nil {
 		return nil, err
 	}
 
 	a := &Authentication{
-		enforceDPoP:        cfg.dpopEnforced(),
-		strictDPoPHTU:      cfg.DPoP.StrictHTU,
-		dpopTrustedOrigins: trustedOrigins,
-		logger:             logger,
-		dpopNonceManager:   newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
+		enforceDPoP:      cfg.dpopEnforced(),
+		strictDPoPHTU:    cfg.DPoP.strictHTU(),
+		dpopHTUOrigins:   htuOrigins,
+		logger:           logger,
+		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
 		// Remember DPoP `jti` values for as long as a proof can pass the `iat`
 		// checks so a captured proof cannot be replayed.
 		dpopReplayCache: newDPoPReplayCache(cfg.dpopReplayTTL()),
@@ -428,9 +428,7 @@ func originFromHost(host string, secure bool) string {
 }
 
 // httpRequestOrigin returns the origin of a plain HTTP request as seen by this
-// server: its Host with the scheme of the inbound connection. The Origin
-// header is deliberately ignored; it identifies the calling page, not this
-// server.
+// server: its Host, with https only when this server terminated TLS itself.
 func httpRequestOrigin(r *http.Request) string {
 	return originFromHost(r.Host, r.TLS != nil)
 }
@@ -467,8 +465,9 @@ func normalizeURL(o string, u *url.URL) string {
 // matchHTU reports whether the htu claim from a DPoP JWT is acceptable.
 //
 // In strict mode the origin (scheme+host) must be present; a path-only htu is
-// rejected outright. When the origin is present it must match the origin of at
-// least one URI in acceptable (both http and https are tried).
+// rejected outright. When the origin is present the normalized htu (origin +
+// path) must equal one of the normalized URIs in acceptable; callers decide
+// which origins and schemes are acceptable.
 //
 // In loose mode a path-only htu (no scheme, no host) is accepted when its path
 // matches the path component of any URI in acceptable. When the origin is
@@ -948,11 +947,11 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 }
 
 // dpopOrigins returns the origins used to build the acceptable htu values for
-// a request: the configured trusted origins when set, otherwise the origins
+// a request: the configured htu origins when set, otherwise the origins
 // derived from the request.
 func (a Authentication) dpopOrigins(requestOrigins ...string) []string {
-	if len(a.dpopTrustedOrigins) > 0 {
-		return a.dpopTrustedOrigins
+	if len(a.dpopHTUOrigins) > 0 {
+		return a.dpopHTUOrigins
 	}
 	return requestOrigins
 }
@@ -1556,7 +1555,8 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
-			// Validate the token and create a JWT token
+			// Validate the token and create a JWT token. In-process calls are
+			// matched against their own Host; htu.origins does not apply.
 			ipcHost := header.Get("Host")
 			ri := receiverInfo{
 				u: []string{

@@ -418,6 +418,29 @@ func originFromHost(host string, secure bool) string {
 	return scheme + "://" + h
 }
 
+// httpRequestOrigin returns the origin of a plain HTTP request as seen by this
+// server: the Origin header when present, otherwise the Host header with the
+// scheme of the inbound connection.
+func httpRequestOrigin(r *http.Request) string {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		return origin
+	}
+	return originFromHost(r.Host, r.TLS != nil)
+}
+
+// connectRequestOrigins returns the candidate origins of a Connect request,
+// built from its Host header with the same normalization the SDK applies when
+// signing its proof (lowercased host, default ports stripped) so the
+// exact-string htu comparison in matchHTU succeeds. Both schemes are offered
+// because the interceptor cannot observe the wire scheme.
+func connectRequestOrigins(header http.Header) []string {
+	host := header.Get("Host")
+	return []string{
+		originFromHost(host, false),
+		originFromHost(host, true),
+	}
+}
+
 func normalizeURL(o string, u *url.URL) string {
 	ou, err := url.Parse(o)
 	if err != nil {
@@ -498,12 +521,13 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			origin = originFromHost(r.Host, r.TLS != nil)
+		origins := []string{httpRequestOrigin(r)}
+		acceptableURIs := make([]string, 0, len(origins))
+		for _, o := range origins {
+			acceptableURIs = append(acceptableURIs, normalizeURL(o, r.URL))
 		}
 		ri := receiverInfo{
-			u: []string{normalizeURL(origin, r.URL)},
+			u: acceptableURIs,
 			m: []string{r.Method},
 		}
 		log.DebugContext(
@@ -971,17 +995,13 @@ func (a Authentication) authenticateConnect(ctx context.Context, procedure, http
 
 	log := a.logger
 
-	host := header.Get("Host")
-	// Build the acceptable htu values with the same normalization the SDK
-	// applies when signing its proof (lowercased host, default ports
-	// stripped) so the exact-string htu comparison in matchHTU succeeds.
-	// Both schemes are offered because the interceptor cannot observe the
-	// wire scheme here.
+	origins := connectRequestOrigins(header)
+	acceptableURIs := make([]string, 0, len(origins))
+	for _, o := range origins {
+		acceptableURIs = append(acceptableURIs, o+procedure)
+	}
 	ri := receiverInfo{
-		u: []string{
-			originFromHost(host, false) + procedure,
-			originFromHost(host, true) + procedure,
-		},
+		u: acceptableURIs,
 		m: []string{httpMethod},
 	}
 	log.DebugContext(

@@ -118,6 +118,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Set default options
 	cfg := &config{
 		tokenExpirationBuffer: defaultTokenExpirationBuffer,
+		dpopMode:              auth.DPoPModeAuto,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
@@ -220,6 +221,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		httpClient, err = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
 		if err != nil {
 			return nil, err
+		}
+		if t, ok := httpClient.Transport.(*auth.DPoPTransport); ok {
+			t.Mode = cfg.dpopMode
+			// New fetched the platform's well-known configuration without
+			// credentials, so reuse it rather than discovering again. Only a
+			// positive answer is seeded: RFC 9728 metadata may still advertise.
+			if cfg.dpopMode == auth.DPoPModeAuto && auth.ServerSupportsRFC9449(cfg.PlatformConfiguration) {
+				t.SetServerRFC9449Support(platformEndpoint, true)
+			}
 		}
 		dpopHandledByTransport = true
 	}

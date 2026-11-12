@@ -54,6 +54,7 @@ type config struct {
 	dpopJWK                            jwk.Key
 	dpopAlgorithm                      SigningAlgorithm
 	dpopKeyPEM                         []byte
+	dpopMode                           auth.DPoPMode
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
 	customAccessTokenSource            auth.AccessTokenSource
@@ -272,6 +273,17 @@ func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
 func WithDPoPKeyPEM(pemBytes []byte) Option {
 	return func(c *config) {
 		c.dpopKeyPEM = pemBytes
+	}
+}
+
+// WithDPoPMode selects the htu form of DPoP proofs sent to platform services.
+// The default, auth.DPoPModeAuto, signs the full request URI (RFC 9449) for
+// servers that advertise support and the legacy procedure path for older servers
+// (service v0.11.x), which reject a full-URI htu. Use auth.DPoPModeRFC9449 or
+// auth.DPoPModeLegacy to skip discovery when the server's version is known.
+func WithDPoPMode(mode auth.DPoPMode) Option {
+	return func(c *config) {
+		c.dpopMode = mode
 	}
 }
 

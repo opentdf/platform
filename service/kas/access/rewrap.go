@@ -1398,7 +1398,7 @@ func (p *Provider) recordRewrapAuditEvent(ctx context.Context, result audit.Acti
 	if result != audit.ActionResultSuccess &&
 		params.FailureReason != rewrapReasonPolicyDenied &&
 		params.FailureReason != rewrapReasonAuthzRejected {
-		p.Logger.WarnContext(ctx, "rewrap failed",
+		p.Logger.ErrorContext(ctx, "rewrap failed",
 			slog.String("failure_reason", params.FailureReason),
 			slog.String("rewrap_outcome", result.String()),
 			slog.String("kao_id", params.KAOID),

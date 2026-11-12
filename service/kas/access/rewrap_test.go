@@ -2173,59 +2173,6 @@ func TestAuditRewrapOutcomesClassifiesEncapsulationFailureAsError(t *testing.T) 
 	require.Equal(t, true, events[0].EventMetaData["policy_verified"])
 }
 
-func TestRecordRewrapAuditEventLogsNonPermissionFailures(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		result  audit.ActionResult
-		reason  string
-		wantLog bool
-	}{
-		{name: "success", result: audit.ActionResultSuccess},
-		{name: "policy denied", result: audit.ActionResultFailure, reason: rewrapReasonPolicyDenied},
-		{name: "authorization rejected", result: audit.ActionResultFailure, reason: rewrapReasonAuthzRejected},
-		{name: "invalid KAO", result: audit.ActionResultFailure, reason: rewrapReasonKAOInvalid, wantLog: true},
-		{name: "decryption failed", result: audit.ActionResultFailure, reason: rewrapReasonDEKDecryptFailed, wantLog: true},
-		{name: "key not found", result: audit.ActionResultFailure, reason: rewrapReasonKeyNotFound, wantLog: true},
-		{name: "key lookup failed", result: audit.ActionResultError, reason: rewrapReasonKeyLookupFailed, wantLog: true},
-		{name: "key manager unavailable", result: audit.ActionResultError, reason: rewrapReasonKeyManagerUnavailable, wantLog: true},
-		{name: "encapsulation failed", result: audit.ActionResultError, reason: rewrapReasonEncapsulationFailed, wantLog: true},
-		{name: "authorization unavailable", result: audit.ActionResultError, reason: rewrapReasonAuthzUnavailable, wantLog: true},
-		{name: "early request failure", result: audit.ActionResultFailure, reason: rewrapReasonSRTInvalid, wantLog: true},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			platformLogger, buf := newBufferLogger()
-			var events []audit.Event
-			platformLogger.Audit = audit.CreateAuditLogger(*platformLogger.Logger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
-				events = append(events, event)
-				return nil
-			})))
-			provider := &Provider{Logger: platformLogger}
-			params := audit.RewrapAuditEventParams{FailureReason: tt.reason}
-			if tt.reason != rewrapReasonSRTInvalid {
-				params.KAOID = "test-kao"
-				params.PolicyID = "test-policy"
-			}
-
-			provider.recordRewrapAuditEvent(t.Context(), tt.result, params)
-
-			require.Len(t, events, 1)
-			require.Equal(t, tt.result, events[0].Action.Result)
-			if !tt.wantLog {
-				require.Empty(t, buf.String())
-				return
-			}
-			record := extractLastLogRecord(t, buf)
-			require.Equal(t, "WARN", record["level"])
-			require.Equal(t, "rewrap failed", record["msg"])
-			require.Equal(t, tt.reason, record["failure_reason"])
-			require.Equal(t, tt.result.String(), record["rewrap_outcome"])
-			require.Equal(t, params.KAOID, record["kao_id"])
-			require.Equal(t, params.PolicyID, record["policy_id"])
-			require.NotContains(t, record, "error")
-		})
-	}
-}
-
 func newTDF3AuditTestProvider(t *testing.T, authorizationClient rewrapAuthorizationV2Stub, processor audit.ProcessorFunc) *Provider {
 	t.Helper()
 

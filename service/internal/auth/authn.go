@@ -1373,45 +1373,38 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token; cnf.jkt=[%v], computed=[%v]", jkt, thumbprintStr)
 	}
 
-	// at this point we have the right key because its thumbprint matches the `jkt` claim
-	// in the validated access token. Time claims are checked below rather than by
-	// jwt.Parse, whose default validation rejects any `iat` ahead of server time.
-	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(headerAlg, dpopKey), jwt.WithValidate(false))
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify signature on DPoP JWT: %w", err)
-	}
-
 	now := a.now()
 	futureSkew := a.oidcConfiguration.dpopFutureIATSkew()
+	// The validated access token binds this key's thumbprint to the DPoP proof.
+	// Let jwt.Parse validate iat, exp, and nbf with the same fixed server time.
+	// RFC 9449 §11.1 allows a bounded future iat for client clock offsets; the
+	// replay cache TTL covers the resulting extended acceptance window.
+	dpopToken, err := jwt.Parse([]byte(dpopHeader),
+		jwt.WithKey(headerAlg, dpopKey),
+		jwt.WithValidate(true),
+		jwt.WithClock(jwt.ClockFunc(func() time.Time { return now })),
+		jwt.WithAcceptableSkew(futureSkew),
+	)
+	if err != nil {
+		if iatErr, invalidIAT := errors.AsType[jwt.InvalidIssuedAtError](err); invalidIAT {
+			return nil, fmt.Errorf(
+				"the DPoP JWT `iat` is %s ahead of server time, beyond the allowed clock skew of %s (server.auth.skew); check that the client clock is synchronized: %w",
+				iatErr.IssuedAt.Sub(iatErr.Now).Round(time.Millisecond), iatErr.Skew, err,
+			)
+		}
+		if errors.Is(err, jwt.ValidationError{}) {
+			return nil, fmt.Errorf("invalid time claims in DPoP JWT: %w", err)
+		}
+		return nil, fmt.Errorf("failed to verify signature on DPoP JWT: %w", err)
+	}
 
 	issuedAt, hasIssuedAt := dpopToken.IssuedAt()
 	if !hasIssuedAt || issuedAt.IsZero() {
 		return nil, errors.New("missing `iat` claim in the DPoP JWT")
 	}
 
-	// RFC 9449 §11.1: tolerate an `iat` slightly in the future to accommodate
-	// client clock offsets. The replay cache TTL (dpopReplayTTL) covers this
-	// extra window.
-	if ahead := issuedAt.Sub(now); ahead > futureSkew {
-		return nil, fmt.Errorf(
-			"the DPoP JWT `iat` is %s ahead of server time, beyond the allowed clock skew of %s (server.auth.skew); check that the client clock is synchronized",
-			ahead.Round(time.Millisecond), futureSkew,
-		)
-	}
-
 	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(now) {
 		return nil, errors.New("the DPoP JWT has expired")
-	}
-
-	// Optional `exp`/`nbf` claims are still enforced, with the same skew allowance.
-	if err := jwt.Validate(dpopToken,
-		jwt.WithClock(jwt.ClockFunc(func() time.Time { return now })),
-		jwt.WithAcceptableSkew(futureSkew),
-		jwt.WithResetValidators(true),
-		jwt.WithValidator(jwt.IsExpirationValid()),
-		jwt.WithValidator(jwt.IsNbfValid()),
-	); err != nil {
-		return nil, fmt.Errorf("invalid time claims in DPoP JWT: %w", err)
 	}
 
 	htma, ok := dpopToken.Field("htm")

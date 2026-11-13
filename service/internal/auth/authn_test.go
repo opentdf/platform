@@ -1465,37 +1465,46 @@ func (s *AuthSuite) Test_CheckToken_DPoPClockSkew_LogsSkewWithoutProof() {
 	s.NotContains(logs.String(), string(signedTok))
 }
 
-// Test_CheckToken_DPoPProofExpClaimEnforced verifies that an optional `exp`
-// claim on a DPoP proof is still enforced now that time claims are validated
-// outside jwt.Parse.
-func (s *AuthSuite) Test_CheckToken_DPoPProofExpClaimEnforced() {
+// Optional DPoP time claims use the same skew as iat during parse-time validation.
+func (s *AuthSuite) Test_CheckToken_DPoPProofOptionalTimeClaimsEnforced() {
 	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
 	headers := jws.NewHeaders()
 	s.Require().NoError(headers.Set(jws.JWKKey, dpopPublic))
 	s.Require().NoError(headers.Set(jws.TypeKey, dpopJWTType))
 
 	ath := sha256.Sum256(signedTok)
-	now := time.Now()
-	proof, err := jwt.NewBuilder().
-		Claim("htu", "/a/path").
-		Claim("htm", http.MethodPost).
-		Claim("ath", base64.RawURLEncoding.EncodeToString(ath[:])).
-		Claim("jti", "exp-claim-test").
-		IssuedAt(now).
-		Expiration(now.Add(-2 * time.Minute)). // past even with the 1m skew allowance
-		Build()
-	s.Require().NoError(err)
-	signedProof, err := jwt.Sign(proof, jwt.WithKey(jwa.RS256(), dpopKey, jws.WithProtectedHeaders(headers)))
-	s.Require().NoError(err)
+	for _, tc := range []struct {
+		name     string
+		setClaim func(*jwt.Builder, time.Time)
+		cause    error
+	}{
+		{"expired exp", func(b *jwt.Builder, now time.Time) { b.Expiration(now.Add(-2 * time.Minute)) }, jwt.TokenExpiredError{}},
+		{"future nbf", func(b *jwt.Builder, now time.Time) { b.NotBefore(now.Add(2 * time.Minute)) }, jwt.TokenNotYetValidError{}},
+	} {
+		s.Run(tc.name, func() {
+			now := time.Now()
+			builder := jwt.NewBuilder().
+				Claim("htu", "/a/path").
+				Claim("htm", http.MethodPost).
+				Claim("ath", base64.RawURLEncoding.EncodeToString(ath[:])).
+				Claim("jti", tc.name).
+				IssuedAt(now)
+			tc.setClaim(builder, now)
+			proof, err := builder.Build()
+			s.Require().NoError(err)
+			signedProof, err := jwt.Sign(proof, jwt.WithKey(jwa.RS256(), dpopKey, jws.WithProtectedHeaders(headers)))
+			s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(
-		s.T().Context(),
-		[]string{"DPoP " + string(signedTok)},
-		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
-		[]string{string(signedProof)},
-	)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "invalid time claims in DPoP JWT")
+			_, _, err = s.auth.checkToken(
+				s.T().Context(),
+				[]string{"DPoP " + string(signedTok)},
+				receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+				[]string{string(signedProof)},
+			)
+			s.Require().ErrorContains(err, "invalid time claims in DPoP JWT")
+			s.Require().ErrorIs(err, tc.cause)
+		})
+	}
 }
 
 // Test_ConnectAuthNInterceptor_PropagatesHTTPMethod verifies that the Connect

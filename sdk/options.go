@@ -276,11 +276,13 @@ func WithDPoPKeyPEM(pemBytes []byte) Option {
 	}
 }
 
-// WithDPoPMode selects the htu form of DPoP proofs sent to platform services.
-// The default, auth.DPoPModeAuto, signs the full request URI (RFC 9449) for
-// servers that advertise support and the legacy procedure path for older servers
-// (service v0.11.x), which reject a full-URI htu. Use auth.DPoPModeRFC9449 or
-// auth.DPoPModeLegacy to skip discovery when the server's version is known.
+// WithDPoPMode selects the htu form of DPoP proofs for resource requests, such
+// as those to platform services and KAS. The default, auth.DPoPModeAuto, asks
+// each origin once and signs the full request URI (RFC 9449) for servers that
+// advertise support and the legacy procedure path for older servers (service
+// releases before v0.18.0), which reject a full-URI htu. Use
+// auth.DPoPModeRFC9449 or auth.DPoPModeLegacy to skip discovery when the
+// server's version is known. It has no effect unless DPoP is enabled.
 func WithDPoPMode(mode auth.DPoPMode) Option {
 	return func(c *config) {
 		c.dpopMode = mode

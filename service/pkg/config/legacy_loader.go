@@ -37,6 +37,9 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 
 	// Default config values (non-zero)
 	v.SetDefault("server.auth.cache_refresh_interval", "15m")
+	// Register DPoP keys so AutomaticEnv reads them without a file entry.
+	v.SetDefault("server.auth.dpop.htu.strict", false)
+	v.SetDefault("server.auth.dpop.htu.origins", []string{})
 
 	// Register keys that AutomaticEnv must resolve without a file entry.
 	v.SetDefault("logger.trace_correlation", true)

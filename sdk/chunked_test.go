@@ -1017,9 +1017,9 @@ func (f *flakyArchiveWriter) WriteSegment(ctx context.Context, index int, size u
 // flakyArchiveWriterFactory returns a withChunkedArchiveWriterFactory
 // option whose archive fails the first failures writes to failIndex.
 func flakyArchiveWriterFactory(failIndex, failures int) ChunkedWriterOption {
-	return withChunkedArchiveWriterFactory(func(clock clock) zipstream.SegmentWriter {
+	return withChunkedArchiveWriterFactory(func(clock clock, opts ...zipstream.Option) zipstream.SegmentWriter {
 		return &flakyArchiveWriter{
-			SegmentWriter: defaultArchiveWriterFactory(clock),
+			SegmentWriter: defaultArchiveWriterFactory(clock, opts...),
 			failIndex:     failIndex,
 			failures:      failures,
 		}
@@ -1178,8 +1178,8 @@ func TestChunkedWriteSegmentCleansUpArchiveOnFailure(t *testing.T) {
 	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
-	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
-		archive.SegmentWriter = defaultArchiveWriterFactory(c)
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
+		archive.SegmentWriter = defaultArchiveWriterFactory(c, opts...)
 		return archive
 	}))
 
@@ -1235,8 +1235,8 @@ func TestChunkedWriteSegmentCleansUpArchiveOnFailure(t *testing.T) {
 func TestChunkedCleanupRunsBeforeReleasingIndex(t *testing.T) {
 	ctx := t.Context()
 	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
-		archive.SegmentWriter = defaultArchiveWriterFactory(c)
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
+		archive.SegmentWriter = defaultArchiveWriterFactory(c, opts...)
 		return archive
 	}))
 	inner, ok := writer.(*chunkedWriter)
@@ -1414,9 +1414,9 @@ func TestChunkedTrailerFailureFencesWriter(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
-			writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
+			writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
 				return &trailerFailArchiveWriter{
-					SegmentWriter: defaultArchiveWriterFactory(c),
+					SegmentWriter: defaultArchiveWriterFactory(c, opts...),
 					failFinalize:  tc.finalize,
 					failClose:     tc.close,
 				}
@@ -1482,9 +1482,9 @@ func (f *nonMutatingFinalizeArchiveWriter) Finalize(ctx context.Context, manifes
 func TestChunkedNonMutatingTrailerFailureKeepsWriterUsable(t *testing.T) {
 	ctx := t.Context()
 	s := newChunkedTestSDK(t)
-	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
 		return &nonMutatingFinalizeArchiveWriter{
-			SegmentWriter: defaultArchiveWriterFactory(c),
+			SegmentWriter: defaultArchiveWriterFactory(c, opts...),
 			failures:      1,
 		}
 	}))
@@ -2486,9 +2486,9 @@ func (f *cleanupFailArchiveWriter) CleanupSegment(index int) error {
 func TestChunkedCleanupFailureFencesWriter(t *testing.T) {
 	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t,
-		withChunkedArchiveWriterFactory(func(clock clock) zipstream.SegmentWriter {
+		withChunkedArchiveWriterFactory(func(clock clock, opts ...zipstream.Option) zipstream.SegmentWriter {
 			return &cleanupFailArchiveWriter{
-				SegmentWriter: defaultArchiveWriterFactory(clock),
+				SegmentWriter: defaultArchiveWriterFactory(clock, opts...),
 				failIndex:     1,
 			}
 		}))
@@ -2705,4 +2705,46 @@ type countingCipher struct {
 func (c countingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 	*c.count++
 	return c.inner.EncryptInPlace(data)
+}
+
+func TestChunkedManifestEntryName(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		opts         []ChunkedWriterOption
+		wantManifest string
+	}{
+		{name: "default is 0.manifest.json", wantManifest: "0.manifest.json"},
+		{name: "WithChunkedUnprefixedManifestName writes manifest.json", opts: []ChunkedWriterOption{WithChunkedUnprefixedManifestName()}, wantManifest: "manifest.json"},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in first)",
+			opts:         []ChunkedWriterOption{WithChunkedUnprefixedManifestName(), WithChunkedTargetMode("4.2.2")},
+			wantManifest: "0.manifest.json",
+		},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in second)",
+			opts:         []ChunkedWriterOption{WithChunkedTargetMode("4.2.2"), WithChunkedUnprefixedManifestName()},
+			wantManifest: "0.manifest.json",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			s := newChunkedTestSDK(t)
+			writer, kasBundle := newChunkedWriterForTest(ctx, t, tc.opts...)
+
+			body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+			fin, err := writer.Finalize(ctx)
+			require.NoError(t, err)
+
+			tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+			zipReader, err := zip.NewReader(bytes.NewReader(tdfBytes), int64(len(tdfBytes)))
+			require.NoError(t, err)
+
+			assertManifestName(t, zipReader.File, tc.wantManifest)
+
+			// Verify LoadTDF round-trips
+			reader, err := s.LoadTDF(bytes.NewReader(tdfBytes), WithKasAllowlist([]string{kasBundle.url}))
+			require.NoError(t, err)
+			require.NotNil(t, reader)
+		})
+	}
 }

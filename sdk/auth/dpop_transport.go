@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"golang.org/x/sync/singleflight"
 )
 
 // DPoPTransport wraps each go standard net/http RoundTripper request with DPoP (RFC 9449)
@@ -57,11 +59,27 @@ type DPoPTransport struct {
 	// client's Timeout so a hung IdP cannot stall the request indefinitely.
 	tokenFetchTimeout time.Duration
 
+	// Mode selects the htu form for resource request proofs. The zero value,
+	// DPoPModeRFC9449, always signs the full request URI. Like TokenEndpoint it
+	// must not be changed after the transport is first used.
+	Mode DPoPMode
+
+	// Logger, when set, receives debug records of DPoPModeAuto discovery. The
+	// transport logs nothing when it is nil. Like Mode it must not be changed
+	// after the transport is first used.
+	Logger *slog.Logger
+
 	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex
 	nonceCache        map[string]string
 	cachedTokenURL    *url.URL
 	cachedTokenURLStr string
+
+	// rfc9449ByOrigin caches, per normalized origin, whether the server accepts
+	// RFC 9449 proofs. Only consulted in DPoPModeAuto.
+	styleMu         sync.RWMutex
+	rfc9449ByOrigin map[string]originStyle
+	discoveries     singleflight.Group
 }
 
 var _ http.RoundTripper = (*DPoPTransport)(nil)
@@ -117,8 +135,15 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	origin := getOrigin(req2.URL)
 	nonce := t.getCachedNonce(origin)
+	legacy := false
+	if usesDPoP && !isTokenRequest {
+		var err error
+		if legacy, err = t.useLegacyProof(req2.Context(), base, origin); err != nil {
+			return nil, err
+		}
+	}
 
-	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential); err != nil {
+	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential, legacy); err != nil {
 		return nil, fmt.Errorf("failed to add DPoP proof: %w", err)
 	}
 
@@ -131,7 +156,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Handle DPoP-Nonce challenge (RFC 9449 §8).
 	if usesDPoP && (resp.StatusCode == http.StatusUnauthorized ||
 		(resp.StatusCode == http.StatusBadRequest && resp.Header.Get("DPoP-Nonce") != "")) {
-		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
+		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest, legacy)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +187,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // as-is even if it is itself a 401.
 func (t *DPoPTransport) retryWithNonce(
 	req *http.Request, base http.RoundTripper,
-	resp *http.Response, origin, nonce string, isTokenRequest bool,
+	resp *http.Response, origin, nonce string, isTokenRequest, legacy bool,
 ) (*http.Response, bool, error) {
 	newNonce := resp.Header.Get("DPoP-Nonce")
 	if newNonce == "" || newNonce == nonce {
@@ -200,7 +225,7 @@ func (t *DPoPTransport) retryWithNonce(
 			return nil, false, fmt.Errorf("failed to get access token for nonce retry: %w", err)
 		}
 	}
-	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential); err != nil {
+	if err := t.addDPoPProof(req3, newNonce, isTokenRequest, credential, legacy); err != nil {
 		if req3.Body != nil {
 			_ = req3.Body.Close()
 		}
@@ -215,8 +240,9 @@ func (t *DPoPTransport) retryWithNonce(
 //
 // The caller resolves resource credentials before handling the request body.
 // A Bearer credential sets Authorization without a proof. DPoP credentials
-// produce a proof bound to the access token via the ath claim.
-func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential) error {
+// produce a proof bound to the access token via the ath claim. legacy selects
+// the pre-RFC 9449 htu form (see legacyHTU) in place of the full request URI.
+func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential, legacy bool) error {
 	if !isTokenRequest && t.TokenSource != nil {
 		if credential.Type != TokenTypeDPoP {
 			// A bearer token is not sender-constrained: send no ath and no proof.
@@ -230,6 +256,9 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenReq
 
 	// Normalize the htu (RFC 9449 HTTP URI Normalization)
 	htu := normalizeURI(req.URL)
+	if legacy {
+		htu = legacyHTU(req)
+	}
 
 	// Build base proof claims
 	builder := jwt.NewBuilder().

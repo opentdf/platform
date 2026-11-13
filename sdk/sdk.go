@@ -118,6 +118,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Set default options
 	cfg := &config{
 		tokenExpirationBuffer: defaultTokenExpirationBuffer,
+		dpopMode:              auth.DPoPModeAuto,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
@@ -130,6 +131,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.tokenExpirationBuffer < 0 {
 		return nil, ErrTokenExpirationBufferInvalid
 	}
+
+	// Only a logger the caller injected receives DPoP discovery records.
+	dpopLogger := cfg.logger
 
 	// Set default logger if none provided
 	if cfg.logger == nil {
@@ -221,6 +225,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		if err != nil {
 			return nil, err
 		}
+		if t, ok := httpClient.Transport.(*auth.DPoPTransport); ok {
+			t.Logger = dpopLogger
+			if err := configureDPoPMode(t, cfg, platformEndpoint); err != nil {
+				return nil, err
+			}
+		}
 		dpopHandledByTransport = true
 	}
 
@@ -268,6 +278,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 	}, nil
+}
+
+// configureDPoPMode applies cfg's DPoP mode to the SDK's DPoP transport.
+func configureDPoPMode(t *auth.DPoPTransport, cfg *config, platformEndpoint string) error {
+	t.Mode = cfg.dpopMode
+	// PlatformConfiguration is the platform's well-known configuration, fetched
+	// in New or supplied with WithPlatformConfiguration, so reuse it rather than
+	// discovering again. (With a custom core connection the config comes from
+	// elsewhere, but then this transport is never used.) Only a positive answer
+	// is seeded: RFC 9728 metadata may still advertise.
+	if cfg.dpopMode != auth.DPoPModeAuto || !auth.ServerSupportsRFC9449(cfg.PlatformConfiguration) {
+		return nil
+	}
+	return t.SetServerRFC9449Support(platformEndpoint, true)
 }
 
 func IsPlatformEndpointMalformed(e string) bool {

@@ -54,6 +54,7 @@ type config struct {
 	dpopJWK                            jwk.Key
 	dpopAlgorithm                      SigningAlgorithm
 	dpopKeyPEM                         []byte
+	dpopMode                           auth.DPoPMode
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
 	customAccessTokenSource            auth.AccessTokenSource
@@ -251,6 +252,7 @@ func WithFulfillableObligationFQNs(fqns []string) Option {
 }
 
 // WithLogger returns an Option that sets a custom slog.Logger for all SDK logging.
+// DPoP server discovery logs only to a logger set here, at debug level.
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *config) {
 		c.logger = logger
@@ -272,6 +274,19 @@ func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
 func WithDPoPKeyPEM(pemBytes []byte) Option {
 	return func(c *config) {
 		c.dpopKeyPEM = pemBytes
+	}
+}
+
+// WithDPoPMode selects the htu form of DPoP proofs for resource requests, such
+// as those to platform services and KAS. The default, auth.DPoPModeAuto, asks
+// each origin once and signs the full request URI (RFC 9449) for servers that
+// advertise support and the legacy procedure path for older servers (service
+// releases before v0.18.0), which reject a full-URI htu. Use
+// auth.DPoPModeRFC9449 or auth.DPoPModeLegacy to skip discovery when the
+// server's version is known. It has no effect unless DPoP is enabled.
+func WithDPoPMode(mode auth.DPoPMode) Option {
+	return func(c *config) {
+		c.dpopMode = mode
 	}
 }
 

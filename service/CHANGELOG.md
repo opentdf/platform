@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.31.0](https://github.com/opentdf/platform/compare/service/v0.30.0...service/v0.31.0) (2026-11-13)
+
+
+### Features
+
+* **core:** export pgx pool metrics over OTLP ([#4309](https://github.com/opentdf/platform/issues/4309)) ([c94ffe3](https://github.com/opentdf/platform/commit/c94ffe30fe30ece4335f95000025555cb1eca820))
+
+
+### Bug Fixes
+
+* **authz:** preserve evaluation error codes ([#4265](https://github.com/opentdf/platform/issues/4265)) ([158f698](https://github.com/opentdf/platform/commit/158f69838f474080ebc3502cb3c22fd6e6ad9e51))
+* **core:** tolerate client clock skew on DPoP proof iat (DSPX-5486) ([#4296](https://github.com/opentdf/platform/issues/4296)) ([5784f20](https://github.com/opentdf/platform/commit/5784f202e6afa0bb58ba87f8cb12dccb7975edbe))
+
 ## [0.30.0](https://github.com/opentdf/platform/compare/service/v0.29.0...service/v0.30.0) (2026-11-03)
 
 

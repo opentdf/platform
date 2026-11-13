@@ -1,0 +1,48 @@
+{
+  "id": "pos-ecdh-hkdf-aesgcm-001",
+  "description": "ECDH-HKDF v4.4 with deterministic ephemeral keypair and fixed AES-GCM IV.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-030",
+    "KAO-C-120",
+    "KAO-C-122"
+  ],
+  "category": "positive",
+  "algorithm": "ECDH-HKDF",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "ECDH-HKDF",
+      "kas": "https://kas.example.com",
+      "kid": "ec-p256-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL1YM8Ldf6BJp4p1lQT48v63tXcSc0GEpzraq9E1ikfFy01MkIxN9NJachJIHwjry1",
+      "ephemeralKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmyNI4rfcjO2LeANqkZMPxh10nVg2\nx/+nIJFjNb/CNm8/VqRcSzI/Kr1IFJ4nHOTc8mMgYn2KMz8WGbWK1t/XbA==\n-----END PUBLIC KEY-----\n",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/ec-p256-test.priv.pem"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "ECDH-HKDF",
+      "kas": "https://kas.example.com",
+      "kid": "ec-p256-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL1YM8Ldf6BJp4p1lQT48v63tXcSc0GEpzraq9E1ikfFy01MkIxN9NJachJIHwjry1",
+      "ephemeralKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmyNI4rfcjO2LeANqkZMPxh10nVg2\nx/+nIJFjNb/CNm8/VqRcSzI/Kr1IFJ4nHOTc8mMgYn2KMz8WGbWK1t/XbA==\n-----END PUBLIC KEY-----\n",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

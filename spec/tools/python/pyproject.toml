@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "basetdf-kao"
+version = "4.4.0"
+description = "Reference validator and conformance test harness for the BaseTDF Key Access Object."
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.11"
+authors = [{ name = "OpenTDF" }]
+keywords = ["basetdf", "tdf", "kao", "conformance", "post-quantum", "ml-kem"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security :: Cryptography",
+]
+dependencies = [
+  "cryptography>=42.0",
+  "jsonschema>=4.21",
+  "pydantic>=2.6",
+  "click>=8.1",
+  "rich>=13.7",
+]
+
+[project.optional-dependencies]
+pqc = [
+  "kyber-py>=1.0",
+  "pycryptodome>=3.20",
+]
+dev = [
+  "basetdf-kao[pqc]",
+  "pytest>=8",
+  "pytest-cov>=4",
+  "ruff>=0.4",
+  "mypy>=1.9",
+  "types-jsonschema>=4.21",
+]
+
+[project.scripts]
+basetdf-kao = "basetdf_kao.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/opentdf/platform"
+Specification = "https://github.com/opentdf/platform/tree/main/spec/basetdf"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/basetdf_kao"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

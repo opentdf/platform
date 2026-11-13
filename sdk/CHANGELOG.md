@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.37.0](https://github.com/opentdf/platform/compare/sdk/v0.36.0...sdk/v0.37.0) (2026-11-13)
+
+
+### Features
+
+* **sdk:** load TDFs from HTTP(S) URLs using range requests ([#4221](https://github.com/opentdf/platform/issues/4221)) ([57f15c4](https://github.com/opentdf/platform/commit/57f15c4a9a768ce7fbe0b43c8aebc850edaf097c))
+
+
+### Bug Fixes
+
+* **sdk:** accept mlkem-wrapped key access in manifest schemas (DSPX-4388) ([#4253](https://github.com/opentdf/platform/issues/4253)) ([25a734a](https://github.com/opentdf/platform/commit/25a734a6227530b9d683e4e73e5c8dfe0f3c13ec))
+* **sdk:** avoid buffering Bearer upload bodies ([#4312](https://github.com/opentdf/platform/issues/4312)) ([f35c0ab](https://github.com/opentdf/platform/commit/f35c0ab290474313beb62ceed8965f67108279d8))
+* **sdk:** DSPX-1561 reject manifests with no key access objects ([#4302](https://github.com/opentdf/platform/issues/4302)) ([8144fb3](https://github.com/opentdf/platform/commit/8144fb36d517193a5c445cc822bd8883383f7112))
+* **sdk:** skip the segment ending at the cursor in Reader.WriteTo ([#4233](https://github.com/opentdf/platform/issues/4233)) ([55b2e14](https://github.com/opentdf/platform/commit/55b2e14805b986b38f1c0981a094745121906752))
+
+
+### Reverts
+
+* feat(sdk): load TDFs from HTTP(S) URLs using range requests ([#4221](https://github.com/opentdf/platform/issues/4221)) ([#4299](https://github.com/opentdf/platform/issues/4299)) ([4b12d8a](https://github.com/opentdf/platform/commit/4b12d8acc11e1eb547dcd35b4fc3eda83e7988fd))
+
 ## [0.36.0](https://github.com/opentdf/platform/compare/sdk/v0.35.0...sdk/v0.36.0) (2026-10-30)
 
 

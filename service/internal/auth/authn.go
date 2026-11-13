@@ -534,7 +534,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 					ctxWithAuthX,
 					"unauthenticated",
 					slog.Any("error", err),
-					slog.Any("dpop", dp),
+					slog.String("request_method", r.Method),
+					slog.Int("dpop_proof_count", len(dp)),
+					slog.Bool("dpop_nonce_required", a.dpopNonceManager.requireNonce),
+					slog.Bool("dpop_strict_htu", a.strictDPoPHTU),
 				)
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
@@ -543,7 +546,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
-				slog.Any("dpop", dp),
+				slog.String("request_method", r.Method),
+				slog.Int("dpop_proof_count", len(dp)),
+				slog.Bool("dpop_nonce_required", a.dpopNonceManager.requireNonce),
+				slog.Bool("dpop_strict_htu", a.strictDPoPHTU),
 			)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return

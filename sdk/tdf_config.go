@@ -155,9 +155,9 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
-	// maxSegmentEncryptions overrides maxAESGCMSegmentsPerDEK when non-zero.
-	// Only tests set it, through withMaxSegmentEncryptions.
-	maxSegmentEncryptions uint64
+	// sealerFactory builds the payload segment sealer. Only tests override
+	// the default, through withSegmentSealerFactory.
+	sealerFactory segmentSealerFactory
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -166,6 +166,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		defaultSegmentSize:  defaultSegmentSize,
 		inputSize:           inputSizeUnknown,
 		addDefaultAssertion: false,
+		sealerFactory:       defaultSegmentSealerFactory,
 	}
 
 	for _, o := range opt {
@@ -256,11 +257,14 @@ func WithMimeType(mimeType string) TDFOption {
 	}
 }
 
-// withMaxSegmentEncryptions lowers the AES-GCM segment encryption cap so tests
-// can reach ErrAESGCMExhausted without encrypting 2^32 segments.
-func withMaxSegmentEncryptions(n uint64) TDFOption {
+// withSegmentSealerFactory replaces the payload segment sealer; tests use it to
+// impose a small limit or observe headers. The factory must not be nil.
+func withSegmentSealerFactory(f segmentSealerFactory) TDFOption {
 	return func(c *TDFConfig) error {
-		c.maxSegmentEncryptions = n
+		if f == nil {
+			return errors.New("tdf: sealer factory must not be nil")
+		}
+		c.sealerFactory = f
 		return nil
 	}
 }

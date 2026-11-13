@@ -3,6 +3,8 @@ package security
 import (
 	"crypto/rand"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -106,6 +108,36 @@ func TestStandardCryptoDecrypt(t *testing.T) {
 		_, err = cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.ecKid), ciphertext, nil)
 		require.Error(t, err)
 	})
+}
+
+func TestStandardCryptoOpenSSLMLKEMRewrap(t *testing.T) {
+	for _, tc := range []struct {
+		size string
+		alg  string
+	}{
+		{"768", AlgorithmMLKEM768},
+		{"1024", AlgorithmMLKEM1024},
+	} {
+		t.Run(tc.size, func(t *testing.T) {
+			base := filepath.Join("..", "..", "..", "lib", "ocrypto", "testdata", "mlkem-openssl")
+			privatePath := filepath.Join(base, tc.size+"-private.pem")
+			publicPath := filepath.Join(base, tc.size+"-public.pem")
+			provider, err := NewStandardCrypto(StandardConfig{Keys: []KeyPairInfo{{
+				Algorithm: tc.alg, KID: "openssl-" + tc.size, Private: privatePath, Certificate: publicPath,
+			}}})
+			require.NoError(t, err)
+			pubPEM, err := os.ReadFile(publicPath)
+			require.NoError(t, err)
+			enc, err := ocrypto.FromPublicPEM(string(pubPEM))
+			require.NoError(t, err)
+			dek := []byte("0123456789abcdef0123456789abcdef")
+			wrapped, err := enc.Encrypt(dek)
+			require.NoError(t, err)
+			protected, err := provider.Decrypt(t.Context(), trust.KeyIdentifier("openssl-"+tc.size), wrapped, nil)
+			require.NoError(t, err)
+			require.Equal(t, dek, exportProtectedKey(t, protected))
+		})
+	}
 }
 
 func TestStandardCryptoLoadErrors(t *testing.T) {

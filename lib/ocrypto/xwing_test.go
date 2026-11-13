@@ -9,6 +9,7 @@ import (
 )
 
 func TestXWingKeyPairAndPEM(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
@@ -34,12 +35,14 @@ func TestXWingKeyPairAndPEM(t *testing.T) {
 }
 
 func TestNewKeyPairXWing(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 	assert.Equal(t, HybridXWingKey, keyPair.GetKeyType())
 }
 
 func TestXWingWrapUnwrapRoundTrip(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
@@ -53,6 +56,7 @@ func TestXWingWrapUnwrapRoundTrip(t *testing.T) {
 }
 
 func TestXWingWrapUnwrapWrongKeyFails(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 	wrongKeyPair, err := NewXWingKeyPair()
@@ -67,6 +71,7 @@ func TestXWingWrapUnwrapWrongKeyFails(t *testing.T) {
 }
 
 func TestXWingPEMDispatch(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
@@ -105,6 +110,7 @@ func TestXWingPEMDispatch(t *testing.T) {
 // TestXWingPEMShape verifies that the emitted PEM blocks carry the X-Wing
 // OID inside standard SPKI/PKCS#8 envelopes per draft-connolly-cfrg-xwing-kem-10.
 func TestXWingPEMShape(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	kp, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
@@ -130,6 +136,7 @@ func TestXWingPEMShape(t *testing.T) {
 }
 
 func TestXWingEncapsulate(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
@@ -140,6 +147,7 @@ func TestXWingEncapsulate(t *testing.T) {
 }
 
 func TestXWingEncapsulateInvalidKeySize(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	_, _, err := XWingEncapsulate([]byte("too-short"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid X-Wing public key size")

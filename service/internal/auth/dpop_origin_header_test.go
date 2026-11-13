@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 )
 
 func (s *AuthSuite) Test_MuxHandler_UsesRequestHostInsteadOfOriginHeader() {

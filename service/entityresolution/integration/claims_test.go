@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	claimsv2 "github.com/opentdf/platform/service/entityresolution/claims/v2"
@@ -381,16 +381,16 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	}
 
 	// Create JWK key
-	key, err := jwk.FromRaw(a.privateKey)
+	key, err := jwk.Import[jwk.Key](a.privateKey)
 	if err != nil {
 		return a.createUnsignedTestJWT(clientID, username, email, additionalClaims)
 	}
 
 	_ = key.Set(jwk.KeyIDKey, a.keyID)
-	_ = key.Set(jwk.AlgorithmKey, jwa.RS256)
+	_ = key.Set(jwk.AlgorithmKey, jwa.RS256())
 
 	// Sign the token
-	tokenBytes, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
+	tokenBytes, err := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key))
 	if err != nil {
 		return a.createUnsignedTestJWT(clientID, username, email, additionalClaims)
 	}

@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/gowebpki/jcs"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -233,9 +233,9 @@ func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	publicKey, err := jwk.FromRaw(privateKey.Public())
+	publicKey, err := jwk.Import[jwk.Key](privateKey.Public())
 	require.NoError(t, err)
-	_ = publicKey.Set(jwk.AlgorithmKey, jwa.RS256)
+	_ = publicKey.Set(jwk.AlgorithmKey, jwa.RS256())
 
 	tok := jwt.New()
 	_ = tok.Set(kAssertionHash, "testhash")
@@ -244,7 +244,7 @@ func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
 	headers := jws.NewHeaders()
 	_ = headers.Set(jws.JWKKey, publicKey)
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey, jws.WithProtectedHeaders(headers)))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), privateKey, jws.WithProtectedHeaders(headers)))
 	require.NoError(t, err)
 
 	assertion := Assertion{

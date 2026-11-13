@@ -6,15 +6,16 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/sdk/httputil"
 )
 
@@ -114,7 +115,11 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 		if err != nil {
 			return nil, fmt.Errorf("error setting the type on the DPoP token: %w", err)
 		}
-		err = headers.Set(jws.AlgorithmKey, key.Algorithm())
+		alg, ok := key.Algorithm()
+		if !ok {
+			return nil, errors.New("DPoP key has no signature algorithm")
+		}
+		err = headers.Set(jws.AlgorithmKey, alg)
 		if err != nil {
 			return nil, fmt.Errorf("error setting the algorithm on the DPoP token: %w", err)
 		}
@@ -139,7 +144,7 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 			return nil, fmt.Errorf("error creating dpop jwt: %w", err)
 		}
 
-		signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(key.Algorithm(), key, jws.WithProtectedHeaders(headers)))
+		signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
 		if err != nil {
 			return nil, fmt.Errorf("error signing dpop jwt: %w", err)
 		}

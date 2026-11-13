@@ -14,10 +14,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/httputil"
@@ -29,10 +29,10 @@ func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key)
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err, "error generating key")
 
-	key, err := jwk.FromRaw(privateKey)
+	key, err := jwk.Import[jwk.Key](privateKey)
 	require.NoError(t, err, "error getting raw key")
 
-	err = key.Set(jwk.AlgorithmKey, jwa.RS256)
+	err = key.Set(jwk.AlgorithmKey, jwa.RS256())
 	require.NoError(t, err, "error setting the algorithm on the JWK")
 
 	ts := DPoPFakeTokenSource{
@@ -52,7 +52,9 @@ func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key)
 func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []string, key jwk.Key) {
 	assert.ElementsMatch(t, accessToken, []string{"DPoP thisisafakeaccesstoken"})
 	require.Len(t, dpopToken, 1, "incorrect dpop token headers")
-	alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
+	keyAlg, present := key.Algorithm()
+	assert.True(t, present, "key has no algorithm")
+	alg, ok := keyAlg.(jwa.SignatureAlgorithm)
 	assert.True(t, ok, "got a bad signing algorithm")
 
 	thisDpopToken := dpopToken[0]
@@ -63,7 +65,7 @@ func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []st
 	require.Len(t, parsedSignature.Signatures(), 1, "incorrect number of signatures")
 
 	sig := parsedSignature.Signatures()[0]
-	tokenKey, ok := sig.ProtectedHeaders().Get("jwk")
+	tokenKey, ok := sig.ProtectedHeaders().Field("jwk")
 	require.True(t, ok, "didn't get jwk token key")
 	tkkey, ok := tokenKey.(jwk.Key)
 	require.True(t, ok, "wrong type for jwk token key", tokenKey)
@@ -72,13 +74,13 @@ func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []st
 	ktp, _ := key.Thumbprint(crypto.SHA256)
 	assert.Equal(t, tp, ktp, "got the wrong key from the token")
 
-	parsedToken, _ := jwt.Parse([]byte(thisDpopToken), jwt.WithVerify(false))
+	parsedToken, _ := jwt.ParseInsecure([]byte(thisDpopToken))
 
-	method, ok := parsedToken.Get("htm")
+	method, ok := parsedToken.Field("htm")
 	require.True(t, ok, "error getting htm claim")
 	assert.Equal(t, http.MethodPost, method, "got a bad method")
 
-	path, ok := parsedToken.Get("htu")
+	path, ok := parsedToken.Field("htu")
 	require.True(t, ok, "error getting htu claim")
 	assert.Equal(t, "/kas.AccessService/PublicKey", path, "got a bad path")
 
@@ -86,7 +88,7 @@ func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []st
 	h.Write([]byte("thisisafakeaccesstoken"))
 	expectedHash := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 
-	ath, ok := parsedToken.Get("ath")
+	ath, ok := parsedToken.Field("ath")
 	require.True(t, ok, "error getting ath claim")
 	assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
 }
@@ -126,9 +128,9 @@ func TestAddingTokensToOutgoingRequest_Connect_BearerToken(t *testing.T) {
 func TestAddingTokensToOutgoingRequest_Connect_UsesAtomicCredential(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	key, err := jwk.FromRaw(privateKey)
+	key, err := jwk.Import[jwk.Key](privateKey)
 	require.NoError(t, err)
-	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256))
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	for _, tc := range []struct {
 		name              string

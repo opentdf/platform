@@ -34,7 +34,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
@@ -3257,7 +3257,7 @@ func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequ
 		return nil, fmt.Errorf("jwt.ParseInsecure failed: %w", err)
 	}
 
-	requestBody, found := token.Get("requestBody")
+	requestBody, found := token.Field("requestBody")
 	if !found {
 		return nil, errors.New("requestBody not found in token")
 	}

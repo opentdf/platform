@@ -23,10 +23,10 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -161,19 +161,19 @@ func (s *AuthSuite) SetupTest() {
 		panic(err)
 	}
 
-	pubKeyJWK, err := jwk.FromRaw(privKey.PublicKey)
+	pubKeyJWK, err := jwk.Import[jwk.Key](privKey.PublicKey)
 	if err != nil {
 		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
 		panic(err)
 	}
 	must(pubKeyJWK.Set(jws.KeyIDKey, "test"))
-	must(pubKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+	must(pubKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	// Create a new set with rsa public key
 	set := jwk.NewSet()
 	must(set.AddKey(pubKeyJWK))
 
-	key, err := jwk.FromRaw(privKey)
+	key, err := jwk.Import[jwk.Key](privKey)
 	must(err)
 	must(key.Set(jws.KeyIDKey, "test"))
 
@@ -473,7 +473,7 @@ func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	s.Require().NoError(err)
 
 	// Sign the token
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	// Create a minimal connect server setup to properly test the interceptor
@@ -513,7 +513,7 @@ func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError(
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client-123"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
@@ -548,7 +548,7 @@ func (s *AuthSuite) Test_MuxHandler_UsesAuthorizer() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client-123"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
@@ -590,7 +590,7 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client-123"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
@@ -625,7 +625,7 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerDecisionReturnsInternalServerEr
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client-123"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
@@ -663,7 +663,7 @@ func (s *AuthSuite) Test_MuxHandler_V2WithoutResourceContextFailsClosedForDimens
 	s.Require().NoError(tok.Set("realm_access", map[string]any{
 		"roles": []string{"standard"},
 	}))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := internalauthz.PolicyConfig{
@@ -702,7 +702,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInterna
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("azp", "client-123"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	policyCfg := new(internalauthz.PolicyConfig)
@@ -829,7 +829,8 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_ValidTokenEnrichesCon
 
 	s.Require().NoError(err)
 	s.Require().NotNil(handlerToken, "authenticated token should reach the handler context")
-	s.Equal("client-stream", handlerToken.PrivateClaims()["azp"])
+	azp, _ := handlerToken.Field("azp")
+	s.Equal("client-stream", azp)
 }
 
 func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_SetsNonceHeaderWhenRequired() {
@@ -924,14 +925,14 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("\"exp\" not satisfied", err.Error())
+	s.ErrorIs(err, jwt.TokenExpiredError{})
 }
 
 func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Error() {
@@ -1074,14 +1075,14 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
+	s.ErrorIs(err, jwt.InvalidIssuerError{})
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
@@ -1089,28 +1090,28 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", "invalid"))
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
+	s.ErrorIs(err, jwt.InvalidIssuerError{})
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("claim \"aud\" not found", err.Error())
+	s.ErrorIs(err, jwt.InvalidAudienceError{})
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
@@ -1118,14 +1119,14 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("\"aud\" not satisfied", err.Error())
+	s.ErrorIs(err, jwt.InvalidAudienceError{})
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
@@ -1134,7 +1135,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("client_id", "client1"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
@@ -1160,9 +1161,9 @@ type dpopTestCase struct {
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
@@ -1175,44 +1176,44 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
 	otherKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	otherKey, err := jwk.FromRaw(otherKeyRaw)
+	otherKey, err := jwk.Import[jwk.Key](otherKeyRaw)
 	s.Require().NoError(err)
 	otherKeyPublic, err := otherKey.PublicKey()
 	s.Require().NoError(err)
-	s.Require().NoError(otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(otherKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	tokenWithNoCNF := jwt.New()
 	s.Require().NoError(tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tokenWithNoCNF.Set("iss", s.server.URL))
 	s.Require().NoError(tokenWithNoCNF.Set("aud", "test"))
 	s.Require().NoError(tokenWithNoCNF.Set("cid", "client2"))
-	signedTokWithNoCNF, err := jwt.Sign(tokenWithNoCNF, jwt.WithKey(jwa.RS256, s.key))
+	signedTokWithNoCNF, err := jwt.Sign(tokenWithNoCNF, jwt.WithKey(jwa.RS256(), s.key))
 	s.NotNil(signedTokWithNoCNF)
 	s.Require().NoError(err)
 
 	testCases := []dpopTestCase{
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
-		{dpopKey, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "a weird type", http.MethodPost, "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
-		{dpopPublic, otherKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodGet, "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "beyond the allowed clock skew"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
+		{dpopKey, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "a weird type", http.MethodPost, "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
+		{dpopPublic, otherKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodGet, "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "beyond the allowed clock skew"},
 		{
-			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			otherKeyPublic, dpopKey, signedTok, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
 		},
 		{
-			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256(), "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"missing `cnf` claim in access token",
 		},
 	}
@@ -1243,9 +1244,9 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 	dpopPublic, err := dpopKey.PublicKey()
 	s.Require().NoError(err)
 
@@ -1258,14 +1259,14 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
 		key:              dpopPublic,
 		actualSigningKey: dpopKey,
 		accessToken:      signedTok,
-		alg:              jwa.RS256,
+		alg:              jwa.RS256(),
 		typ:              "dpop+jwt",
 		htm:              http.MethodGet,
 		htu:              "https://localhost:8080/kas.AccessService/PublicKey",
@@ -1293,9 +1294,9 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 	dpopPublic, err := dpopKey.PublicKey()
 	s.Require().NoError(err)
 
@@ -1308,14 +1309,14 @@ func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
 		key:              dpopPublic,
 		actualSigningKey: dpopKey,
 		accessToken:      signedTok,
-		alg:              jwa.RS256,
+		alg:              jwa.RS256(),
 		typ:              "dpop+jwt",
 		htm:              http.MethodPost,
 		htu:              "/a/path",
@@ -1366,7 +1367,7 @@ func (s *AuthSuite) Test_CheckToken_DPoPIssuedAtWindow() {
 				key:              dpopPublic,
 				actualSigningKey: dpopKey,
 				accessToken:      signedTok,
-				alg:              jwa.RS256,
+				alg:              jwa.RS256(),
 				typ:              dpopJWTType,
 				htm:              http.MethodPost,
 				htu:              "/a/path",
@@ -1402,7 +1403,7 @@ func (s *AuthSuite) Test_CheckToken_RejectsReplayedFutureDatedDPoP() {
 		key:              dpopPublic,
 		actualSigningKey: dpopKey,
 		accessToken:      signedTok,
-		alg:              jwa.RS256,
+		alg:              jwa.RS256(),
 		typ:              dpopJWTType,
 		htm:              http.MethodPost,
 		htu:              "/a/path",
@@ -1442,7 +1443,7 @@ func (s *AuthSuite) Test_CheckToken_DPoPClockSkew_LogsSkewWithoutProof() {
 		key:              dpopPublic,
 		actualSigningKey: dpopKey,
 		accessToken:      signedTok,
-		alg:              jwa.RS256,
+		alg:              jwa.RS256(),
 		typ:              dpopJWTType,
 		htm:              http.MethodPost,
 		htu:              "/a/path",
@@ -1484,7 +1485,7 @@ func (s *AuthSuite) Test_CheckToken_DPoPProofExpClaimEnforced() {
 		Expiration(now.Add(-2 * time.Minute)). // past even with the 1m skew allowance
 		Build()
 	s.Require().NoError(err)
-	signedProof, err := jwt.Sign(proof, jwt.WithKey(jwa.RS256, dpopKey, jws.WithProtectedHeaders(headers)))
+	signedProof, err := jwt.Sign(proof, jwt.WithKey(jwa.RS256(), dpopKey, jws.WithProtectedHeaders(headers)))
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(
@@ -1509,7 +1510,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_PropagatesHTTPMethod() {
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("azp", "client-get"))
 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
@@ -1636,9 +1637,9 @@ func TestMatchHTU(t *testing.T) {
 func (s *AuthSuite) TestDPoPEndToEnd_Connect() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopKeyRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
@@ -1650,7 +1651,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_Connect() {
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	interceptor := connect.WithInterceptors(
@@ -1695,9 +1696,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_Connect() {
 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
 	s.True(ok)
 
-	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
-	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
-	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
+	wantAlg, _ := dpopJWK.Algorithm()
+	gotAlg, _ := dpopJWKFromRequest.Algorithm()
+	s.Equal(wantAlg, gotAlg)
+	wantE, _ := dpopJWK.E()
+	gotE, _ := dpopJWKFromRequest.E()
+	s.Equal(wantE, gotE)
+	wantN, _ := dpopJWK.N()
+	gotN, _ := dpopJWKFromRequest.N()
+	s.Equal(wantN, gotN)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
@@ -1747,7 +1754,11 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 		t.Fatalf("error creating dpop jwt: %v", err)
 	}
 
-	signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(tc.actualSigningKey.Algorithm(), tc.actualSigningKey, jws.WithProtectedHeaders(headers)))
+	alg, ok := tc.actualSigningKey.Algorithm()
+	if !ok {
+		t.Fatal("DPoP signing key has no algorithm")
+	}
+	signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(alg, tc.actualSigningKey, jws.WithProtectedHeaders(headers)))
 	if err != nil {
 		t.Fatalf("error signing dpop jwt: %v", err)
 		return ""
@@ -1776,7 +1787,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("client_id", "client1"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 
 	s.NotNil(signedTok)
 	s.Require().NoError(err)

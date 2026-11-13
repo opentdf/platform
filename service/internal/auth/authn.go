@@ -225,6 +225,12 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, err
 	}
 	a.tokenVerifier = tokenVerifier
+	ready := false
+	defer func() {
+		if !ready {
+			_ = a.Close(context.WithoutCancel(ctx))
+		}
+	}()
 
 	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
@@ -314,6 +320,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register dpop nonce required", slog.Any("error", err))
 	}
 
+	ready = true
 	return a, nil
 }
 

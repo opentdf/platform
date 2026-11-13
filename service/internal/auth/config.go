@@ -83,17 +83,20 @@ type DPoPConfig struct {
 	HTU DPoPHTUConfig `mapstructure:"htu" json:"htu"`
 }
 
+// DPoPHTUConfig configures how the htu claim of a DPoP proof is matched
+// (server.auth.dpop.htu).
 type DPoPHTUConfig struct {
 	// Strict requires the htu claim in DPoP JWTs to include the origin
 	// (scheme + host); a path-only htu is rejected. When false (default), a
-	// path-only htu is accepted as long as the path matches, easing SDK skew
-	// during rollout. Requires Origins.
+	// path-only htu is accepted as long as the path matches, for clients that
+	// sign path-only htu values. Requires Origins; Validate fails otherwise.
 	Strict bool `mapstructure:"strict" json:"strict" default:"false"`
 	// Origins lists the public origins (scheme://host[:port]) that clients use
 	// to reach this server. When set, the origin of a full-URL htu must be one
 	// of them instead of being derived from the request's Host. When empty,
 	// the request's Host is trusted, so load balancers should be configured to
-	// reject (403) requests with unrecognized Host values.
+	// reject (403) requests with unrecognized Host values. In-process
+	// reauthorization is matched against its own Host and ignores Origins.
 	Origins []string `mapstructure:"origins" json:"origins"`
 }
 
@@ -117,12 +120,14 @@ func (c DPoPConfig) Validate() error {
 // strictHTU reports whether only full-URL htu values are accepted, honoring
 // the deprecated StrictHTU field.
 func (c DPoPConfig) strictHTU() bool {
-	return c.HTU.Strict || c.StrictHTU // honor deprecated StrictHTU during migration
+	return c.HTU.Strict || c.StrictHTU
 }
 
 // normalizedOrigins validates Origins and returns each as a normalized
 // scheme://host[:port] origin, matching the normalization applied to received
-// htu values. Surrounding whitespace and empty entries are ignored.
+// htu values. Surrounding whitespace and empty entries are ignored; they
+// appear when a comma-separated environment variable has spaces or a trailing
+// comma.
 func (c DPoPHTUConfig) normalizedOrigins() ([]string, error) {
 	const key = "server.auth.dpop.htu.origins"
 	var origins []string

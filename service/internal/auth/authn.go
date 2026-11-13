@@ -94,7 +94,8 @@ type Authentication struct {
 	enforceDPoP   bool
 	strictDPoPHTU bool
 	// dpopHTUOrigins, when non-empty, replaces the request-derived origin
-	// when building the acceptable htu values for a DPoP proof.
+	// when building the acceptable htu values for a DPoP proof. In-process
+	// reauthorization (ipcReauthCheck) does not use it.
 	dpopHTUOrigins []string
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
@@ -444,10 +445,9 @@ func httpRequestOrigin(r *http.Request) string {
 }
 
 // connectRequestOrigins returns the candidate origins of a Connect request,
-// built from its Host header with the same normalization the SDK applies when
-// signing its proof (lowercased host, default ports stripped) so the
-// exact-string htu comparison in matchHTU succeeds. Both schemes are offered
-// because the interceptor cannot observe the wire scheme.
+// built from its Host header with originFromHost normalization so the
+// expected values are canonical. Both schemes are offered because the
+// interceptor cannot observe the wire scheme.
 func connectRequestOrigins(header http.Header) []string {
 	host := header.Get("Host")
 	return []string{
@@ -1566,7 +1566,8 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Validate the token and create a JWT token. In-process calls are
-			// matched against their own Host; htu.origins does not apply.
+			// matched against their own Host; htu.origins does not apply, but
+			// htu.strict still does.
 			ipcHost := header.Get("Host")
 			ri := receiverInfo{
 				u: []string{

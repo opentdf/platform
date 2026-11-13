@@ -1,0 +1,26 @@
+name: Policy review unit tests
+
+on:
+  pull_request:
+    paths:
+      - '.policy.yml'
+      - '.github/tests/policy-review.test.cjs'
+      - '.github/tests/package.json'
+      - '.github/tests/package-lock.json'
+      - '.github/workflows/policy-review-unit-tests.yaml'
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install policy test dependencies
+        run: npm ci --prefix .github/tests --ignore-scripts --no-audit --no-fund
+      - name: Test policy review rules
+        run: node --test .github/tests/*.test.cjs

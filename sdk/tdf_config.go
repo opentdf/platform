@@ -309,6 +309,13 @@ func WithSystemMetadataAssertion() TDFOption {
 // WithAssertions returns an Option that add assertions to TDF.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
+		// Refuse an assertion readers would reject before any payload is
+		// written; signing checks again for writers that skip this option.
+		for _, a := range assertionList {
+			if _, _, err := writableAssertion(a); err != nil {
+				return err
+			}
+		}
 		c.assertions = append(c.assertions, assertionList...)
 		return nil
 	}

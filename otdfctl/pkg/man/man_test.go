@@ -194,7 +194,7 @@ func TestEveryDocUsesSupportedCommandFields(t *testing.T) {
 }
 
 func TestShippedDocsKeepTheirOperands(t *testing.T) {
-	for _, key := range []string{"encrypt", "decrypt", "inspect", "auth/client-credentials"} {
+	for _, key := range []string{"encrypt", "decrypt", "inspect", "validate", "auth/client-credentials"} {
 		t.Run(key, func(t *testing.T) {
 			doc := Docs.En[key]
 			require.NotNil(t, doc, "doc not found in the registry")

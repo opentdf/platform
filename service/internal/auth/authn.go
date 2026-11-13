@@ -93,6 +93,8 @@ const (
 type Authentication struct {
 	enforceDPoP   bool
 	strictDPoPHTU bool
+	// strictDPoPScheme rejects DPoP-bound tokens presented under Bearer (RFC 9449 §7.2)
+	strictDPoPScheme bool
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
@@ -208,6 +210,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	a := &Authentication{
 		enforceDPoP:      cfg.dpopEnforced(),
 		strictDPoPHTU:    cfg.DPoP.StrictHTU,
+		strictDPoPScheme: cfg.DPoP.StrictScheme,
 		logger:           logger,
 		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
 		// Remember DPoP `jti` values for as long as a proof can pass the `iat`
@@ -376,16 +379,41 @@ func (e *DPoPNonceMalformedError) Error() string {
 	return e.Message
 }
 
-// DPoPProofError marks a non-retryable DPoP proof rejection (tampered htu/htm,
-// bad ath, replayed jti, malformed nonce). Handlers translate it into a
-// WWW-Authenticate: DPoP error="invalid_dpop_proof" challenge per RFC 9449 §7.1.
+const (
+	// dpopInvalidProofChallenge answers a DPoP proof that failed validation (RFC 9449 §7.1).
+	dpopInvalidProofChallenge = `DPoP error="invalid_dpop_proof"`
+	// dpopBearerSchemeChallenge answers a DPoP-bound access token presented under
+	// the Bearer scheme (RFC 9449 §7.2). The token, not the proof, is unusable as
+	// presented, so this is invalid_token (RFC 9449 §7.1 Figure 16, RFC 6750 §3.1).
+	dpopBearerSchemeChallenge = `DPoP error="invalid_token", error_description="DPoP-bound access token requires the DPoP authorization scheme"` //nolint:gosec // WWW-Authenticate challenge text, not a credential
+)
+
+// errDPoPBoundTokenUnderBearer rejects a DPoP-bound access token presented under
+// the Bearer scheme when dpop.strict_scheme is enabled.
+var errDPoPBoundTokenUnderBearer = errors.New("DPoP-bound access token presented under Bearer Authorization scheme")
+
+// DPoPProofError marks a non-retryable DPoP rejection: a proof that failed
+// validation (tampered htu/htm, bad ath, replayed jti, malformed nonce) or, with
+// dpop.strict_scheme, a DPoP-bound token presented under the Bearer scheme.
+// Handlers translate it into the WWW-Authenticate: DPoP challenge returned by
+// challenge() per RFC 9449 §7.1.
 type DPoPProofError struct {
 	err error
+	// wwwAuthenticate overrides the default invalid_dpop_proof challenge.
+	wwwAuthenticate string
 }
 
 func (e *DPoPProofError) Error() string { return e.err.Error() }
 
 func (e *DPoPProofError) Unwrap() error { return e.err }
+
+// challenge returns the WWW-Authenticate response header value for this rejection.
+func (e *DPoPProofError) challenge() string {
+	if e.wwwAuthenticate != "" {
+		return e.wwwAuthenticate
+	}
+	return dpopInvalidProofChallenge
+}
 
 // originFromHost builds a normalized scheme://host origin from a request's Host
 // header. It parses with Hostname()/Port() rather than trimming a ":443"/":80"
@@ -523,18 +551,19 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
 			}
-			// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
+			// Other DPoP failures get a DPoP challenge (RFC 9449 §7.1). DPoP
+			// proofs are credentials, so only their count is logged.
 			var proofErr *DPoPProofError
 			if errors.As(err, &proofErr) {
 				if a.dpopNonceManager.requireNonce {
 					w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 				}
-				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+				w.Header().Set("WWW-Authenticate", proofErr.challenge())
 				log.WarnContext(
 					ctxWithAuthX,
 					"unauthenticated",
 					slog.Any("error", err),
-					slog.Any("dpop", dp),
+					slog.Int("dpop_proof_count", len(dp)),
 				)
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
@@ -543,7 +572,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
-				slog.Any("dpop", dp),
+				slog.Int("dpop_proof_count", len(dp)),
 			)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
@@ -1013,14 +1042,14 @@ func (a Authentication) authenticateConnect(ctx context.Context, procedure, http
 			connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
 			return nil, connectErr
 		}
-		// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
+		// Other DPoP failures get a DPoP challenge (RFC 9449 §7.1).
 		var proofErr *DPoPProofError
 		if errors.As(err, &proofErr) {
 			connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			if a.dpopNonceManager.requireNonce {
 				connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 			}
-			connectErr.Meta().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			connectErr.Meta().Set("WWW-Authenticate", proofErr.challenge())
 			return nil, connectErr
 		}
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
@@ -1269,8 +1298,13 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	_, tokenHasCNF := accessToken.Get("cnf")
 	if tokenHasCNF && authScheme == "Bearer" {
 		// RFC 9449 §7.1: DPoP-bound access tokens MUST be presented under the "DPoP"
-		// Authorization scheme. Warn for now to surface non-compliant SDKs; will be
-		// promoted to a hard reject in a future release once all SDKs are compliant.
+		// Authorization scheme, and §7.2 requires rejecting one received as a bearer
+		// token. dpop.strict_scheme opts into the reject; otherwise only warn, to
+		// surface non-compliant SDKs (web-sdk, DSPX-3573) without breaking them.
+		if a.strictDPoPScheme {
+			a.logger.WarnContext(ctx, "rejected DPoP-bound access token presented under Bearer Authorization scheme; per RFC 9449 §7.2 the DPoP scheme is required")
+			return nil, nil, &DPoPProofError{err: errDPoPBoundTokenUnderBearer, wwwAuthenticate: dpopBearerSchemeChallenge}
+		}
 		a.logger.WarnContext(ctx, "DPoP-bound access token presented under Bearer Authorization scheme; per RFC 9449 §7.1 the DPoP scheme is required")
 	}
 	if !tokenHasCNF && !a.enforceDPoP {

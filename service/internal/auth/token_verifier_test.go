@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -196,8 +197,27 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 func TestTokenVerifier_NilHandling(t *testing.T) {
 	authn := &Authentication{}
 	assert.Nil(t, authn.AccessTokenVerifier())
+	require.NoError(t, authn.Close(t.Context()))
 
 	var verifier *TokenVerifier
 	_, err := verifier.VerifyAccessToken(t.Context(), "token")
 	require.ErrorIs(t, err, errNilTokenVerifier)
+	require.NoError(t, verifier.Close(t.Context()))
+}
+
+func TestTokenVerifier_Close(t *testing.T) {
+	fixture := newTokenVerifierFixture(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	verifier, err := NewTokenVerifier(ctx, AuthNConfig{
+		Issuer:       fixture.server.URL,
+		Audience:     "test-audience",
+		CacheRefresh: "15m",
+	}, logger.CreateTestLogger())
+	require.NoError(t, err)
+
+	require.NoError(t, verifier.Close(t.Context()))
+	cancel()
+	require.NoError(t, verifier.Close(t.Context()))
 }

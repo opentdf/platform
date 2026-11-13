@@ -234,6 +234,12 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, err
 	}
 	a.tokenVerifier = tokenVerifier
+	ready := false
+	defer func() {
+		if !ready {
+			_ = a.Close(context.WithoutCancel(ctx))
+		}
+	}()
 
 	if len(htuOrigins) == 0 && len(cfg.DPoP.HTU.Origins) > 0 {
 		logger.Warn("config server.auth.dpop.htu.origins contains only empty entries; expected DPoP htu origins are derived from the request Host")
@@ -347,6 +353,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register dpop capabilities", slog.Any("error", err))
 	}
 
+	ready = true
 	return a, nil
 }
 

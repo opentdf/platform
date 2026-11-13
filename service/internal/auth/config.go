@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"slices"
 	"strings"
@@ -130,6 +131,10 @@ func (c DPoPHTUConfig) normalizedOrigins() ([]string, error) {
 		if raw == "" {
 			continue
 		}
+		if strings.ContainsAny(raw, ",;") || strings.Count(raw, "://") > 1 {
+			return nil, fmt.Errorf("%s: origin %q looks like several origins in one entry; "+
+				"list each origin separately (a YAML list, or a comma-separated environment variable)", key, raw)
+		}
 		u, err := url.Parse(raw)
 		if err != nil {
 			return nil, fmt.Errorf("%s: invalid origin %q: %w", key, raw, err)
@@ -140,6 +145,10 @@ func (c DPoPHTUConfig) normalizedOrigins() ([]string, error) {
 		}
 		if u.Host == "" || u.Hostname() == "" {
 			return nil, fmt.Errorf("%s: origin %q must include a host", key, raw)
+		}
+		if h := u.Hostname(); net.ParseIP(h) == nil && !isOriginHostName(h) {
+			return nil, fmt.Errorf("%s: origin %q has invalid host %q: wildcards are not supported, "+
+				"list each origin separately", key, raw, h)
 		}
 		if u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 			return nil, fmt.Errorf("%s: origin %q must be scheme://host[:port] with no path, query, fragment, or user info", key, raw)
@@ -155,6 +164,14 @@ func (c DPoPHTUConfig) normalizedOrigins() ([]string, error) {
 		}
 	}
 	return origins, nil
+}
+
+// isOriginHostName reports whether h contains only characters that can appear
+// in a host name clients connect to. url.Parse also accepts sub-delimiters
+// such as '*' or ',' in a host; an origin containing them would never match a
+// received htu.
+func isOriginHostName(h string) bool {
+	return h != "" && strings.Trim(strings.ToLower(h), "abcdefghijklmnopqrstuvwxyz0123456789.-_") == ""
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

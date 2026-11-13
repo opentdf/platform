@@ -50,6 +50,13 @@ func TestDPoPHTUConfig_NormalizedOrigins(t *testing.T) {
 		{name: "user info", in: []string{"https://user@platform.example.com"}, wantErr: true},
 		{name: "invalid port", in: []string{"https://platform.example.com:abc"}, wantErr: true},
 		{name: "ipv6 zone identifier", in: []string{"http://[fe80::1%25en0]:8080"}, wantErr: true},
+		{name: "host with underscore", in: []string{"http://kas_service:8080"}, want: []string{"http://kas_service:8080"}},
+		{name: "wildcard host", in: []string{"https://*.example.com"}, wantErr: true},
+		{name: "comma-joined origins", in: []string{"https://a.example,https://b.example"}, wantErr: true},
+		{name: "comma-joined hosts", in: []string{"https://a.example,b.example"}, wantErr: true},
+		{name: "trailing comma", in: []string{"https://a.example,"}, wantErr: true},
+		{name: "semicolon-joined hosts", in: []string{"https://a.example;b.example"}, wantErr: true},
+		{name: "space-joined origins", in: []string{"https://a.example https://b.example"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

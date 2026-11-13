@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -135,6 +136,83 @@ func TestNew_DPoPModeFromPlatformConfiguration(t *testing.T) {
 			}
 			assert.Equal(t, []string{want}, platform.htus)
 			assert.Equal(t, tt.wantDiscoveries, platform.discoveries)
+		})
+	}
+}
+
+// discoveryRecords collects DPoP discovery log records.
+type discoveryRecords struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *discoveryRecords) Enabled(context.Context, slog.Level) bool { return true }
+func (h *discoveryRecords) WithAttrs([]slog.Attr) slog.Handler       { return h }
+func (h *discoveryRecords) WithGroup(string) slog.Handler            { return h }
+func (h *discoveryRecords) Handle(_ context.Context, r slog.Record) error {
+	if r.Message != "discovered DPoP htu form" {
+		return nil
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.records = append(h.records, r)
+	return nil
+}
+
+func (h *discoveryRecords) count() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.records)
+}
+
+// DPoP discovery logs only to a logger the caller injected, never to slog.Default.
+func TestNew_DPoPDiscoveryLogsOnlyToInjectedLogger(t *testing.T) {
+	raw, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err)
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.ES256))
+	pub, err := key.PublicKey()
+	require.NoError(t, err)
+
+	global := &discoveryRecords{}
+	previous := slog.Default()
+	slog.SetDefault(slog.New(global))
+	defer slog.SetDefault(previous)
+
+	idp := map[string]any{"issuer": "https://idp.example", "token_endpoint": "https://idp.example/token"}
+	for _, tt := range []struct {
+		name         string
+		injected     *discoveryRecords
+		wantInjected int
+	}{
+		{name: "no logger"},
+		{name: "injected logger", injected: &discoveryRecords{}, wantInjected: 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, server := newDPoPPlatform(t, pub)
+			defer server.Close()
+			opts := []Option{
+				WithPlatformConfiguration(PlatformConfiguration{"idp": idp}),
+				withCustomAccessTokenSource(staticTokenSource{}),
+				WithDPoPJWK(key),
+			}
+			if tt.injected != nil {
+				opts = append(opts, WithLogger(slog.New(tt.injected)))
+			}
+			s, err := New(server.URL, opts...)
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn := s.Conn()
+			client := kasconnect.NewAccessServiceClient(conn.Client, conn.Endpoint, conn.Options...)
+			_, err = client.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+			require.NoError(t, err)
+
+			if tt.injected != nil {
+				assert.Equal(t, tt.wantInjected, tt.injected.count())
+			}
+			assert.Zero(t, global.count(), "discovery must not log to slog.Default")
 		})
 	}
 }

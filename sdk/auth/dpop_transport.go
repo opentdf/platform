@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -62,6 +63,11 @@ type DPoPTransport struct {
 	// DPoPModeRFC9449, always signs the full request URI. Like TokenEndpoint it
 	// must not be changed after the transport is first used.
 	Mode DPoPMode
+
+	// Logger, when set, receives debug records of DPoPModeAuto discovery. The
+	// transport logs nothing when it is nil. Like Mode it must not be changed
+	// after the transport is first used.
+	Logger *slog.Logger
 
 	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex

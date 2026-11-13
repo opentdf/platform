@@ -132,6 +132,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, ErrTokenExpirationBufferInvalid
 	}
 
+	// Only a logger the caller injected receives DPoP discovery records.
+	dpopLogger := cfg.logger
+
 	// Set default logger if none provided
 	if cfg.logger == nil {
 		cfg.logger = slog.Default()
@@ -223,6 +226,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 			return nil, err
 		}
 		if t, ok := httpClient.Transport.(*auth.DPoPTransport); ok {
+			t.Logger = dpopLogger
 			if err := configureDPoPMode(t, cfg, platformEndpoint); err != nil {
 				return nil, err
 			}

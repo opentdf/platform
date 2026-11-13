@@ -142,8 +142,8 @@ func (s *AuthSuite) proof(c dpopBoundCredential, htm, htu string) string {
 var errStopAfterCapture = errors.New("stop after capturing receiver info")
 
 // connectReceiverInfo returns the receiverInfo the Connect interceptor builds
-// for a request to procedure carrying the given Host header.
-func (s *AuthSuite) connectReceiverInfo(a *Authentication, procedure, host string) receiverInfo {
+// for a Rewrap request carrying the given Host header.
+func (s *AuthSuite) connectReceiverInfo(a *Authentication, host string) receiverInfo {
 	var ri receiverInfo
 	a._testCheckTokenFunc = func(_ context.Context, _ []string, got receiverInfo, _ []string) (jwt.Token, context.Context, error) {
 		ri = got
@@ -153,7 +153,7 @@ func (s *AuthSuite) connectReceiverInfo(a *Authentication, procedure, host strin
 
 	req := &authnTestRequest{
 		Request:    connect.NewRequest(&kas.RewrapRequest{}),
-		procedure:  procedure,
+		procedure:  rewrapProcPath,
 		httpMethod: http.MethodPost,
 	}
 	req.Header().Set("Authorization", "DPoP token")
@@ -213,7 +213,7 @@ func (s *AuthSuite) Test_ConnectAuthN_HTUOrigins() {
 			{"path-only proof", "platform.internal:8080", rewrapProcPath, strict},
 		} {
 			s.Run(fmt.Sprintf("strict=%t/%s", strict, tc.name), func() {
-				ri := s.connectReceiverInfo(a, rewrapProcPath, tc.host)
+				ri := s.connectReceiverInfo(a, tc.host)
 				s.Equal([]string{htuOrigin + rewrapProcPath}, ri.u)
 				err := s.checkProof(a, c, ri, s.proof(c, http.MethodPost, tc.htu))
 				if tc.wantErr {
@@ -232,11 +232,6 @@ func (s *AuthSuite) Test_ConnectAuthN_HTUOrigins() {
 // With htu origins configured, the HTTP handler ignores the request's Host and
 // TLS state when building the expected htu.
 func (s *AuthSuite) Test_MuxHandler_HTUOrigins() {
-	a := s.newAuthWithDPoPConfig(DPoPConfig{
-		Enforce: true,
-		HTU:     DPoPHTUConfig{Strict: true, Origins: []string{htuOrigin, "http://localhost:8080"}},
-	})
-	c := s.newDPoPBoundCredential()
 	const path = "/attributes/example/value"
 
 	direct := func() *http.Request {
@@ -257,32 +252,90 @@ func (s *AuthSuite) Test_MuxHandler_HTUOrigins() {
 		}
 	}
 
-	for _, tc := range []struct {
-		name    string
-		req     func() *http.Request
-		htu     string
-		wantErr bool
-	}{
-		{"direct", direct, htuOrigin + path, false},
-		{"behind proxy", proxied, htuOrigin + path, false},
-		{"second configured origin", proxied, "http://localhost:8080" + path, false},
-		{"browser origin header does not affect expected htu", withOrigin("https://app.example.com"), htuOrigin + path, false},
-		{"proof for other origin, host names that origin", withOrigin(""), "https://other.example.com" + path, true},
-		{"proof for other origin, origin header names that origin", withOrigin("https://other.example.com"), "https://other.example.com" + path, true},
-		{"proof for public origin, other path", direct, htuOrigin + "/attributes/other", true},
-	} {
-		s.Run(tc.name, func() {
-			ri := s.muxReceiverInfo(a, tc.req())
-			s.ElementsMatch([]string{htuOrigin + path, "http://localhost:8080" + path}, ri.u)
-			err := s.checkProof(a, c, ri, s.proof(c, http.MethodGet, tc.htu))
-			if tc.wantErr {
-				s.Require().Error(err)
-				s.Contains(err.Error(), "htu")
-				return
-			}
-			s.Require().NoError(err)
+	for _, strict := range []bool{true, false} {
+		a := s.newAuthWithDPoPConfig(DPoPConfig{
+			Enforce: true,
+			HTU:     DPoPHTUConfig{Strict: strict, Origins: []string{htuOrigin, "http://localhost:8080"}},
 		})
+		c := s.newDPoPBoundCredential()
+
+		for _, tc := range []struct {
+			name    string
+			req     func() *http.Request
+			htu     string
+			wantErr bool
+		}{
+			{"direct", direct, htuOrigin + path, false},
+			{"behind proxy", proxied, htuOrigin + path, false},
+			{"second configured origin", proxied, "http://localhost:8080" + path, false},
+			{"browser origin header does not affect expected htu", withOrigin("https://app.example.com"), htuOrigin + path, false},
+			{"proof for other origin, host names that origin", withOrigin(""), "https://other.example.com" + path, true},
+			{"proof for other origin, origin header names that origin", withOrigin("https://other.example.com"), "https://other.example.com" + path, true},
+			{"proof for public origin, other path", direct, htuOrigin + "/attributes/other", true},
+			{"proof for public host over http, request over tls", direct, "http://platform.example.com" + path, true},
+			{"proof for request host, request without tls", proxied, "http://platform.internal:8080" + path, true},
+			{"proof for request host over https, request without tls", proxied, "https://platform.internal:8080" + path, true},
+			{"path-only proof", proxied, path, strict},
+		} {
+			s.Run(fmt.Sprintf("strict=%t/%s", strict, tc.name), func() {
+				ri := s.muxReceiverInfo(a, tc.req())
+				s.ElementsMatch([]string{htuOrigin + path, "http://localhost:8080" + path}, ri.u)
+				err := s.checkProof(a, c, ri, s.proof(c, http.MethodGet, tc.htu))
+				if tc.wantErr {
+					s.Require().Error(err)
+					var proofErr *DPoPProofError
+					s.Require().ErrorAs(err, &proofErr)
+					s.Contains(err.Error(), "htu")
+					return
+				}
+				s.Require().NoError(err)
+			})
+		}
 	}
+}
+
+// NewAuthenticator must store the normalized origins: matching a raw padded
+// origin on the HTTP route would fall back to the request URL and so trust
+// the request Host again.
+func (s *AuthSuite) Test_DPoP_HTUOriginsAreNormalized() {
+	a := s.newAuthWithDPoPConfig(DPoPConfig{
+		Enforce: true,
+		HTU:     DPoPHTUConfig{Strict: true, Origins: []string{" HTTPS://Platform.Example.COM:443 ", ""}},
+	})
+	s.Equal([]string{htuOrigin}, a.dpopHTUOrigins)
+	c := s.newDPoPBoundCredential()
+	const path = "/attributes/example/value"
+
+	ri := s.connectReceiverInfo(a, "other.example.com")
+	s.Equal([]string{htuOrigin + rewrapProcPath}, ri.u)
+	s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, htuOrigin+rewrapProcPath)))
+	s.Require().Error(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, "https://other.example.com"+rewrapProcPath)))
+
+	req := httptest.NewRequest(http.MethodGet, "https://other.example.com"+path, nil)
+	req.TLS = &tls.ConnectionState{}
+	ri = s.muxReceiverInfo(a, req)
+	s.Equal([]string{htuOrigin + path}, ri.u)
+	s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodGet, htuOrigin+path)))
+	s.Require().Error(s.checkProof(a, c, ri, s.proof(c, http.MethodGet, "https://other.example.com"+path)))
+}
+
+// In-process reauthorization matches against the in-process Host, not the
+// configured public origins; applying them would reject every in-process
+// Rewrap reauth.
+func (s *AuthSuite) Test_IPCReauth_IgnoresHTUOrigins() {
+	a := s.newAuthWithDPoPConfig(DPoPConfig{Enforce: true, HTU: DPoPHTUConfig{Strict: true, Origins: []string{htuOrigin}}})
+	var ri receiverInfo
+	a._testCheckTokenFunc = func(_ context.Context, _ []string, got receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		ri = got
+		return nil, nil, errStopAfterCapture
+	}
+
+	header := http.Header{}
+	header.Set("Authorization", "DPoP token")
+	header.Set("Host", "ipc.local")
+	_, err := a.ipcReauthCheck(s.T().Context(), rewrapProcPath, header)
+	s.Require().Error(err)
+	s.Equal([]string{"http://ipc.local" + rewrapProcPath, "https://ipc.local" + rewrapProcPath}, ri.u)
 }
 
 // Without htu origins, the expected htu continues to come from the request so
@@ -291,7 +344,7 @@ func (s *AuthSuite) Test_DPoP_NoHTUOriginsUsesRequestOrigin() {
 	a := s.newAuthWithDPoPConfig(DPoPConfig{Enforce: true})
 	c := s.newDPoPBoundCredential()
 
-	ri := s.connectReceiverInfo(a, rewrapProcPath, "platform.example.com")
+	ri := s.connectReceiverInfo(a, "platform.example.com")
 	s.Equal([]string{"http://platform.example.com" + rewrapProcPath, htuOrigin + rewrapProcPath}, ri.u)
 	s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, htuOrigin+rewrapProcPath)))
 
@@ -362,12 +415,13 @@ func (s *AuthSuite) Test_NewAuthenticator_StrictHTUWithoutOriginsFails() {
 }
 
 // The deprecated strict_htu keeps its original behavior: it starts without
-// htu origins, rejects path-only htu values, and matches the request's Host.
+// htu origins, rejects path-only htu values, and, on Connect routes, matches
+// the request's Host.
 func (s *AuthSuite) Test_DPoP_DeprecatedStrictHTUWithoutOrigins() {
 	a := s.newAuthWithDPoPConfig(DPoPConfig{Enforce: true, StrictHTU: true})
 	c := s.newDPoPBoundCredential()
 
-	ri := s.connectReceiverInfo(a, rewrapProcPath, "platform.example.com")
+	ri := s.connectReceiverInfo(a, "platform.example.com")
 	s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, htuOrigin+rewrapProcPath)))
 	s.Require().ErrorContains(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, rewrapProcPath)), "htu")
 	s.Require().ErrorContains(s.checkProof(a, c, ri, s.proof(c, http.MethodPost, "https://other.example.com"+rewrapProcPath)), "htu")
@@ -381,8 +435,8 @@ func TestDPoPOrigins(t *testing.T) {
 }
 
 // Regression: the HTTP handler once preferred the Origin request header, which
-// names the calling page rather than this server. Without htu origins the expected htu comes from
-// the request Host and TLS state only.
+// names the calling page rather than this server. Without htu origins the
+// expected htu comes from the request Host and TLS state only.
 func (s *AuthSuite) Test_MuxHandler_IgnoresOriginHeader() {
 	a := s.newAuthWithDPoPConfig(DPoPConfig{Enforce: true})
 	c := s.newDPoPBoundCredential()
@@ -407,6 +461,9 @@ func (s *AuthSuite) Test_MuxHandler_IgnoresOriginHeader() {
 			s.Require().NoError(s.checkProof(a, c, ri, s.proof(c, http.MethodGet, htuOrigin+path)))
 			err := s.checkProof(a, c, ri, s.proof(c, http.MethodGet, origin+path))
 			s.Require().Error(err)
+			var proofErr *DPoPProofError
+			s.Require().ErrorAs(err, &proofErr)
+			s.Contains(err.Error(), "htu")
 		})
 	}
 }

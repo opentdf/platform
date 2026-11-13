@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/sdk/httputil"
 )
 
@@ -140,17 +140,17 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	}
 	headers := jws.NewHeaders()
 
-	if key.KeyID() != "" {
-		err = headers.Set("kid", key.KeyID())
+	if kid, ok := key.KeyID(); ok && kid != "" {
+		err = headers.Set("kid", kid)
 		if err != nil {
 			return nil, fmt.Errorf("jws field invalid [kid]: %w", err)
 		}
 	}
 
-	alg := key.Algorithm()
-	if alg == nil {
+	alg, ok := key.Algorithm()
+	if !ok {
 		slog.Warn("using RS256 as the IDP key algorithm wasn't specified. To use another algorithm set the algorithm on the key")
-		alg = jwa.RS256
+		alg = jwa.RS256()
 	}
 
 	return jwt.Sign(tok, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
@@ -256,9 +256,13 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		return "", fmt.Errorf("jws field invalid [typ]: %w", err)
 	}
 
-	var alg jwa.SignatureAlgorithm
-	if err := alg.Accept(dpopJWK.Algorithm()); err != nil {
-		return "", fmt.Errorf("error reading signature algorithm from JWK %s: %w", dpopJWK.Algorithm(), err)
+	keyAlg, ok := dpopJWK.Algorithm()
+	if !ok {
+		return "", errors.New("DPoP JWK has no signature algorithm")
+	}
+	alg, ok := jwa.LookupSignatureAlgorithm(keyAlg.String())
+	if !ok {
+		return "", fmt.Errorf("unsupported DPoP JWK signature algorithm %s", keyAlg)
 	}
 
 	opts := jwt.WithKey(alg, dpopJWK, jws.WithProtectedHeaders(headers))

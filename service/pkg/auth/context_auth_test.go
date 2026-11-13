@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
@@ -13,7 +13,7 @@ import (
 
 func TestContextWithAuthNInfo(t *testing.T) {
 	// Create mock JWK, JWT, and raw token
-	mockJWK, _ := jwk.FromRaw([]byte("mockKey"))
+	mockJWK, _ := jwk.Import[jwk.Key]([]byte("mockKey"))
 	mockJWT, _ := jwt.NewBuilder().Build()
 	rawToken := "mockRawToken"
 
@@ -54,7 +54,7 @@ func TestPrincipalFromContextRequiresSubject(t *testing.T) {
 
 func TestGetJWKFromContext(t *testing.T) {
 	// Create mock context with JWK
-	mockJWK, _ := jwk.FromRaw([]byte("mockKey"))
+	mockJWK, _ := jwk.Import[jwk.Key]([]byte("mockKey"))
 	ctx := ContextWithAuthNInfo(t.Context(), mockJWK, nil, "")
 
 	// Retrieve the JWK and assert

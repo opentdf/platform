@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 )
 
 // validDPoPAlgs is the single source of truth for the JWS algorithms permitted
@@ -40,17 +40,17 @@ var dpopAllowedAlgs = func() string {
 func generateDPoPKeyForAlg(alg SigningAlgorithm) (jwk.Key, error) {
 	switch alg {
 	case ES256:
-		return generateECDSAKey(elliptic.P256(), jwa.ES256)
+		return generateECDSAKey(elliptic.P256(), jwa.ES256())
 	case ES384:
-		return generateECDSAKey(elliptic.P384(), jwa.ES384)
+		return generateECDSAKey(elliptic.P384(), jwa.ES384())
 	case ES512:
-		return generateECDSAKey(elliptic.P521(), jwa.ES512)
+		return generateECDSAKey(elliptic.P521(), jwa.ES512())
 	case RS256:
-		return generateRSAKey(jwa.RS256)
+		return generateRSAKey(jwa.RS256())
 	case RS384:
-		return generateRSAKey(jwa.RS384)
+		return generateRSAKey(jwa.RS384())
 	case RS512:
-		return generateRSAKey(jwa.RS512)
+		return generateRSAKey(jwa.RS512())
 	default:
 		return nil, fmt.Errorf("unsupported DPoP algorithm %q; allowed: %s", alg, dpopAllowedAlgs)
 	}
@@ -61,7 +61,7 @@ func generateECDSAKey(curve elliptic.Curve, alg jwa.SignatureAlgorithm) (jwk.Key
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ECDSA key: %w", err)
 	}
-	key, err := jwk.FromRaw(rawKey)
+	key, err := jwk.Import[jwk.Key](rawKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JWK from ECDSA key: %w", err)
 	}
@@ -77,7 +77,7 @@ func generateRSAKey(alg jwa.SignatureAlgorithm) (jwk.Key, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
 	}
-	key, err := jwk.FromRaw(rawKey)
+	key, err := jwk.Import[jwk.Key](rawKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JWK from RSA key: %w", err)
 	}
@@ -93,7 +93,7 @@ func generateRSAKey(alg jwa.SignatureAlgorithm) (jwk.Key, error) {
 //   - EC P-256 → ES256, P-384 → ES384, P-521 → ES512
 //   - RSA → RS256
 func loadDPoPKeyFromPEM(pemBytes []byte) (jwk.Key, error) {
-	key, err := jwk.ParseKey(pemBytes, jwk.WithPEM(true))
+	key, err := jwk.ParseKey(pemBytes, jwk.WithX509(true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DPoP key PEM: %w", err)
 	}
@@ -107,7 +107,7 @@ func loadDPoPKeyFromPEM(pemBytes []byte) (jwk.Key, error) {
 	}
 
 	// Infer algorithm when not already set in the PEM
-	if key.Algorithm() == jwa.NoSignature || key.Algorithm().String() == "" {
+	if alg, ok := key.Algorithm(); !ok || alg.String() == "" || alg == jwa.NoSignature() {
 		alg, err := inferDPoPAlgorithm(key)
 		if err != nil {
 			return nil, err
@@ -121,17 +121,17 @@ func loadDPoPKeyFromPEM(pemBytes []byte) (jwk.Key, error) {
 }
 
 func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
-	switch key.KeyType() { //nolint:exhaustive // only EC and RSA are valid for DPoP (RFC 9449 §4.2)
-	case jwa.EC:
-		var rawKey ecdsa.PrivateKey
-		if err := key.Raw(&rawKey); err != nil {
-			return "", fmt.Errorf("failed to get raw EC key for algorithm inference: %w", err)
+	switch key.KeyType() { // only EC and RSA are valid for DPoP (RFC 9449 §4.2)
+	case jwa.EC():
+		rawKey, err := jwk.Export[*ecdsa.PrivateKey](key)
+		if err != nil {
+			return jwa.EmptySignatureAlgorithm(), fmt.Errorf("failed to get raw EC key for algorithm inference: %w", err)
 		}
 		return ecCurveToDPoPAlg(rawKey.Curve)
-	case jwa.RSA:
-		return jwa.RS256, nil
+	case jwa.RSA():
+		return jwa.RS256(), nil
 	default:
-		return "", fmt.Errorf("unsupported key type %q for DPoP; only EC and RSA keys are supported", key.KeyType())
+		return jwa.EmptySignatureAlgorithm(), fmt.Errorf("unsupported key type %q for DPoP; only EC and RSA keys are supported", key.KeyType())
 	}
 }
 
@@ -140,13 +140,13 @@ func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
 func ecCurveToDPoPAlg(curve elliptic.Curve) (jwa.SignatureAlgorithm, error) {
 	switch curve {
 	case elliptic.P256():
-		return jwa.ES256, nil
+		return jwa.ES256(), nil
 	case elliptic.P384():
-		return jwa.ES384, nil
+		return jwa.ES384(), nil
 	case elliptic.P521():
-		return jwa.ES512, nil
+		return jwa.ES512(), nil
 	default:
-		return "", errors.New("unsupported EC curve for DPoP")
+		return jwa.EmptySignatureAlgorithm(), errors.New("unsupported EC curve for DPoP")
 	}
 }
 
@@ -156,8 +156,8 @@ func ecCurveToDPoPAlg(curve elliptic.Curve) (jwa.SignatureAlgorithm, error) {
 // signing material, the algorithm family matches the key type (ES* → EC, RS* → RSA),
 // and — for EC keys — the curve matches the ES algorithm (P-256↔ES256, etc.).
 func validateDPoPKey(key jwk.Key) error {
-	alg := key.Algorithm()
-	if alg == nil || alg.String() == "" {
+	alg, ok := key.Algorithm()
+	if !ok || alg.String() == "" {
 		return errors.New("DPoP JWK is missing required Algorithm field; set it with key.Set(jwk.AlgorithmKey, ...)")
 	}
 	algStr := alg.String()
@@ -175,11 +175,11 @@ func validateDPoPKey(key jwk.Key) error {
 
 	switch {
 	case strings.HasPrefix(algStr, "ES"):
-		if key.KeyType() != jwa.EC {
+		if key.KeyType() != jwa.EC() {
 			return fmt.Errorf("DPoP algorithm %q requires an EC key, got key type %q", algStr, key.KeyType())
 		}
-		var rawKey ecdsa.PrivateKey
-		if err := key.Raw(&rawKey); err != nil {
+		rawKey, err := jwk.Export[*ecdsa.PrivateKey](key)
+		if err != nil {
 			return fmt.Errorf("failed to read EC key for DPoP validation: %w", err)
 		}
 		wantAlg, err := ecCurveToDPoPAlg(rawKey.Curve)
@@ -190,7 +190,7 @@ func validateDPoPKey(key jwk.Key) error {
 			return fmt.Errorf("DPoP algorithm %q does not match EC key curve (expected %q for this curve)", algStr, wantAlg.String())
 		}
 	case strings.HasPrefix(algStr, "RS"):
-		if key.KeyType() != jwa.RSA {
+		if key.KeyType() != jwa.RSA() {
 			return fmt.Errorf("DPoP algorithm %q requires an RSA key, got key type %q", algStr, key.KeyType())
 		}
 	}
@@ -245,9 +245,9 @@ func selectDPoPKey(c *config) (jwk.Key, error) {
 			if !c.dpopAlgorithm.Valid() {
 				return nil, fmt.Errorf("invalid DPoP algorithm override %q; allowed: %s", c.dpopAlgorithm, dpopAllowedAlgs)
 			}
-			var algVal jwa.SignatureAlgorithm
-			if err := algVal.Accept(string(c.dpopAlgorithm)); err != nil {
-				return nil, fmt.Errorf("invalid DPoP algorithm override %q: %w", c.dpopAlgorithm, err)
+			algVal, ok := jwa.LookupSignatureAlgorithm(string(c.dpopAlgorithm))
+			if !ok {
+				return nil, fmt.Errorf("invalid DPoP algorithm override %q", c.dpopAlgorithm)
 			}
 			if err := key.Set(jwk.AlgorithmKey, algVal); err != nil {
 				return nil, fmt.Errorf("failed to apply DPoP algorithm override: %w", err)

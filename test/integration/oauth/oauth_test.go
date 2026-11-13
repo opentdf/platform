@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
@@ -63,10 +63,10 @@ func (s *OAuthSuite) SetupSuite() {
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	s.Require().NoError(err, "failed to generate dpop key")
 
-	dpopJWK, err := jwk.FromRaw(dpopKey)
+	dpopJWK, err := jwk.Import[jwk.Key](dpopKey)
 	s.Require().NoError(err)
 	s.Require().NoError(dpopJWK.Set("use", "sig"))
-	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256().String()))
 
 	s.dpopJWK = dpopJWK
 	ctx := s.T().Context()
@@ -84,10 +84,10 @@ func (s *CertExchangeSuite) SetupSuite() {
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	s.Require().NoError(err, "failed to generate dpop key")
 
-	dpopJWK, err := jwk.FromRaw(dpopKey)
+	dpopJWK, err := jwk.Import[jwk.Key](dpopKey)
 	s.Require().NoError(err)
 	s.Require().NoError(dpopJWK.Set("use", "sig"))
-	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256().String()))
 
 	s.dpopJWK = dpopJWK
 	ctx := s.T().Context()
@@ -132,10 +132,10 @@ func (s *CertExchangeSuite) TestCertExchangeFromKeycloak() {
 		s.dpopJWK)
 	s.Require().NoError(err)
 
-	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
+	tokenDetails, err := jwt.ParseInsecure([]byte(tok.AccessToken))
 	s.Require().NoError(err)
 
-	cnfClaim, ok := tokenDetails.Get("cnf")
+	cnfClaim, ok := tokenDetails.Field("cnf")
 	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
 	s.Require().True(ok)
@@ -152,7 +152,7 @@ func (s *CertExchangeSuite) TestCertExchangeFromKeycloak() {
 	s.Positivef(tok.ExpiresIn, "invalid expiration is before current time: %v", tok)
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
-	name, ok := tokenDetails.Get("name")
+	name, ok := tokenDetails.Field("name")
 	s.Require().True(ok)
 	s.Equal("sample user", name, "got unexpected name")
 }
@@ -172,10 +172,10 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 
 	s.Require().NoError(err)
 
-	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
+	tokenDetails, err := jwt.ParseInsecure([]byte(tok.AccessToken))
 	s.Require().NoError(err)
 
-	cnfClaim, ok := tokenDetails.Get("cnf")
+	cnfClaim, ok := tokenDetails.Field("cnf")
 	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
 	s.Require().True(ok)
@@ -187,7 +187,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	hash, err := pk.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 
-	scope, ok := tokenDetails.Get("scope")
+	scope, ok := tokenDetails.Field("scope")
 	s.Require().True(ok)
 	scopeString, ok := scope.(string)
 	s.Require().True(ok)
@@ -199,7 +199,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
 	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
-	ra, ok := tokenDetails.Get("realm_access")
+	ra, ok := tokenDetails.Field("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
 	s.Require().True(ok)
@@ -256,10 +256,10 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	exchangedTok, err := oauth.DoTokenExchange(ctx, http.DefaultClient, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
 	s.Require().NoError(err)
 
-	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
+	tokenDetails, err := jwt.ParseInsecure([]byte(exchangedTok.AccessToken))
 	s.Require().NoError(err)
 
-	cnfClaim, ok := tokenDetails.Get("cnf")
+	cnfClaim, ok := tokenDetails.Field("cnf")
 	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
 	s.Require().True(ok)
@@ -277,7 +277,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 
 	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
-	ra, ok := tokenDetails.Get("realm_access")
+	ra, ok := tokenDetails.Field("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
 	s.Require().True(ok)
@@ -288,13 +288,13 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().True(slices.Contains(rolesList, "opentdf-standard"), "missing the `opentdf-standard` role")
 
 	// verify that the calling client is the authorized party
-	azpClaim, ok := tokenDetails.Get("azp")
+	azpClaim, ok := tokenDetails.Field("azp")
 	s.Require().True(ok)
 	s.Require().Equal(exchangeCredentials.ClientID, azpClaim)
 
 	// Standard token exchange should issue the exchanged token for the requested
 	// audience without leaking scopes from the subject token.
-	if scope, ok := tokenDetails.Get("scope"); ok {
+	if scope, ok := tokenDetails.Field("scope"); ok {
 		scopeString, ok := scope.(string)
 		s.Require().True(ok)
 		s.Require().NotContains(scopeString, "testscope")
@@ -357,7 +357,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		// get the key we used to sign the DPoP token from the header
 		clientTok := extractDPoPToken(r, s.T())
 
-		nonce, exists := clientTok.Get("nonce")
+		nonce, exists := clientTok.Field("nonce")
 		if !exists {
 			s.T().Logf("didn't get nonce assertion")
 		}
@@ -402,17 +402,17 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	s.Require().NoError(err, "error generating dpop key")
-	dpopJWK, err := jwk.FromRaw(dpopKey)
+	dpopJWK, err := jwk.Import[jwk.Key](dpopKey)
 	s.Require().NoError(err)
 	s.Require().NoError(dpopJWK.Set("use", "sig"))
-	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256().String()))
 
 	clientAuthKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	s.Require().NoError(err, "error generating clientAuth key")
-	clientAuthJWK, err := jwk.FromRaw(clientAuthKey)
+	clientAuthJWK, err := jwk.Import[jwk.Key](clientAuthKey)
 	s.Require().NoError(err, "error constructing raw JWK")
 	s.Require().NoError(clientAuthJWK.Set("use", "sig"))
-	s.Require().NoError(clientAuthJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(clientAuthJWK.Set("alg", jwa.RS256().String()))
 	clientPublicKey, err := clientAuthJWK.PublicKey()
 	s.Require().NoError(err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
 
@@ -448,7 +448,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 		// get the key we used to sign the DPoP token from the header
 		clientTok := extractDPoPToken(r, s.T())
 
-		nonce, exists := clientTok.Get("nonce")
+		nonce, exists := clientTok.Field("nonce")
 		if exists {
 			value, ok := nonce.(string)
 			if !ok {
@@ -504,10 +504,10 @@ func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint fu
 		t.Errorf("missing client assertion")
 	}
 
-	alg := key.Algorithm()
-	if alg == nil {
+	alg, ok := key.Algorithm()
+	if !ok {
 		t.Logf("no key algorithm specified, using RS256 to verify client signature")
-		alg = jwa.RS256
+		alg = jwa.RS256()
 	}
 
 	tok, err := jwt.ParseString(clientAssertion, jwt.WithVerify(true), jwt.WithKey(alg, key))
@@ -515,17 +515,17 @@ func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint fu
 		t.Fatalf("error verifying client signature on token [%s]: %v", clientAssertion, err)
 	}
 
-	if tok.Subject() != clientID {
-		t.Fatalf("incorrect subject: %s", tok.Subject())
+	if subject, _ := tok.Subject(); subject != clientID {
+		t.Fatalf("incorrect subject: %s", subject)
 	}
 
-	if tok.Issuer() != clientID {
-		t.Fatalf("incorrect issuer: %s", tok.Issuer())
+	if issuer, _ := tok.Issuer(); issuer != clientID {
+		t.Fatalf("incorrect issuer: %s", issuer)
 	}
 
 	expectedAudience := tokenEndpoint()
-	if len(tok.Audience()) != 1 || tok.Audience()[0] != expectedAudience {
-		t.Fatalf("incorrect audience: %v", tok.Audience())
+	if audience, _ := tok.Audience(); len(audience) != 1 || audience[0] != expectedAudience {
+		t.Fatalf("incorrect audience: %v", audience)
 	}
 }
 
@@ -547,13 +547,20 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	dpop := r.Header.Get("dpop")
 	jwsMessage, err := jws.ParseString(dpop)
 	if err != nil {
-		t.Errorf("error parsing dpop payload as JWS: %v", err)
+		t.Fatalf("error parsing dpop payload as JWS: %v", err)
 	}
 
 	sig := jwsMessage.Signatures()[0]
-	signingKey := sig.ProtectedHeaders().JWK()
+	signingKey, ok := sig.ProtectedHeaders().JWK()
+	if !ok {
+		t.Fatal("DPoP header has no JWK")
+	}
+	alg, ok := sig.ProtectedHeaders().Algorithm()
+	if !ok {
+		t.Fatal("DPoP header has no algorithm")
+	}
 
-	clientTok, err := jwt.ParseString(dpop, jwt.WithVerify(true), jwt.WithKey(signingKey.Algorithm(), signingKey))
+	clientTok, err := jwt.ParseString(dpop, jwt.WithVerify(true), jwt.WithKey(alg, signingKey))
 	if err != nil {
 		t.Errorf("failed to parse/verify the dpop token: %v", err)
 	}

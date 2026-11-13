@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ type tokenVerifierFixture struct {
 
 func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
 	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
-	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
 }
@@ -34,7 +34,7 @@ func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
 func newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t *testing.T) *tokenVerifierFixture {
 	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
 	require.NoError(t, publicKeyJWK.Remove(jwk.AlgorithmKey))
-	_, hasAlgorithm := publicKeyJWK.Get(jwk.AlgorithmKey)
+	_, hasAlgorithm := publicKeyJWK.Field(jwk.AlgorithmKey)
 	require.False(t, hasAlgorithm)
 
 	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
@@ -46,7 +46,7 @@ func newTokenVerifierKeyPair(t *testing.T) (*rsa.PrivateKey, jwk.Key) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	publicKeyJWK, err := jwk.FromRaw(privateKey.PublicKey)
+	publicKeyJWK, err := jwk.Import[jwk.Key](privateKey.PublicKey)
 	require.NoError(t, err)
 	require.NoError(t, publicKeyJWK.Set(jws.KeyIDKey, "test-key"))
 
@@ -98,7 +98,7 @@ func (f *tokenVerifierFixture) signToken(t *testing.T, issuer, audience string, 
 	require.NoError(t, token.Set(jwt.IssuerKey, issuer))
 	require.NoError(t, token.Set(jwt.AudienceKey, audience))
 
-	key, err := jwk.FromRaw(signer)
+	key, err := jwk.Import[jwk.Key](signer)
 	require.NoError(t, err)
 
 	keyID := f.keyID
@@ -107,9 +107,9 @@ func (f *tokenVerifierFixture) signToken(t *testing.T, issuer, audience string, 
 	}
 
 	require.NoError(t, key.Set(jws.KeyIDKey, keyID))
-	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256))
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256()))
 
-	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
+	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key))
 	require.NoError(t, err)
 
 	return string(signedToken)
@@ -131,7 +131,8 @@ func TestNewTokenVerifier_UsesDiscoveredIssuer(t *testing.T) {
 	token := fixture.signToken(t, fixture.server.URL, "test-audience", fixture.privateKey)
 	verifiedToken, err := verifier.VerifyAccessToken(t.Context(), token)
 	require.NoError(t, err)
-	assert.Equal(t, "user-123", verifiedToken.Subject())
+	subject, _ := verifiedToken.Subject()
+	assert.Equal(t, "user-123", subject)
 }
 
 func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
@@ -150,7 +151,8 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 
 		verifiedToken, err := verifier.VerifyAccessToken(t.Context(), token)
 		require.NoError(t, err)
-		assert.Equal(t, "user-123", verifiedToken.Subject())
+		subject, _ := verifiedToken.Subject()
+		assert.Equal(t, "user-123", subject)
 	})
 
 	t.Run("invalid audience", func(t *testing.T) {
@@ -186,7 +188,8 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 
 		verifiedToken, err := missingAlgVerifier.VerifyAccessToken(t.Context(), token)
 		require.NoError(t, err)
-		assert.Equal(t, "user-123", verifiedToken.Subject())
+		subject, _ := verifiedToken.Subject()
+		assert.Equal(t, "user-123", subject)
 	})
 }
 

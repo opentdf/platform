@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,7 +17,7 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
@@ -392,14 +393,11 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 }
 
 func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Connector, jwtString string, logger *logger.Logger, svcCache *cache.Cache) ([]*entity.Entity, error) {
-	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+	token, err := jwt.ParseInsecure([]byte(jwtString))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
-	if err != nil {
-		return nil, errors.New("error getting claims from jwt")
-	}
+	claims := maps.Collect(token.Claims())
 	entities := []*entity.Entity{}
 	entityID := 0
 

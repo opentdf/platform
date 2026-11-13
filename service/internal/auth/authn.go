@@ -23,10 +23,10 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/bmatcuk/doublestar"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
@@ -55,16 +55,16 @@ var (
 		"/kas.AccessService/Rewrap",
 	}
 	// only asymmetric algorithms and no 'none'
-	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
-		jwa.RS256: true,
-		jwa.RS384: true,
-		jwa.RS512: true,
-		jwa.ES256: true,
-		jwa.ES384: true,
-		jwa.ES512: true,
-		jwa.PS256: true,
-		jwa.PS384: true,
-		jwa.PS512: true,
+	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ // only asymmetric algorithms
+		jwa.RS256(): true,
+		jwa.RS384(): true,
+		jwa.RS512(): true,
+		jwa.ES256(): true,
+		jwa.ES384(): true,
+		jwa.ES512(): true,
+		jwa.PS256(): true,
+		jwa.PS384(): true,
+		jwa.PS512(): true,
 	}
 
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
@@ -778,7 +778,8 @@ func (a Authentication) ConnectAuthZInterceptor() connect.Interceptor {
 }
 
 func permissionDeniedDecisionLogAttrs(token jwt.Token, decision *internalauthz.Decision, err error) []any {
-	attrs := []any{slog.String("azp", token.Subject())}
+	subject, _ := token.Subject()
+	attrs := []any{slog.String("azp", subject)}
 
 	if decision != nil && decision.Metadata.GroupsClaim != "" {
 		attrs = append(attrs, slog.Group(
@@ -873,7 +874,7 @@ func rehydrateIPCAuthContext(ctx context.Context, l *logger.Logger) (context.Con
 		return ctx, nil
 	}
 
-	parsed, err := jwt.Parse([]byte(rawToken), jwt.WithVerify(false), jwt.WithValidate(false))
+	parsed, err := jwt.ParseInsecure([]byte(rawToken))
 	if err != nil {
 		if l != nil {
 			l.ErrorContext(ctx, "failed to rehydrate IPC access token from metadata", slog.Any("error", err))
@@ -1266,7 +1267,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return nil, nil, err
 	}
 
-	_, tokenHasCNF := accessToken.Get("cnf")
+	_, tokenHasCNF := accessToken.Field("cnf")
 	if tokenHasCNF && authScheme == "Bearer" {
 		// RFC 9449 §7.1: DPoP-bound access tokens MUST be presented under the "DPoP"
 		// Authorization scheme. Warn for now to surface non-compliant SDKs; will be
@@ -1302,7 +1303,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 	dpopHeader := headers[0]
 
-	cnf, ok := accessToken.Get("cnf")
+	cnf, ok := accessToken.Field("cnf")
 	if !ok {
 		return nil, errors.New("missing `cnf` claim in access token")
 	}
@@ -1331,16 +1332,18 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
-	if protectedHeaders.Type() != dpopJWTType {
-		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
+	headerType, _ := protectedHeaders.Type()
+	if headerType != dpopJWTType {
+		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", headerType)
 	}
 
-	if _, exists := allowedSignatureAlgorithms[protectedHeaders.Algorithm()]; !exists {
-		return nil, fmt.Errorf("unsupported algorithm specified: %v", protectedHeaders.Algorithm())
+	headerAlg, hasAlg := protectedHeaders.Algorithm()
+	if _, exists := allowedSignatureAlgorithms[headerAlg]; !hasAlg || !exists {
+		return nil, fmt.Errorf("unsupported algorithm specified: %v", headerAlg)
 	}
 
-	dpopKey := protectedHeaders.JWK()
-	if dpopKey == nil {
+	dpopKey, hasKey := protectedHeaders.JWK()
+	if !hasKey {
 		return nil, errors.New("JWK missing in DPoP JWT")
 	}
 
@@ -1366,7 +1369,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
 	// in the validated access token. Time claims are checked below rather than by
 	// jwt.Parse, whose default validation rejects any `iat` ahead of server time.
-	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey), jwt.WithValidate(false))
+	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(headerAlg, dpopKey), jwt.WithValidate(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT: %w", err)
 	}
@@ -1374,8 +1377,8 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	now := a.now()
 	futureSkew := a.oidcConfiguration.dpopFutureIATSkew()
 
-	issuedAt := dpopToken.IssuedAt()
-	if issuedAt.IsZero() {
+	issuedAt, hasIssuedAt := dpopToken.IssuedAt()
+	if !hasIssuedAt || issuedAt.IsZero() {
 		return nil, errors.New("missing `iat` claim in the DPoP JWT")
 	}
 
@@ -1404,7 +1407,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("invalid time claims in DPoP JWT: %w", err)
 	}
 
-	htma, ok := dpopToken.Get("htm")
+	htma, ok := dpopToken.Field("htm")
 	if !ok {
 		return nil, errors.New("`htm` claim missing in DPoP JWT")
 	}
@@ -1423,7 +1426,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
-	htua, ok := dpopToken.Get("htu")
+	htua, ok := dpopToken.Field("htu")
 	if !ok {
 		return nil, errors.New("`htu` claim missing in DPoP JWT")
 	}
@@ -1436,7 +1439,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 
-	ath, ok := dpopToken.Get("ath")
+	ath, ok := dpopToken.Field("ath")
 	if !ok {
 		return nil, errors.New("missing `ath` claim in DPoP JWT")
 	}
@@ -1449,7 +1452,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	// Validate nonce if required
 	if a.dpopNonceManager.requireNonce {
-		nonceI, hasNonce := dpopToken.Get("nonce")
+		nonceI, hasNonce := dpopToken.Field("nonce")
 		if !hasNonce {
 			return nil, &DPoPNonceError{Message: "missing `nonce` claim in DPoP JWT"}
 		}
@@ -1465,7 +1468,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	// Replay protection (RFC 9449 §11.1): reject a proof whose `jti` has already
 	// been seen within the acceptance window. Checked last so only otherwise-valid
 	// proofs populate the cache, preventing an attacker from poisoning it.
-	jtiI, ok := dpopToken.Get("jti")
+	jtiI, ok := dpopToken.Field("jti")
 	if !ok {
 		return nil, errors.New("missing `jti` claim in DPoP JWT")
 	}

@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
@@ -149,17 +149,17 @@ func TestDPoPAlgorithmRestrictions(t *testing.T) {
 		alg     jwa.SignatureAlgorithm
 		allowed bool
 	}{
-		{jwa.RS256, true},
-		{jwa.RS384, true},
-		{jwa.RS512, true},
-		{jwa.ES256, true},
-		{jwa.ES384, true},
-		{jwa.ES512, true},
-		{jwa.PS256, true},
-		{jwa.PS384, true},
-		{jwa.PS512, true},
-		{jwa.HS256, false},
-		{jwa.NoSignature, false},
+		{jwa.RS256(), true},
+		{jwa.RS384(), true},
+		{jwa.RS512(), true},
+		{jwa.ES256(), true},
+		{jwa.ES384(), true},
+		{jwa.ES512(), true},
+		{jwa.PS256(), true},
+		{jwa.PS384(), true},
+		{jwa.PS512(), true},
+		{jwa.HS256(), false},
+		{jwa.NoSignature(), false},
 	}
 
 	for _, tc := range testCases {
@@ -215,7 +215,7 @@ func (s *AuthSuite) makeDPoPBoundAccessToken(dpopKey jwk.Key) []byte {
 	s.Require().NoError(tok.Set("cid", "client-nonce-test"))
 	s.Require().NoError(tok.Set("cnf", map[string]string{"jkt": jkt}))
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 	return signedTok
 }
@@ -251,7 +251,9 @@ func makeDPoPProof(t *testing.T, tc dpopTestCase, nonceVal any) string {
 	dpopTok, err := b.Build()
 	require.NoError(t, err)
 
-	signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(tc.actualSigningKey.Algorithm(), tc.actualSigningKey, jws.WithProtectedHeaders(headers)))
+	alg, ok := tc.actualSigningKey.Algorithm()
+	require.True(t, ok, "DPoP signing key has no algorithm")
+	signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(alg, tc.actualSigningKey, jws.WithProtectedHeaders(headers)))
 	require.NoError(t, err)
 	return string(signedToken)
 }
@@ -259,9 +261,9 @@ func makeDPoPProof(t *testing.T, tc dpopTestCase, nonceVal any) string {
 func (s *AuthSuite) newDPoPKeyAndAccessToken() (jwk.Key, jwk.Key, []byte) {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopKeyRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 	dpopPublic, err := dpopKey.PublicKey()
 	s.Require().NoError(err)
 	signedTok := s.makeDPoPBoundAccessToken(dpopKey)
@@ -274,7 +276,7 @@ func (s *AuthSuite) TestDPoP_MissingNonce_Returns_DPoPNonceError() {
 
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
 		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
-		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+		alg: jwa.RS256(), typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
 	}, nil) // no nonce claim
 
 	_, _, err := auth.checkToken(
@@ -296,7 +298,7 @@ func (s *AuthSuite) TestDPoP_ValidNonce_Succeeds() {
 
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
 		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
-		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+		alg: jwa.RS256(), typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
 	}, nonce)
 
 	_, _, err := auth.checkToken(
@@ -316,7 +318,7 @@ func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
 	// Integer nonce triggers the type-assertion failure in validateDPoP.
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
 		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
-		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+		alg: jwa.RS256(), typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
 	}, 42)
 
 	_, _, err := auth.checkToken(
@@ -344,7 +346,7 @@ func (s *AuthSuite) TestDPoP_WrongNonce_Returns_DPoPNonceError() {
 
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
 		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
-		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+		alg: jwa.RS256(), typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
 	}, "not-the-right-nonce")
 
 	_, _, err := auth.checkToken(

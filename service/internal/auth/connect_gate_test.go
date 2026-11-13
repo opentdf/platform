@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/server/memhttp"

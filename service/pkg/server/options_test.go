@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"

@@ -6,9 +6,11 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/otdfctl/pkg/streamio"
 	"github.com/stretchr/testify/assert"
@@ -202,4 +204,94 @@ func TestInitEncryptCommandDeprecatesKASURLPath(t *testing.T) {
 	require.NotNil(t, flag)
 	assert.Equal(t, "/kas", flag.DefValue)
 	assert.Contains(t, flag.Deprecated, "well-known base-key discovery")
+}
+
+// writePayload writes content to a file under t.TempDir and returns its path.
+func writePayload(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "payload.txt")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	return path
+}
+
+func readInput(t *testing.T, in io.Reader, cleanup func()) string {
+	t.Helper()
+	defer cleanup()
+	all, err := io.ReadAll(in)
+	require.NoError(t, err)
+	return string(all)
+}
+
+// An open pipe whose writer never closes it is what stdin looks like under
+// `ssh host otdfctl encrypt f`, Ansible, and some CI runners. Given a file,
+// encrypt must not wait on it.
+func TestEncryptInputWithFileIgnoresOpenStdin(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	defer r.Close()
+	defer w.Close() // held open for the whole call, so stdin never reaches EOF
+
+	path := writePayload(t, "from the file")
+
+	type result struct {
+		in      io.Reader
+		cleanup func()
+		err     error
+	}
+	done := make(chan result, 1)
+	go func() {
+		in, cleanup, err := encryptInput(path, r)
+		done <- result{in, cleanup, err}
+	}()
+
+	select {
+	case res := <-done:
+		require.NoError(t, res.err)
+		assert.Equal(t, "from the file", readInput(t, res.in, res.cleanup))
+	case <-time.After(2 * time.Second):
+		t.Fatal("encryptInput blocked on an open stdin despite a file argument")
+	}
+}
+
+func TestEncryptInputPrefersFileOverPipedData(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	defer r.Close()
+	_, err = io.WriteString(w, "from stdin")
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	in, cleanup, err := encryptInput(writePayload(t, "from the file"), r)
+	require.NoError(t, err)
+	assert.Equal(t, "from the file", readInput(t, in, cleanup))
+}
+
+func TestEncryptInputReadsStdinWithoutFile(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	defer r.Close()
+	go func() {
+		defer w.Close()
+		_, _ = io.WriteString(w, "from stdin")
+	}()
+
+	in, cleanup, err := encryptInput("", r)
+	require.NoError(t, err)
+	assert.Equal(t, "from stdin", readInput(t, in, cleanup))
+}
+
+func TestEncryptInputWithNoInput(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	defer r.Close()
+	require.NoError(t, w.Close())
+
+	_, _, err = encryptInput("", r)
+	require.ErrorIs(t, err, streamio.ErrNoInput)
+}
+
+func TestEncryptInputMissingFile(t *testing.T) {
+	_, _, err := encryptInput(filepath.Join(t.TempDir(), "missing.txt"), os.Stdin)
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, streamio.ErrNoInput)
 }

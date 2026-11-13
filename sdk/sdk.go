@@ -224,9 +224,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 		if t, ok := httpClient.Transport.(*auth.DPoPTransport); ok {
 			t.Mode = cfg.dpopMode
-			// New fetched the platform's well-known configuration without
-			// credentials, so reuse it rather than discovering again. Only a
-			// positive answer is seeded: RFC 9728 metadata may still advertise.
+			// PlatformConfiguration is the platform's well-known configuration,
+			// fetched above or supplied with WithPlatformConfiguration, so reuse it
+			// rather than discovering again. (With a custom core connection the
+			// config comes from elsewhere, but then this transport is never used.)
+			// Only a positive answer is seeded: RFC 9728 metadata may still advertise.
 			if cfg.dpopMode == auth.DPoPModeAuto && auth.ServerSupportsRFC9449(cfg.PlatformConfiguration) {
 				t.SetServerRFC9449Support(platformEndpoint, true)
 			}

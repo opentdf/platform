@@ -213,6 +213,20 @@ func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 	}
 }
 
+// WithChunkedHexlessPolicyBinding writes each key access object's
+// policy binding hash as Base64(HMAC), dropping the hex layer of the
+// legacy Base64(hex(HMAC)). See WithHexlessPolicyBinding for the
+// compatibility caveat. A pre-4.3.0 WithChunkedTargetMode overrides
+// this option.
+//
+// Experimental: not part of the stable SDK API; may change or be removed.
+func WithChunkedHexlessPolicyBinding() ChunkedWriterOption {
+	return func(c *chunkedWriterConfig) error {
+		c.hexlessPolicyBinding = true
+		return nil
+	}
+}
+
 // WithChunkedMimeType records the payload MIME type in the manifest.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.

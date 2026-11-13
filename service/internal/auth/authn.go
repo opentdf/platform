@@ -235,6 +235,16 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 	a.tokenVerifier = tokenVerifier
 
+	if len(htuOrigins) == 0 && len(cfg.DPoP.HTU.Origins) > 0 {
+		logger.Warn("config server.auth.dpop.htu.origins contains only empty entries; expected DPoP htu origins are derived from the request Host")
+	}
+	logger.Info(
+		"dpop htu matching",
+		slog.Bool("strict", a.strictDPoPHTU),
+		slog.Any("origins", htuOrigins),
+		slog.Bool("origins_from_request_host", len(htuOrigins) == 0),
+	)
+
 	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
 		return nil, err

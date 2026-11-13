@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -471,6 +472,53 @@ func TestDPoPModeAuto_CallerCancellationFailsRequest(t *testing.T) {
 
 		require.ErrorIs(t, <-errs, context.Canceled)
 		assert.Empty(t, f.htus, "a canceled request must not be sent")
+	})
+}
+
+// recordingHandler keeps every record it handles.
+type recordingHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h *recordingHandler) WithAttrs([]slog.Attr) slog.Handler       { return h }
+func (h *recordingHandler) WithGroup(string) slog.Handler            { return h }
+func (h *recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.records = append(h.records, r)
+	return nil
+}
+
+func TestDPoPModeAuto_DiscoveryLogging(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		injected := &recordingHandler{}
+		global := &recordingHandler{}
+		previous := slog.Default()
+		slog.SetDefault(slog.New(global))
+		defer slog.SetDefault(previous)
+
+		quiet := &fakeDPoPServer{key: generateTestKey(t)}
+		callPublicKey(t, inProcessOrigin, newInProcessAutoTransport(t, quiet), 1)
+		assert.Empty(t, global.records, "without a logger the transport must not log, even to slog.Default")
+
+		f := &fakeDPoPServer{key: generateTestKey(t), wellKnownStatus: http.StatusServiceUnavailable}
+		transport := newInProcessAutoTransport(t, f)
+		transport.Logger = slog.New(injected)
+		callPublicKey(t, inProcessOrigin, transport, 1)
+
+		assert.Empty(t, global.records)
+		require.Len(t, injected.records, 1)
+		record := injected.records[0]
+		assert.Equal(t, slog.LevelDebug, record.Level)
+		attrs := map[string]slog.Value{}
+		record.Attrs(func(a slog.Attr) bool {
+			attrs[a.Key] = a.Value
+			return true
+		})
+		assert.Equal(t, inProcessOrigin, attrs["origin"].String())
+		assert.False(t, attrs["conclusive"].Bool())
 	})
 }
 

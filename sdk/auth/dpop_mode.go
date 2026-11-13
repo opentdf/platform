@@ -102,16 +102,13 @@ type originStyle struct {
 
 func (s originStyle) inconclusive() bool { return !s.retryAt.IsZero() }
 
-// setOriginStyle caches style for origin and returns the style it replaced.
-func (t *DPoPTransport) setOriginStyle(origin string, style originStyle) originStyle {
+func (t *DPoPTransport) setOriginStyle(origin string, style originStyle) {
 	t.styleMu.Lock()
 	defer t.styleMu.Unlock()
 	if t.rfc9449ByOrigin == nil {
 		t.rfc9449ByOrigin = make(map[string]originStyle)
 	}
-	previous := t.rfc9449ByOrigin[origin]
 	t.rfc9449ByOrigin[origin] = style
-	return previous
 }
 
 // useLegacyProof reports whether resource proofs for origin use the legacy htu.
@@ -154,29 +151,24 @@ func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripp
 	}
 }
 
-// discoverAndCache discovers origin's htu form, caches it, and logs a legacy
-// answer once per origin (or once per run of inconclusive discoveries).
+// discoverAndCache discovers origin's htu form, caches it, and reports the
+// result to t.Logger at debug level.
 func (t *DPoPTransport) discoverAndCache(ctx context.Context, base http.RoundTripper, origin string) bool {
 	d := discoverRFC9449(ctx, base, origin)
 	style := originStyle{rfc9449: d.supported}
 	if !d.conclusive {
 		style.retryAt = time.Now().Add(dpopDiscoveryRetryInterval)
 	}
-	previous := t.setOriginStyle(origin, style)
+	t.setOriginStyle(origin, style)
 
-	attrs := []any{
-		slog.String("origin", origin),
-		slog.Any("well_known_error", d.wellKnownErr),
-		slog.Any("protected_resource_error", d.protectedResourceErr),
-	}
-	switch {
-	case d.supported:
-	case d.conclusive:
-		slog.InfoContext(ctx, "server does not advertise RFC 9449 DPoP; using legacy proofs", attrs...)
-	case previous.inconclusive():
-		slog.DebugContext(ctx, "DPoP server discovery still failing; using legacy proofs", attrs...)
-	default:
-		slog.WarnContext(ctx, "DPoP server discovery failed; using legacy proofs until it is retried", attrs...)
+	if t.Logger != nil {
+		t.Logger.DebugContext(ctx, "discovered DPoP htu form",
+			slog.String("origin", origin),
+			slog.Bool("rfc9449", d.supported),
+			slog.Bool("conclusive", d.conclusive),
+			slog.Any("well_known_error", d.wellKnownErr),
+			slog.Any("protected_resource_error", d.protectedResourceErr),
+		)
 	}
 	return d.supported
 }

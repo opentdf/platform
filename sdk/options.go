@@ -252,6 +252,7 @@ func WithFulfillableObligationFQNs(fqns []string) Option {
 }
 
 // WithLogger returns an Option that sets a custom slog.Logger for all SDK logging.
+// DPoP server discovery logs only to a logger set here, at debug level.
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *config) {
 		c.logger = logger

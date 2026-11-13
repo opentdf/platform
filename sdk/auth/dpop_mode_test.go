@@ -1,12 +1,15 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -26,6 +29,8 @@ const (
 type fakeDPoPServer struct {
 	wellKnown         map[string]any // nil: the RPC returns 404, like a non-platform origin
 	wellKnownStatus   int            // overrides the well-known response status when set
+	wellKnownRaw      string         // with wellKnownStatus, the raw response body
+	wellKnownBlock    chan struct{}  // when set, the well-known RPC waits for it to close
 	protectedResource bool           // serve RFC 9728 metadata
 	nonce             string         // challenge the first PublicKey call with this nonce
 
@@ -45,8 +50,16 @@ func (f *fakeDPoPServer) handler(t *testing.T) http.Handler {
 		f.mu.Unlock()
 		assert.Empty(t, r.Header.Get("Authorization"), "discovery must not send credentials")
 		assert.Empty(t, r.Header.Get("DPoP"), "discovery must not send a proof")
+		if f.wellKnownBlock != nil {
+			<-f.wellKnownBlock
+		}
 		if status != 0 {
+			if status/100 == 3 {
+				http.Redirect(w, r, "/advertise", status)
+				return
+			}
 			w.WriteHeader(status)
+			_, _ = w.Write([]byte(f.wellKnownRaw))
 			return
 		}
 		if f.wellKnown == nil {
@@ -55,6 +68,10 @@ func (f *fakeDPoPServer) handler(t *testing.T) http.Handler {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"configuration": f.wellKnown})
+	})
+	mux.HandleFunc("/advertise", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"configuration": map[string]any{"dpop_signing_alg_values_supported": []string{"ES256"}}})
 	})
 	mux.HandleFunc(protectedResourceMetadataPath, func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.Header.Get("Authorization"), "discovery must not send credentials")
@@ -111,6 +128,37 @@ func newModeTransport(f *fakeDPoPServer, mode DPoPMode) *DPoPTransport {
 	}
 }
 
+// inProcessOrigin is the origin of requests served by inProcessTransport.
+const inProcessOrigin = "http://platform.test"
+
+// inProcessTransport serves requests with h without a network, so tests can run
+// in a synctest bubble: network I/O, even over loopback, never counts as
+// durably blocked there. Like a real transport it gives up when the request's
+// context ends.
+func inProcessTransport(h http.Handler) http.RoundTripper {
+	return roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		rec := httptest.NewRecorder()
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			h.ServeHTTP(rec, req)
+		}()
+		select {
+		case <-done:
+			return rec.Result(), nil
+		case <-req.Context().Done():
+			return nil, req.Context().Err()
+		}
+	})
+}
+
+// newInProcessAutoTransport is an auto-mode transport for f served in-process.
+func newInProcessAutoTransport(t *testing.T, f *fakeDPoPServer) *DPoPTransport {
+	transport := newModeTransport(f, DPoPModeAuto)
+	transport.Base = inProcessTransport(f.handler(t))
+	return transport
+}
+
 func TestServerSupportsRFC9449(t *testing.T) {
 	algs := []any{"ES256"}
 	tests := []struct {
@@ -120,9 +168,12 @@ func TestServerSupportsRFC9449(t *testing.T) {
 	}{
 		{"dpop block says yes", map[string]any{"dpop": map[string]any{"rfc9449": true}}, true},
 		{"dpop block overrides top-level key", map[string]any{"dpop": map[string]any{"rfc9449": false}, "dpop_signing_alg_values_supported": algs}, false},
+		{"dpop block without rfc9449 defers to top-level key", map[string]any{"dpop": map[string]any{"nonce_required": true}, "dpop_signing_alg_values_supported": algs}, true},
+		{"non-boolean rfc9449 is ignored", map[string]any{"dpop": map[string]any{"rfc9449": "true"}}, false},
+		{"alg list built in Go", map[string]any{"dpop_signing_alg_values_supported": []string{"ES256"}}, true},
 		{"top-level key only (v0.18.0+)", map[string]any{"dpop_signing_alg_values_supported": algs}, true},
 		{"empty alg list", map[string]any{"dpop_signing_alg_values_supported": []any{}}, false},
-		{"no advertisement (step One)", map[string]any{"platform_issuer": "https://idp"}, false},
+		{"no advertisement (legacy server)", map[string]any{"platform_issuer": "https://idp"}, false},
 		{"nil config", nil, false},
 	}
 	for _, tt := range tests {
@@ -135,7 +186,7 @@ func TestServerSupportsRFC9449(t *testing.T) {
 func TestDPoPModeAuto_PicksStyleFromAdvertisement(t *testing.T) {
 	block := map[string]any{"dpop": map[string]any{"rfc9449": true}}
 	topLevel := map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}}
-	stepOne := map[string]any{"platform_issuer": "https://idp"}
+	legacyServer := map[string]any{"platform_issuer": "https://idp"}
 	tests := []struct {
 		name              string
 		wellKnown         map[string]any
@@ -144,9 +195,9 @@ func TestDPoPModeAuto_PicksStyleFromAdvertisement(t *testing.T) {
 	}{
 		{"well-known dpop block only", block, false, true},
 		{"well-known top-level key only", topLevel, false, true},
-		{"RFC 9728 only", stepOne, true, true},
+		{"RFC 9728 only", legacyServer, true, true},
 		{"both", block, true, true},
-		{"neither: step-One server", stepOne, false, false},
+		{"neither: legacy server", legacyServer, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -161,7 +212,6 @@ func TestDPoPModeAuto_PicksStyleFromAdvertisement(t *testing.T) {
 				want = server.URL + publicKeyProcedure
 			}
 			assert.Equal(t, []string{want, want}, f.htus)
-			// Step-One servers accept the DPoP scheme, and strict_scheme servers require it.
 			assert.Equal(t, []string{"DPoP test-token", "DPoP test-token"}, f.authorizations)
 			assert.Equal(t, 1, f.discoveries, "discovery result should be cached per origin")
 		})
@@ -169,24 +219,40 @@ func TestDPoPModeAuto_PicksStyleFromAdvertisement(t *testing.T) {
 }
 
 func TestDPoPModeAuto_DiscoveryFailureIsLegacyAndRetried(t *testing.T) {
-	f := &fakeDPoPServer{
-		key:             generateTestKey(t),
-		wellKnown:       map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}},
-		wellKnownStatus: http.StatusServiceUnavailable,
-	}
-	server := httptest.NewServer(f.handler(t))
-	defer server.Close()
-	transport := newModeTransport(f, DPoPModeAuto)
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{
+			key:             generateTestKey(t),
+			wellKnown:       map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}},
+			wellKnownStatus: http.StatusServiceUnavailable,
+		}
+		transport := newInProcessAutoTransport(t, f)
 
-	callPublicKey(t, server.URL, transport, 1)
-	assert.Equal(t, []string{legacyPublicKeyHTU}, f.htus, "failed discovery falls back to legacy")
+		callPublicKey(t, inProcessOrigin, transport, 2)
+		assert.Equal(t, []string{legacyPublicKeyHTU, legacyPublicKeyHTU}, f.htus, "failed discovery falls back to legacy")
+		assert.Equal(t, 1, f.discoveries, "the fallback is reused until the retry interval passes")
 
-	f.mu.Lock()
-	f.wellKnownStatus = 0
-	f.mu.Unlock()
-	callPublicKey(t, server.URL, transport, 1)
-	assert.Equal(t, server.URL+publicKeyProcedure, f.htus[1], "a failed discovery must not be cached")
-	assert.Equal(t, 2, f.discoveries)
+		f.mu.Lock()
+		f.wellKnownStatus = 0
+		f.mu.Unlock()
+		time.Sleep(dpopDiscoveryRetryInterval)
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Equal(t, inProcessOrigin+publicKeyProcedure, f.htus[2], "a failed discovery must not be cached for good")
+		assert.Equal(t, 2, f.discoveries)
+	})
+}
+
+func TestDPoPModeAuto_DiscoveryTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{key: generateTestKey(t), wellKnownBlock: make(chan struct{})}
+		defer close(f.wellKnownBlock)
+		transport := newInProcessAutoTransport(t, f)
+
+		start := time.Now()
+		callPublicKey(t, inProcessOrigin, transport, 1)
+
+		assert.Equal(t, dpopDiscoveryTimeout, time.Since(start), "a hung server delays the request by the discovery timeout")
+		assert.Equal(t, []string{legacyPublicKeyHTU}, f.htus)
+	})
 }
 
 func TestDPoPMode_ExplicitModesSkipDiscovery(t *testing.T) {
@@ -198,7 +264,7 @@ func TestDPoPMode_ExplicitModesSkipDiscovery(t *testing.T) {
 		wantHTU   func(serverURL string) string
 	}{
 		{"legacy against an advertising server", DPoPModeLegacy, advertising, func(string) string { return legacyPublicKeyHTU }},
-		{"rfc9449 against a step-One server", DPoPModeRFC9449, nil, func(u string) string { return u + publicKeyProcedure }},
+		{"rfc9449 against a legacy server", DPoPModeRFC9449, nil, func(u string) string { return u + publicKeyProcedure }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -220,7 +286,7 @@ func TestDPoPModeAuto_SeededOriginSkipsDiscovery(t *testing.T) {
 	defer server.Close()
 	transport := newModeTransport(f, DPoPModeAuto)
 	// The SDK seeds the platform origin from the well-known config it already fetched.
-	transport.SetServerRFC9449Support(server.URL+"/some/base/path", true)
+	require.NoError(t, transport.SetServerRFC9449Support(server.URL+"/some/base/path", true))
 
 	callPublicKey(t, server.URL, transport, 1)
 
@@ -271,4 +337,158 @@ func TestLegacyHTU(t *testing.T) {
 		"non-RPC requests were always checked against the full URI")
 	assert.True(t, strings.HasPrefix(legacyHTU(connectReq("https://platform.example/healthz")), "https://"),
 		"a single segment is not a procedure")
+}
+
+func TestDPoPModeAuto_DiscoveryAnswers(t *testing.T) {
+	tests := []struct {
+		name           string
+		status         int
+		body           string
+		wantConclusive bool
+	}{
+		{"404: no well-known endpoint", http.StatusNotFound, "", true},
+		{"405", http.StatusMethodNotAllowed, "", true},
+		{"501", http.StatusNotImplemented, "", true},
+		{"200 catch-all page", http.StatusOK, "<html>login</html>", true},
+		{"200 truncated document", http.StatusOK, `{"configuration": {`, false},
+		{"401 from an auth gateway", http.StatusUnauthorized, "", false},
+		{"403", http.StatusForbidden, "", false},
+		{"429", http.StatusTooManyRequests, "", false},
+		{"503", http.StatusServiceUnavailable, "", false},
+		{"redirect is not followed", http.StatusFound, "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				f := &fakeDPoPServer{key: generateTestKey(t), wellKnownStatus: tt.status, wellKnownRaw: tt.body}
+				transport := newInProcessAutoTransport(t, f)
+
+				callPublicKey(t, inProcessOrigin, transport, 1)
+				time.Sleep(dpopDiscoveryRetryInterval)
+				callPublicKey(t, inProcessOrigin, transport, 1)
+
+				assert.Equal(t, []string{legacyPublicKeyHTU, legacyPublicKeyHTU}, f.htus)
+				wantDiscoveries := 2
+				if tt.wantConclusive {
+					wantDiscoveries = 1
+				}
+				assert.Equal(t, wantDiscoveries, f.discoveries)
+			})
+		})
+	}
+}
+
+func TestDPoPModeAuto_TokenRequestsSkipDiscovery(t *testing.T) {
+	for _, mode := range []DPoPMode{DPoPModeLegacy, DPoPModeAuto} {
+		t.Run(mode.String(), func(t *testing.T) {
+			key := generateTestKey(t)
+			var htu string
+			idp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/token", r.URL.Path, "the IdP must see no discovery requests")
+				if proof, ok := parseDPoPProof(t, r.Header.Get("DPoP"), key); ok {
+					claim, _ := proof.Get("htu")
+					htu, _ = claim.(string)
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer idp.Close()
+			transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenEndpoint: idp.URL + "/token", Mode: mode}
+
+			resp, err := (&http.Client{Transport: transport}).Post(idp.URL+"/token", "application/x-www-form-urlencoded", strings.NewReader("grant_type=client_credentials"))
+			require.NoError(t, err)
+			resp.Body.Close()
+
+			assert.Equal(t, idp.URL+"/token", htu)
+		})
+	}
+}
+
+func TestDPoPModeAuto_OriginsCachedSeparately(t *testing.T) {
+	key := generateTestKey(t)
+	modern := &fakeDPoPServer{key: key, wellKnown: map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}}}
+	legacy := &fakeDPoPServer{key: key}
+	modernServer := httptest.NewServer(modern.handler(t))
+	defer modernServer.Close()
+	legacyServer := httptest.NewServer(legacy.handler(t))
+	defer legacyServer.Close()
+	transport := newModeTransport(modern, DPoPModeAuto)
+
+	callPublicKey(t, modernServer.URL, transport, 1)
+	callPublicKey(t, legacyServer.URL, transport, 1)
+	callPublicKey(t, modernServer.URL, transport, 1)
+
+	assert.Equal(t, []string{modernServer.URL + publicKeyProcedure, modernServer.URL + publicKeyProcedure}, modern.htus)
+	assert.Equal(t, []string{legacyPublicKeyHTU}, legacy.htus)
+	assert.Equal(t, 1, modern.discoveries)
+	assert.Equal(t, 1, legacy.discoveries)
+}
+
+func TestDPoPModeAuto_ConcurrentFirstRequestsShareDiscovery(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{
+			key:            generateTestKey(t),
+			wellKnown:      map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}},
+			wellKnownBlock: make(chan struct{}),
+		}
+		transport := newInProcessAutoTransport(t, f)
+
+		const callers = 8
+		var wg sync.WaitGroup
+		for range callers {
+			wg.Go(func() { callPublicKey(t, inProcessOrigin, transport, 1) })
+		}
+		synctest.Wait() // every caller is waiting on the one discovery
+		assert.Equal(t, 1, f.discoveries)
+		close(f.wellKnownBlock)
+		wg.Wait()
+
+		assert.Equal(t, 1, f.discoveries)
+		assert.Len(t, f.htus, callers)
+		for _, htu := range f.htus {
+			assert.Equal(t, inProcessOrigin+publicKeyProcedure, htu)
+		}
+	})
+}
+
+func TestDPoPModeAuto_CallerCancellationFailsRequest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{key: generateTestKey(t), wellKnownBlock: make(chan struct{})}
+		defer close(f.wellKnownBlock)
+		transport := newInProcessAutoTransport(t, f)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, inProcessOrigin+publicKeyProcedure, strings.NewReader("{}"))
+		require.NoError(t, err)
+		req.Header.Set("Connect-Protocol-Version", "1")
+		errs := make(chan error)
+		go func() {
+			_, err := transport.RoundTrip(req)
+			errs <- err
+		}()
+		synctest.Wait() // the request is waiting on discovery
+		require.Equal(t, 1, f.discoveries)
+		cancel()
+
+		require.ErrorIs(t, <-errs, context.Canceled)
+		assert.Empty(t, f.htus, "a canceled request must not be sent")
+	})
+}
+
+func TestSetServerRFC9449Support_RejectsURLWithoutScheme(t *testing.T) {
+	transport := &DPoPTransport{}
+	for _, serverURL := range []string{"platform.example.com", "platform.example.com:8443", "/path", "://bad"} {
+		require.Error(t, transport.SetServerRFC9449Support(serverURL, true), serverURL)
+	}
+	require.NoError(t, transport.SetServerRFC9449Support("https://platform.example.com:443/base", true))
+}
+
+func TestDPoPMode_UnknownModeSignsRFC9449(t *testing.T) {
+	f := &fakeDPoPServer{key: generateTestKey(t)}
+	server := httptest.NewServer(f.handler(t))
+	defer server.Close()
+
+	callPublicKey(t, server.URL, newModeTransport(f, DPoPMode(99)), 1)
+
+	assert.Equal(t, []string{server.URL + publicKeyProcedure}, f.htus)
+	assert.Zero(t, f.discoveries)
 }

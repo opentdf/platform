@@ -18,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"golang.org/x/sync/singleflight"
 )
 
 // DPoPTransport wraps each go standard net/http RoundTripper request with DPoP (RFC 9449)
@@ -71,7 +72,8 @@ type DPoPTransport struct {
 	// rfc9449ByOrigin caches, per normalized origin, whether the server accepts
 	// RFC 9449 proofs. Only consulted in DPoPModeAuto.
 	styleMu         sync.RWMutex
-	rfc9449ByOrigin map[string]bool
+	rfc9449ByOrigin map[string]originStyle
+	discoveries     singleflight.Group
 }
 
 var _ http.RoundTripper = (*DPoPTransport)(nil)
@@ -127,7 +129,13 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	origin := getOrigin(req2.URL)
 	nonce := t.getCachedNonce(origin)
-	legacy := usesDPoP && !isTokenRequest && t.useLegacyProof(req2.Context(), base, origin)
+	legacy := false
+	if usesDPoP && !isTokenRequest {
+		var err error
+		if legacy, err = t.useLegacyProof(req2.Context(), base, origin); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := t.addDPoPProof(req2, nonce, isTokenRequest, credential, legacy); err != nil {
 		return nil, fmt.Errorf("failed to add DPoP proof: %w", err)
@@ -159,23 +167,6 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return resp, nil
-}
-
-// SetServerRFC9449Support records whether the server at serverURL accepts RFC 9449
-// proofs, so DPoPModeAuto needn't discover it. Callers that have already fetched
-// the server's well-known configuration can pass ServerSupportsRFC9449 of it.
-func (t *DPoPTransport) SetServerRFC9449Support(serverURL string, supported bool) {
-	u, err := url.Parse(serverURL)
-	if err != nil || u.Host == "" {
-		return
-	}
-	origin := getOrigin(u)
-	t.styleMu.Lock()
-	defer t.styleMu.Unlock()
-	if t.rfc9449ByOrigin == nil {
-		t.rfc9449ByOrigin = make(map[string]bool)
-	}
-	t.rfc9449ByOrigin[origin] = supported
 }
 
 // retryWithNonce handles a DPoP-Nonce server challenge. It returns the retried
@@ -244,7 +235,7 @@ func (t *DPoPTransport) retryWithNonce(
 // The caller resolves resource credentials before handling the request body.
 // A Bearer credential sets Authorization without a proof. DPoP credentials
 // produce a proof bound to the access token via the ath claim. legacy selects
-// the step-One htu form (see legacyHTU) in place of the full request URI.
+// the pre-RFC 9449 htu form (see legacyHTU) in place of the full request URI.
 func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool, credential AccessTokenCredential, legacy bool) error {
 	if !isTokenRequest && t.TokenSource != nil {
 		if credential.Type != TokenTypeDPoP {
@@ -337,32 +328,6 @@ func (t *DPoPTransport) resourceCredential(ctx context.Context, base http.RoundT
 		return AccessTokenCredential{}, err
 	}
 	return AccessTokenCredential{Token: token, Type: TokenTypeDPoP}, nil
-}
-
-// useLegacyProof reports whether resource proofs for origin use the legacy htu.
-// In DPoPModeAuto the answer is discovered once per origin and cached; a failed
-// discovery falls back to legacy for this request only and is retried next time.
-func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripper, origin string) bool {
-	switch t.Mode {
-	case DPoPModeRFC9449:
-		return false
-	case DPoPModeLegacy:
-		return true
-	case DPoPModeAuto:
-	}
-
-	t.styleMu.RLock()
-	supported, known := t.rfc9449ByOrigin[origin]
-	t.styleMu.RUnlock()
-	if known {
-		return !supported
-	}
-
-	supported, definitive := discoverRFC9449(ctx, base, origin)
-	if definitive {
-		t.SetServerRFC9449Support(origin, supported)
-	}
-	return !supported
 }
 
 // isTokenEndpointRequest checks if the URL matches the configured token endpoint.

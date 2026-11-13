@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/stretchr/testify/assert"
@@ -86,7 +86,7 @@ func (m *mockCredentialTokenSource) AccessTokenCredential(_ context.Context, _ *
 // the other supported families are covered by generateTestKeyForAlg.
 func generateTestKey(t *testing.T) jwk.Key {
 	t.Helper()
-	return generateTestKeyForAlg(t, jwa.ES256)
+	return generateTestKeyForAlg(t, jwa.ES256())
 }
 
 // generateTestKeyForAlg generates a signing key for the given JWS algorithm so
@@ -96,19 +96,19 @@ func generateTestKeyForAlg(t *testing.T, alg jwa.SignatureAlgorithm) jwk.Key {
 
 	var raw any
 	var err error
-	switch alg { //nolint:exhaustive // test helper supports only the algorithms it needs; default rejects the rest
-	case jwa.RS256:
+	switch alg { // test helper supports only the algorithms it needs; default rejects the rest
+	case jwa.RS256():
 		raw, err = rsa.GenerateKey(rand.Reader, 2048)
-	case jwa.ES256:
+	case jwa.ES256():
 		raw, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	case jwa.ES384:
+	case jwa.ES384():
 		raw, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	default:
 		t.Fatalf("unsupported test algorithm %q", alg)
 	}
 	require.NoError(t, err, "failed to generate raw key")
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import[jwk.Key](raw)
 	require.NoError(t, err, "failed to create JWK")
 	require.NoError(t, key.Set(jwk.AlgorithmKey, alg), "failed to set algorithm")
 
@@ -123,7 +123,11 @@ func generateTestKeyForAlg(t *testing.T, alg jwa.SignatureAlgorithm) jwk.Key {
 func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) (jwt.Token, bool) {
 	t.Helper()
 
-	token, err := jwt.Parse([]byte(proofStr), jwt.WithKey(key.Algorithm(), key))
+	alg, ok := key.Algorithm()
+	if !assert.True(t, ok, "DPoP key has no algorithm") {
+		return nil, false
+	}
+	token, err := jwt.Parse([]byte(proofStr), jwt.WithKey(alg, key))
 	if !assert.NoError(t, err, "failed to parse DPoP proof") {
 		return nil, false
 	}
@@ -134,7 +138,7 @@ func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) (jwt.Token, bool
 func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 	// Run the full proof path against both the production-default EC key and RSA
 	// so a regression in either signing family is caught by a primary test.
-	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256} {
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256(), jwa.ES256()} {
 		t.Run(alg.String(), func(t *testing.T) {
 			testDPoPAddsProofToRequests(t, generateTestKeyForAlg(t, alg))
 		})
@@ -171,11 +175,11 @@ func testDPoPAddsProofToRequests(t *testing.T, key jwk.Key) {
 		}
 
 		// Check htm claim
-		htm, ok := token.Get("htm")
+		htm, ok := token.Field("htm")
 		assert.True(t, ok && htm == "GET", "htm claim = %v, want 'GET'", htm)
 
 		// Check htu claim (should be normalized)
-		htu, ok := token.Get("htu")
+		htu, ok := token.Field("htu")
 		if assert.True(t, ok, "htu claim missing") {
 			htuStr, isStr := htu.(string)
 			assert.True(t, isStr, "htu claim not a string: %v", htu)
@@ -183,14 +187,14 @@ func testDPoPAddsProofToRequests(t *testing.T, key jwk.Key) {
 		}
 
 		// Check ath claim (access token hash)
-		if ath, athOK := token.Get("ath"); assert.True(t, athOK, "ath claim missing") {
+		if ath, athOK := token.Field("ath"); assert.True(t, athOK, "ath claim missing") {
 			expectedHash := sha256.Sum256([]byte("test-access-token"))
 			expectedATH := base64.RawURLEncoding.EncodeToString(expectedHash[:])
 			assert.Equal(t, expectedATH, ath, "ath claim")
 		}
 
 		// Check jti claim
-		jti, jtiOK := token.Get("jti")
+		jti, jtiOK := token.Field("jti")
 		assert.True(t, jtiOK && jti != "", "jti claim missing or empty")
 
 		w.WriteHeader(http.StatusOK)
@@ -219,7 +223,7 @@ func testDPoPAddsProofToRequests(t *testing.T, key jwk.Key) {
 // path and ES256/P-256 is the SDK default, so a regression there would otherwise
 // ship untested.
 func TestDPoPTransport_ProofAlgorithms(t *testing.T) {
-	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256, jwa.ES384} {
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256(), jwa.ES256(), jwa.ES384()} {
 		t.Run(alg.String(), func(t *testing.T) {
 			key := generateTestKeyForAlg(t, alg)
 			ts := &mockTokenSource{token: "test-access-token"}
@@ -236,7 +240,7 @@ func TestDPoPTransport_ProofAlgorithms(t *testing.T) {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
-				_, hasATH := token.Get("ath")
+				_, hasATH := token.Field("ath")
 				assert.True(t, hasATH, "resource request proof should carry ath")
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -257,7 +261,7 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 	// Exercise the nonce challenge/retry path on both signing families: the retry
 	// re-signs the proof, so an EC- or RSA-specific regression there would ship
 	// untested if only one algorithm ran.
-	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256} {
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256(), jwa.ES256()} {
 		t.Run(alg.String(), func(t *testing.T) {
 			testDPoPNonceRetry(t, generateTestKeyForAlg(t, alg))
 		})
@@ -292,7 +296,7 @@ func testDPoPNonceRetry(t *testing.T, key jwk.Key) {
 
 		if callCount == 1 {
 			// First request should not have nonce
-			_, ok := token.Get("nonce")
+			_, ok := token.Field("nonce")
 			assert.False(t, ok, "first request should not have nonce claim")
 
 			// Send 401 with nonce challenge
@@ -302,7 +306,7 @@ func testDPoPNonceRetry(t *testing.T, key jwk.Key) {
 		}
 
 		// Second request should have the nonce
-		if nonceVal, ok := token.Get("nonce"); assert.True(t, ok, "second request missing nonce claim") {
+		if nonceVal, ok := token.Field("nonce"); assert.True(t, ok, "second request missing nonce claim") {
 			assert.Equal(t, nonce, nonceVal, "nonce claim")
 		}
 
@@ -495,7 +499,7 @@ func TestDPoPTransport_URINormalization(t *testing.T) {
 					return
 				}
 
-				htu, ok := token.Get("htu")
+				htu, ok := token.Field("htu")
 				if !assert.True(t, ok, "htu claim missing") {
 					return
 				}
@@ -552,7 +556,7 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 		}
 
 		// Token endpoint requests should NOT have ath claim
-		_, hasATH := token.Get("ath")
+		_, hasATH := token.Field("ath")
 		assert.False(t, hasATH, "token endpoint request should not have ath claim")
 
 		// Should not have Authorization header for token endpoint
@@ -726,7 +730,7 @@ func TestDPoPTransport_ClosesBodyOnProofError(t *testing.T) {
 	rawKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 	// Without an alg the key cannot sign, so proof generation fails.
-	key, err := jwk.FromRaw(rawKey)
+	key, err := jwk.Import[jwk.Key](rawKey)
 	require.NoError(t, err)
 	transport := &DPoPTransport{DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
 	body := &trackedReadCloser{Reader: strings.NewReader("upload part")}
@@ -898,7 +902,7 @@ func TestDPoPTransport_DPoPCredentialSourceSignsProof(t *testing.T) {
 		if !ok {
 			return
 		}
-		if ath, athOK := token.Get("ath"); assert.True(t, athOK, "DPoP request proof should carry ath") {
+		if ath, athOK := token.Field("ath"); assert.True(t, athOK, "DPoP request proof should carry ath") {
 			expected := sha256.Sum256([]byte("dpop-access-token"))
 			assert.Equal(t, base64.RawURLEncoding.EncodeToString(expected[:]), ath, "ath claim")
 		}
@@ -1085,17 +1089,17 @@ func TestDPoPTransport_TokenEndpointNonceRetryOn400(t *testing.T) {
 			return
 		}
 		// Token-endpoint requests never carry an ath claim.
-		_, hasATH := token.Get("ath")
+		_, hasATH := token.Field("ath")
 		assert.False(t, hasATH, "token endpoint proof must not carry ath")
 
 		if n == 1 {
-			_, ok := token.Get("nonce")
+			_, ok := token.Field("nonce")
 			assert.False(t, ok, "first request should not carry a nonce")
 			w.Header().Set("DPoP-Nonce", nonce)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if nonceVal, ok := token.Get("nonce"); assert.True(t, ok, "retry missing nonce claim") {
+		if nonceVal, ok := token.Field("nonce"); assert.True(t, ok, "retry missing nonce claim") {
 			assert.Equal(t, nonce, nonceVal, "nonce claim")
 		}
 		w.WriteHeader(http.StatusOK)
@@ -1255,7 +1259,7 @@ func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
 			if !ok {
 				return
 			}
-			got, _ := tok.Get("nonce")
+			got, _ := tok.Field("nonce")
 			assert.Equalf(t, nonce2, got, "retry nonce")
 			w.WriteHeader(http.StatusOK)
 		}
@@ -1295,7 +1299,7 @@ func TestDPoPTransport_CachesNonceFromRetrySuccess(t *testing.T) {
 		if !ok {
 			return ""
 		}
-		got, _ := tok.Get("nonce")
+		got, _ := tok.Field("nonce")
 		s, _ := got.(string)
 		return s
 	}

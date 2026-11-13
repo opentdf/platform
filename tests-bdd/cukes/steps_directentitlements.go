@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -76,7 +76,7 @@ func (s *DirectEntitlementsStepDefinitions) thereIsATokenReferencedAsWithDirectE
 }
 
 // directEntitlementsTokenSigningKey signs the subject tokens minted for these scenarios. The claims
-// ERS parses subject tokens with jwt.WithVerify(false) — the JWT is decision *input*, not the
+// ERS parses subject tokens with jwt.ParseInsecure — the JWT is decision *input*, not the
 // caller's credential — so the key only has to produce a well-formed JWS.
 var directEntitlementsTokenSigningKey = []byte("cukes-direct-entitlements-signing-key")
 
@@ -93,7 +93,7 @@ func mintDirectEntitlementsToken(subject string, directEntitlements []interface{
 		return "", fmt.Errorf("building direct entitlements token for %s: %w", subject, err)
 	}
 
-	signed, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, directEntitlementsTokenSigningKey))
+	signed, err := jwt.Sign(token, jwt.WithKey(jwa.HS256(), directEntitlementsTokenSigningKey))
 	if err != nil {
 		return "", fmt.Errorf("signing direct entitlements token for %s: %w", subject, err)
 	}

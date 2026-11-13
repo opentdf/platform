@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
@@ -583,7 +583,7 @@ func (k *chunkedFakeKAS) Rewrap(_ context.Context, in *connect.Request[kaspb.Rew
 	if err != nil {
 		return nil, fmt.Errorf("parse jwt: %w", err)
 	}
-	rawBody, ok := tok.Get("requestBody")
+	rawBody, ok := tok.Field("requestBody")
 	if !ok {
 		return nil, errors.New("requestBody missing from token")
 	}

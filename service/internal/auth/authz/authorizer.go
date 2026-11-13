@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 )
 

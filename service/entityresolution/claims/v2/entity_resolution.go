@@ -11,7 +11,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
@@ -250,25 +250,31 @@ func parseDirectEntitlementActions(raw interface{}) ([]string, error) {
 }
 
 func getEntitiesFromToken(jwtString string) ([]*entity.Entity, error) {
-	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+	token, err := jwt.ParseInsecure([]byte(jwtString))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing jwt: %w", err)
 	}
 
-	claims := token.PrivateClaims()
-	// PrivateClaims() excludes standard registered JWT claims (sub, iss, aud, etc.)
-	// because the jwx library stores them as typed fields. Add them back so selectors
-	// like .sub work in subject mapping conditions.
-	if sub := token.Subject(); sub != "" {
+	claims := make(map[string]any)
+	for name, value := range token.Claims() {
+		switch name {
+		case jwt.SubjectKey, jwt.IssuerKey, jwt.JwtIDKey, jwt.AudienceKey,
+			jwt.IssuedAtKey, jwt.NotBeforeKey, jwt.ExpirationKey:
+			continue
+		default:
+			claims[name] = value
+		}
+	}
+	if sub, ok := token.Subject(); ok && sub != "" {
 		claims["sub"] = sub
 	}
-	if iss := token.Issuer(); iss != "" {
+	if iss, ok := token.Issuer(); ok && iss != "" {
 		claims["iss"] = iss
 	}
-	if jti := token.JwtID(); jti != "" {
+	if jti, ok := token.JwtID(); ok && jti != "" {
 		claims["jti"] = jti
 	}
-	if aud := token.Audience(); len(aud) > 0 {
+	if aud, ok := token.Audience(); ok && len(aud) > 0 {
 		// Convert []string to []interface{} for structpb compatibility
 		audSlice := make([]interface{}, len(aud))
 		for i, a := range aud {

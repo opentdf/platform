@@ -17,8 +17,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
@@ -364,7 +364,11 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 	}
 
 	signedToken, err := k.accessTokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
-		signed, err := jwt.Sign(tok, jwt.WithKey(key.Algorithm(), key))
+		alg, ok := key.Algorithm()
+		if !ok {
+			return nil, errors.New("token signing key has no algorithm")
+		}
+		signed, err := jwt.Sign(tok, jwt.WithKey(alg, key))
 		if err != nil {
 			return nil, fmt.Errorf("error signing DPoP token: %w", err)
 		}

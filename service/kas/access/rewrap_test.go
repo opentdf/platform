@@ -30,10 +30,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -307,32 +307,25 @@ c+IGR81BPaPzHnrzo55MgmRUSq10+odecl37TuFP+maU1Iq3jsVvXS5DbipxxPe8
 kwIDAQAB
 -----END PUBLIC KEY-----
 `
-	rsaPublicAlt = `-----BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDZcnlPNj3EHr7/LIYa8WSyRW5r
-YkxOo3Mwu5Uuj94Ht4zDkR/RGDFLnVsKdwUxGWb+/bBrWK7X5S6HwZCQospbsBMc
-Mi/hapSJ6CsE9wPuCvnUAqNNv90LijcYrAiCMLtOESweIassGj4e8neoyum4U2+b
-bmqZPkN152tF9YWMoQIDAQAB
------END PUBLIC KEY-----
-`
-	rsaPrivateAlt = `-----BEGIN RSA PRIVATE KEY-----
-MIICXQIBAAKBgQDZcnlPNj3EHr7/LIYa8WSyRW5rYkxOo3Mwu5Uuj94Ht4zDkR/R
-GDFLnVsKdwUxGWb+/bBrWK7X5S6HwZCQospbsBMcMi/hapSJ6CsE9wPuCvnUAqNN
-v90LijcYrAiCMLtOESweIassGj4e8neoyum4U2+bbmqZPkN152tF9YWMoQIDAQAB
-AoGAHe1/fMN+ZMvGheBe5L5smYys0eLJldkxNXfb5HiwmmdM3G3Q7zphLoMN0Lbo
-5AUXA+luqpeeGODWMqEVgJKnPw42NQ2K6D74Z3fKAjldCbVZ9fV4PBuzX7h1hzPe
-P6UZYQVk27wTZgxDEJ70Q9xFiUrAYEzjNjY9UgCaQac3OUECQQD89/5KNdmZLNdk
-t3ejUE9gq6m63G3OhOhZoXfwxiNQQ//XZzKyPJuxA3olxJZnSWLxEUnX4cMVaAPV
-bhFUxmzNAkEA3A2DvuGvcR3zN7AeFvyHjUCPydCX2xulEVRcPGj7rI5Kg574WcXr
-IKeaaVbsOres53yLHA3p/EFFZnHYhFcfJQJBAPoZzWVdXCceuE2xPi1Ox0vSLFq8
-eCvIJ1gGVejMXDmNITK7qtmhJmSaBXe1puWzHoksCI/Reuh9D91BlwzzqLkCQDUO
-CRqnnT4fo3lkvAx8vE3hKAnXghVw196SwV5LTYqwD+UmGejDIEqSPldxfqk1ibmS
-PJP6AtUwA4SMpFBcFQUCQQDafTeVfGXrjWTq71/qrn34dUIDcqjHoqXly6m6Pw25
-Dzq7D9lqeqSK/ds7r7hpbs4iIr6KrSuXwlXmYtnhRvKT
------END RSA PRIVATE KEY-----
-`
 	plainKey      = "This-is-128-bits"
 	mockIDPOrigin = "https://keycloak-http/"
 )
+
+var rsaPrivateAlt, rsaPublicAlt = newRSAAltKeyPair()
+
+func newRSAAltKeyPair() (string, string) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	privatePEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	publicDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+	publicPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: publicDER})
+	return string(privatePEM), string(publicPEM)
+}
 
 func fauxPolicy() *Policy {
 	return &Policy{
@@ -463,7 +456,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 type RSAPublicKey rsa.PublicKey
 
 func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) ([]byte, error) {
-	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256, rsa.PublicKey(*publicKey)))
+	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256(), rsa.PublicKey(*publicKey)))
 	if err != nil {
 		slog.ErrorContext(ctx, "jws.Verify fail", slog.String("raw", raw))
 		return nil, err
@@ -473,7 +466,7 @@ func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) 
 
 func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 	tok := mockJWT(t)
-	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, signer))
+	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), signer))
 	require.NoError(t, err)
 	return raw
 }
@@ -532,7 +525,7 @@ func makeRewrapBodyWithKey(t *testing.T, policy []byte, policyBindingAsString bo
 	err = tok.Set("requestBody", string(bodyData))
 	require.NoError(t, err)
 
-	s, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, entityPrivateKey(t)))
+	s, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), entityPrivateKey(t)))
 	require.NoError(t, err)
 	return s
 }
@@ -581,12 +574,12 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				var key jwk.Key
 				var err error
 				if tt.goodDPoP {
-					key, err = jwk.FromRaw(entityPublicKey(t))
+					key, err = jwk.Import[jwk.Key](entityPublicKey(t))
 				} else {
-					key, err = jwk.FromRaw(publicKeyTest(t))
+					key, err = jwk.Import[jwk.Key](publicKeyTest(t))
 				}
 				require.NoError(t, err, "couldn't get JWK from key")
-				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
+				err = key.Set(jwk.AlgorithmKey, jwa.RS256()) // Check the error return value
 				require.NoError(t, err, "failed to set algorithm key")
 				ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, mockJWT(t), bearer)
 			}
@@ -634,10 +627,10 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	ctx := t.Context()
-	key, err := jwk.FromRaw([]byte("bad key"))
+	key, err := jwk.Import[jwk.Key]([]byte("bad key"))
 	require.NoError(t, err, "couldn't get JWK from key")
 
-	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature)
+	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature())
 	require.NoError(t, err, "failed to set algorithm key")
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, mockJWT(t), string(jwtStandard(t)))
 
@@ -1495,7 +1488,7 @@ func TestVerifySRTSignature(t *testing.T) {
 		tok := jwt.New()
 		s, err := jwt.Sign(tok, jwt.WithKey(alg, privKey))
 		require.NoError(t, err)
-		dpopKey, err := jwk.FromRaw(pubKey)
+		dpopKey, err := jwk.Import[jwk.Key](pubKey)
 		require.NoError(t, err)
 		return string(s), dpopKey
 	}
@@ -1516,51 +1509,49 @@ func TestVerifySRTSignature(t *testing.T) {
 			name: "RS256",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv := entityPrivateKey(t)
-				return makeSRTAndKey(t, jwa.RS256, priv, &priv.PublicKey)
+				return makeSRTAndKey(t, jwa.RS256(), priv, &priv.PublicKey)
 			},
 		},
 		{
 			name: "PS256",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv := entityPrivateKey(t)
-				return makeSRTAndKey(t, jwa.PS256, priv, &priv.PublicKey)
+				return makeSRTAndKey(t, jwa.PS256(), priv, &priv.PublicKey)
 			},
 		},
 		{
 			name: "PS384",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv := entityPrivateKey(t)
-				return makeSRTAndKey(t, jwa.PS384, priv, &priv.PublicKey)
+				return makeSRTAndKey(t, jwa.PS384(), priv, &priv.PublicKey)
 			},
 		},
 		{
 			name: "PS512",
 			build: func(t *testing.T) (string, jwk.Key) {
-				// entityPrivateKey is 1024-bit, too small for PS512 (needs 2048+).
-				priv, err := rsa.GenerateKey(rand.Reader, 2048)
-				require.NoError(t, err)
-				return makeSRTAndKey(t, jwa.PS512, priv, &priv.PublicKey)
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.PS512(), priv, &priv.PublicKey)
 			},
 		},
 		{
 			name: "ES256",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv, pub := ecKey(t, elliptic.P256())
-				return makeSRTAndKey(t, jwa.ES256, priv, pub)
+				return makeSRTAndKey(t, jwa.ES256(), priv, pub)
 			},
 		},
 		{
 			name: "ES384",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv, pub := ecKey(t, elliptic.P384())
-				return makeSRTAndKey(t, jwa.ES384, priv, pub)
+				return makeSRTAndKey(t, jwa.ES384(), priv, pub)
 			},
 		},
 		{
 			name: "ES512",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv, pub := ecKey(t, elliptic.P521())
-				return makeSRTAndKey(t, jwa.ES512, priv, pub)
+				return makeSRTAndKey(t, jwa.ES512(), priv, pub)
 			},
 		},
 		{
@@ -1569,9 +1560,9 @@ func TestVerifySRTSignature(t *testing.T) {
 			build: func(t *testing.T) (string, jwk.Key) {
 				secret := []byte("symmetric-secret")
 				tok := jwt.New()
-				s, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256, secret))
+				s, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256(), secret))
 				require.NoError(t, err)
-				dpopKey, err := jwk.FromRaw(secret)
+				dpopKey, err := jwk.Import[jwk.Key](secret)
 				require.NoError(t, err)
 				return string(s), dpopKey
 			},

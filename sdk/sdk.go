@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -284,7 +284,7 @@ func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
 		return nil, fmt.Errorf("error getting dpop private key: %w", err)
 	}
 
-	key, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
+	key, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithX509(true))
 	if err != nil {
 		return nil, fmt.Errorf("error creating JWK: %w", err)
 	}

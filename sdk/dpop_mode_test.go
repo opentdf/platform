@@ -32,9 +32,10 @@ func (staticTokenSource) MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error
 	return nil, nil
 }
 
-// dpopPlatform records the htu of each PublicKey call and counts discovery
-// requests. It never advertises RFC 9449 itself, so any compliant proof it sees
-// comes from the SDK's own configuration.
+// dpopPlatform records the htu of each PublicKey call and counts well-known
+// configuration requests, which it always answers with 404. It never advertises
+// RFC 9449, so a full-URL htu can only come from the injected
+// PlatformConfiguration or an explicit WithDPoPMode.
 type dpopPlatform struct {
 	mu          sync.Mutex
 	htus        []string
@@ -98,7 +99,7 @@ func TestNew_DPoPModeFromPlatformConfiguration(t *testing.T) {
 			wantDiscoveries: 1,
 		},
 		{
-			name:        "explicit rfc9449 overrides a step-One configuration",
+			name:        "explicit rfc9449 overrides a legacy configuration",
 			config:      PlatformConfiguration{"idp": idp},
 			opts:        []Option{WithDPoPMode(auth.DPoPModeRFC9449)},
 			wantRFC9449: true,

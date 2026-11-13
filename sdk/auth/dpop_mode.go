@@ -21,8 +21,9 @@ const (
 	// DPoPModeRFC9449 always signs the full request URI (RFC 9449 §4.2). It is the
 	// zero value, so a directly constructed transport keeps its original behavior.
 	DPoPModeRFC9449 DPoPMode = iota
-	// DPoPModeLegacy signs the bare Connect procedure path, as the first OpenTDF
-	// DPoP servers (service v0.11.x) require. Those servers reject a full-URL htu.
+	// DPoPModeLegacy signs the bare Connect or gRPC procedure path
+	// ("/package.Service/Method") for RPCs, as service releases before v0.18.0
+	// require. Those releases reject a full-URL htu on RPCs.
 	DPoPModeLegacy
 	// DPoPModeAuto discovers per origin whether the server advertises RFC 9449
 	// support, and uses the legacy form when it does not.

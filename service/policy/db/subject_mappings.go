@@ -681,17 +681,21 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 ) error {
 	// Attribute value namespace check only applies when the SM is namespaced
 	if targetNsID != "" {
-		av, err := c.GetAttributeValue(ctx, attributeValueID)
+		valueID := pgtypeUUID(attributeValueID)
+		if !valueID.Valid {
+			return db.ErrUUIDInvalid
+		}
+		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, []string{UUIDToString(valueID)})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
+		if len(rows) == 0 {
+			return db.ErrNotFound
 		}
-		if attr.GetNamespace().GetId() != targetNsID {
+		valueNamespaceID := rows[0].NamespaceID
+		if valueNamespaceID != targetNsID {
 			return errors.Join(db.ErrNamespaceMismatch,
-				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", valueNamespaceID, targetNsID))
 		}
 	}
 

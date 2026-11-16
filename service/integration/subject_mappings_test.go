@@ -2934,6 +2934,20 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_AttributeValueWrongNames
 	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_NonExistentAttributeValue_Fails() {
+	nsID := s.exampleComNsID()
+	scs := s.newSCSInNamespace(nsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              nonExistentAttributeValueUUID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(created)
+}
+
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSCSWrongNamespace_Fails() {
 	comNsID := s.exampleComNsID()
 	netNsID := s.exampleNetNsID()

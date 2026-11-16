@@ -498,10 +498,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			origin = originFromHost(r.Host, r.TLS != nil)
-		}
+		// Origin identifies the caller's page, not the URL receiving this proof.
+		origin := originFromHost(r.Host, r.TLS != nil)
 		ri := receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},

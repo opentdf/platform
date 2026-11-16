@@ -495,6 +495,33 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 	return i, err
 }
 
+const getAttributeValueNamespaceByFqn = `-- name: getAttributeValueNamespaceByFqn :one
+SELECT av.id AS attribute_value_id, ad.namespace_id
+FROM attribute_values av
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($1::text, '^https://', '')
+`
+
+type getAttributeValueNamespaceByFqnRow struct {
+	AttributeValueID string `json:"attribute_value_id"`
+	NamespaceID      string `json:"namespace_id"`
+}
+
+// getAttributeValueNamespaceByFqn
+//
+//	SELECT av.id AS attribute_value_id, ad.namespace_id
+//	FROM attribute_values av
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	WHERE REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($1::text, '^https://', '')
+func (q *Queries) getAttributeValueNamespaceByFqn(ctx context.Context, fqn string) (getAttributeValueNamespaceByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueNamespaceByFqn, fqn)
+	var i getAttributeValueNamespaceByFqnRow
+	err := row.Scan(&i.AttributeValueID, &i.NamespaceID)
+	return i, err
+}
+
 const getAttributeValueNamespaceIDs = `-- name: getAttributeValueNamespaceIDs :many
 SELECT av.id AS attribute_value_id, ad.namespace_id
 FROM attribute_values av

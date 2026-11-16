@@ -161,6 +161,42 @@ func TestObligationTriggersSuite(t *testing.T) {
 	suite.Run(t, new(ObligationTriggersSuite))
 }
 
+func (s *ObligationTriggersSuite) Test_ObligationTrigger_AttributeValueNamespaceLookup() {
+	cases := []struct {
+		name       string
+		identifier *common.IdFqnIdentifier
+		wantErr    error
+	}{
+		{"UppercaseUUID", &common.IdFqnIdentifier{Id: strings.ToUpper(s.attributeValue.GetId())}, nil},
+		{"Fqn", &common.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()}, nil},
+		{"FqnWithoutScheme", &common.IdFqnIdentifier{Fqn: strings.TrimPrefix(s.attributeValue.GetFqn(), "https://")}, db.ErrInvalidOblTriParam},
+		{"MissingUUID", &common.IdFqnIdentifier{Id: uuid.NewString()}, db.ErrNotFound},
+		{"InvalidUUID", &common.IdFqnIdentifier{Id: "invalid"}, db.ErrUUIDInvalid},
+		{"MissingFqn", &common.IdFqnIdentifier{Fqn: "https://missing.example/attr/a/value/b"}, db.ErrNotFound},
+		{"EmptyIdentifier", &common.IdFqnIdentifier{}, db.ErrSelectIdentifierInvalid},
+	}
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+				AttributeValue:  tc.identifier,
+				Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+				Context:         &policy.RequestContext{Pep: &policy.PolicyEnforcementPoint{ClientId: tc.name}},
+			})
+			if tc.wantErr != nil {
+				s.Require().ErrorIs(err, tc.wantErr)
+				s.Nil(trigger)
+				return
+			}
+			s.Require().NoError(err)
+			s.Require().NotNil(trigger)
+			s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+			s.Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
+			s.Equal(s.namespace.GetId(), trigger.GetNamespace().GetId())
+		})
+	}
+}
+
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoMetadata_Success() {
 	s.triggerIDsToClean = append(s.triggerIDsToClean, s.createGenericTrigger().GetId())
 }

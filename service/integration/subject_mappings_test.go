@@ -2934,6 +2934,52 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_AttributeValueWrongNames
 	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_NonExistentAttributeValue_Fails() {
+	nsID := s.exampleComNsID()
+	scs := s.newSCSInNamespace(nsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              nonExistentAttributeValueUUID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(created)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_UsesTransactionValue() {
+	nsID := s.exampleComNsID()
+	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
+	scs := s.newSCSInNamespace(nsID)
+	var created *policy.SubjectMapping
+
+	err := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *policydb.PolicyDBClient) error {
+		value, err := txClient.CreateAttributeValue(s.ctx, attrID, &attributes.CreateAttributeValueRequest{
+			AttributeId: attrID,
+			Value:       fmt.Sprintf("transaction-value-%d", time.Now().UnixNano()),
+		})
+		if err != nil {
+			return err
+		}
+
+		created, err = txClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              value.GetId(),
+			Actions:                       []*policy.Action{{Name: "read"}},
+			ExistingSubjectConditionSetId: scs.GetId(),
+			NamespaceId:                   nsID,
+		})
+		return err
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(created)
+	s.Equal(nsID, created.GetNamespace().GetId())
+
+	stored, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(created.GetAttributeValue().GetId(), stored.GetAttributeValue().GetId())
+}
+
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSCSWrongNamespace_Fails() {
 	comNsID := s.exampleComNsID()
 	netNsID := s.exampleNetNsID()

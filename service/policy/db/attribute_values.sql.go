@@ -74,7 +74,6 @@ func (q *Queries) deleteAttributeValue(ctx context.Context, id string) (int64, e
 }
 
 const getAttributeValue = `-- name: getAttributeValue :one
-
 WITH target_attribute_value AS (
     SELECT
         av.id,
@@ -284,9 +283,7 @@ type getAttributeValueRow struct {
 	SubjectMappings       []byte      `json:"subject_mappings"`
 }
 
-// --------------------------------------------------------------
-// ATTRIBUTE VALUES
-// --------------------------------------------------------------
+// getAttributeValue
 //
 //	WITH target_attribute_value AS (
 //	    SELECT
@@ -493,6 +490,27 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 		&i.SubjectMappings,
 	)
 	return i, err
+}
+
+const getAttributeValueMetadata = `-- name: getAttributeValueMetadata :one
+
+SELECT JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM attribute_values
+WHERE id = $1
+`
+
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
+//
+//	SELECT JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	FROM attribute_values
+//	WHERE id = $1
+func (q *Queries) getAttributeValueMetadata(ctx context.Context, id string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueMetadata, id)
+	var metadata []byte
+	err := row.Scan(&metadata)
+	return metadata, err
 }
 
 const getAttributeValueNamespaceIDs = `-- name: getAttributeValueNamespaceIDs :many

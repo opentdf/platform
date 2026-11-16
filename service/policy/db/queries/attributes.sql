@@ -2,6 +2,11 @@
 -- ATTRIBUTES
 ----------------------------------------------------------------
 
+-- name: getAttributeMetadata :one
+SELECT JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM attribute_definitions
+WHERE id = sqlc.arg('id');
+
 -- name: listAttributesDetail :many
 WITH params AS (
     SELECT

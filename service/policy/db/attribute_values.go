@@ -175,11 +175,18 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
 	id := r.GetId()
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, id)
+		if !pgtypeUUID(id).Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		metadataJSON, err := c.queries.getAttributeValueMetadata(ctx, id)
 		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(metadataJSON, metadata); err != nil {
 			return nil, err
 		}
-		return v.GetMetadata(), nil
+		return metadata, nil
 	})
 	if err != nil {
 		return nil, err

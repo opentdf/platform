@@ -514,11 +514,18 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		a, err := c.GetAttribute(ctx, id)
+		if !pgtypeUUID(id).Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		metadataJSON, err := c.queries.getAttributeMetadata(ctx, id)
 		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(metadataJSON, metadata); err != nil {
 			return nil, err
 		}
-		return a.GetMetadata(), nil
+		return metadata, nil
 	})
 	if err != nil {
 		return nil, err

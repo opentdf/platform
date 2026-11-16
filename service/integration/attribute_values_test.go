@@ -51,6 +51,27 @@ func (s *AttributeValuesSuite) SetupTest() {
 	s.obligations = make([]*policy.Obligation, 0)
 }
 
+func (s *AttributeValuesSuite) Test_AttributeValue_MetadataExtend_PreservesValue() {
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID, &attributes.CreateAttributeValueRequest{
+		Value:    "metadata_extend_projection",
+		Metadata: &common.MetadataMutable{Labels: map[string]string{"keep": "original", "replace": "old"}},
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
+		Id:                     created.GetId(),
+		Metadata:               &common.MetadataMutable{Labels: map[string]string{"replace": "new"}},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(map[string]string{"keep": "original", "replace": "new"}, got.GetMetadata().GetLabels())
+	s.Equal(created.GetMetadata().GetCreatedAt(), got.GetMetadata().GetCreatedAt())
+	s.Equal(created.GetValue(), got.GetValue())
+	s.Equal(created.GetFqn(), got.GetFqn())
+	s.Equal(created.GetAttribute(), got.GetAttribute())
+}
+
 func (s *AttributeValuesSuite) TearDownTest() {
 	for _, obl := range s.obligations {
 		_, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{

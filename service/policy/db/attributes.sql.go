@@ -252,6 +252,27 @@ func (q *Queries) getAttribute(ctx context.Context, arg getAttributeParams) (get
 	return i, err
 }
 
+const getAttributeMetadata = `-- name: getAttributeMetadata :one
+
+SELECT JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM attribute_definitions
+WHERE id = $1
+`
+
+// --------------------------------------------------------------
+// ATTRIBUTES
+// --------------------------------------------------------------
+//
+//	SELECT JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	FROM attribute_definitions
+//	WHERE id = $1
+func (q *Queries) getAttributeMetadata(ctx context.Context, id string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getAttributeMetadata, id)
+	var metadata []byte
+	err := row.Scan(&metadata)
+	return metadata, err
+}
+
 const listAttributesByDefOrValueFqns = `-- name: listAttributesByDefOrValueFqns :many
 WITH target_definition AS (
     SELECT DISTINCT
@@ -757,7 +778,6 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAt
 }
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
-
 WITH params AS (
     SELECT
         COALESCE(NULLIF($7::text, ''), 'created_at') AS resolved_field,
@@ -843,9 +863,7 @@ type listAttributesDetailRow struct {
 	Total          int64                   `json:"total"`
 }
 
-// --------------------------------------------------------------
-// ATTRIBUTES
-// --------------------------------------------------------------
+// listAttributesDetail
 //
 //	WITH params AS (
 //	    SELECT

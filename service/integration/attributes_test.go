@@ -56,6 +56,29 @@ func (s *AttributesSuite) TearDownSuite() {
 	s.f.TearDown(s.ctx)
 }
 
+func (s *AttributesSuite) Test_Attribute_MetadataExtend_PreservesDefinitionAndValues() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "metadata_extend_projection",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"first", "second"},
+		Metadata:    &common.MetadataMutable{Labels: map[string]string{"keep": "original", "replace": "old"}},
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.UpdateAttribute(s.ctx, created.GetId(), &attributes.UpdateAttributeRequest{
+		Metadata:               &common.MetadataMutable{Labels: map[string]string{"replace": "new"}},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(map[string]string{"keep": "original", "replace": "new"}, got.GetMetadata().GetLabels())
+	s.Equal(created.GetMetadata().GetCreatedAt(), got.GetMetadata().GetCreatedAt())
+	s.Equal(created.GetRule(), got.GetRule())
+	s.Equal(created.GetFqn(), got.GetFqn())
+	s.Equal(created.GetValues(), got.GetValues())
+}
+
 func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_no_metadata",

@@ -19,9 +19,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -431,16 +431,16 @@ func (s *AuthSuite) Test_ConnectAuthN_NonceOnUnaryResponses() {
 func (s *AuthSuite) Test_ConnectAuthN_DPoPEndToEnd() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	dpopKey, err := jwk.Import[jwk.Key](dpopKeyRaw)
 	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256()))
 
 	tok := s.standardRoleToken()
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 
 	for _, stack := range s.connectStacks() {

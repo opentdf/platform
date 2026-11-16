@@ -304,6 +304,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	} else {
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
+	ready := false
+	defer func() {
+		if !ready && authN != nil {
+			_ = authN.Close(context.Background())
+		}
+	}()
 
 	ipcInts := connectRPCInterceptors{
 		requestIP:   realip.ConnectTrustedRequestIPUnaryInterceptor(sdkAudit.RequestIPHeaderKey.String()),
@@ -387,6 +393,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		}
 	}
 
+	ready = true
 	return &o, nil
 }
 
@@ -656,6 +663,13 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutting down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
+	defer func() {
+		authCtx, authCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer authCancel()
+		if err := s.AuthN.Close(authCtx); err != nil {
+			s.logger.Error("failed to shut down authentication", slog.String("error", err.Error()))
+		}
+	}()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return

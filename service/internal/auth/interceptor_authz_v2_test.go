@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/connect"
 	connectv2 "connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnectv2"

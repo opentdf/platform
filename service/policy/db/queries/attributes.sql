@@ -2,6 +2,14 @@
 -- ATTRIBUTES
 ----------------------------------------------------------------
 
+-- name: getAttributeUpdateState :one
+SELECT ad.rule,
+       (CASE WHEN sqlc.arg('include_value_ids')::boolean
+        THEN ARRAY(SELECT av.id::text FROM attribute_values av WHERE av.attribute_definition_id = ad.id)
+        ELSE ARRAY[]::text[] END)::text[] AS value_ids
+FROM attribute_definitions ad
+WHERE ad.id = sqlc.arg('id');
+
 -- name: listAttributesDetail :many
 WITH params AS (
     SELECT

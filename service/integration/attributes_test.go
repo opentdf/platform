@@ -2090,6 +2090,41 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 	}
 }
 
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_InvalidValuesOrder_Fails() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "invalid_values_order",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"first", "second", "third"},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(created.GetValues(), 3)
+	ids := []string{created.GetValues()[0].GetId(), created.GetValues()[1].GetId(), created.GetValues()[2].GetId()}
+	cases := []struct {
+		name  string
+		order []string
+	}{
+		{"MissingValue", ids[:2]},
+		{"DuplicateValue", []string{ids[0], ids[0], ids[2]}},
+		{"ForeignValue", []string{ids[0], ids[1], nonExistentAttrID}},
+		{"ExtraValue", append(append([]string{}, ids...), nonExistentAttrID)},
+	}
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+				Id: created.GetId(), ValuesOrder: tc.order,
+			})
+			s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+			s.Nil(updated)
+			got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+			s.Require().NoError(err)
+			for i, value := range got.GetValues() {
+				s.Equal(ids[i], value.GetId())
+			}
+		})
+	}
+}
+
 func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	name := "test__delete_attribute"
 	attr := &attributes.CreateAttributeRequest{

@@ -301,6 +301,64 @@ func (q *Queries) getDynamicValueMapping(ctx context.Context, id string) (getDyn
 	return i, err
 }
 
+const getDynamicValueMappingAttribute = `-- name: getDynamicValueMappingAttribute :one
+SELECT ad.id, ad.rule, ad.namespace_id
+FROM attribute_definitions ad
+LEFT JOIN attribute_fqns fqns ON ad.id = fqns.attribute_id AND fqns.value_id IS NULL
+WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
+`
+
+type getDynamicValueMappingAttributeParams struct {
+	ID  pgtype.UUID `json:"id"`
+	Fqn pgtype.Text `json:"fqn"`
+}
+
+type getDynamicValueMappingAttributeRow struct {
+	ID          string                  `json:"id"`
+	Rule        AttributeDefinitionRule `json:"rule"`
+	NamespaceID string                  `json:"namespace_id"`
+}
+
+// getDynamicValueMappingAttribute
+//
+//	SELECT ad.id, ad.rule, ad.namespace_id
+//	FROM attribute_definitions ad
+//	LEFT JOIN attribute_fqns fqns ON ad.id = fqns.attribute_id AND fqns.value_id IS NULL
+//	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
+func (q *Queries) getDynamicValueMappingAttribute(ctx context.Context, arg getDynamicValueMappingAttributeParams) (getDynamicValueMappingAttributeRow, error) {
+	row := q.db.QueryRow(ctx, getDynamicValueMappingAttribute, arg.ID, arg.Fqn)
+	var i getDynamicValueMappingAttributeRow
+	err := row.Scan(&i.ID, &i.Rule, &i.NamespaceID)
+	return i, err
+}
+
+const getDynamicValueMappingUpdateState = `-- name: getDynamicValueMappingUpdateState :one
+SELECT namespace_id,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM dynamic_value_mappings
+WHERE id = $1
+`
+
+type getDynamicValueMappingUpdateStateRow struct {
+	NamespaceID pgtype.UUID `json:"namespace_id"`
+	Metadata    []byte      `json:"metadata"`
+}
+
+// getDynamicValueMappingUpdateState
+//
+//	SELECT namespace_id,
+//	       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	FROM dynamic_value_mappings
+//	WHERE id = $1
+func (q *Queries) getDynamicValueMappingUpdateState(ctx context.Context, id string) (getDynamicValueMappingUpdateStateRow, error) {
+	row := q.db.QueryRow(ctx, getDynamicValueMappingUpdateState, id)
+	var i getDynamicValueMappingUpdateStateRow
+	err := row.Scan(&i.NamespaceID, &i.Metadata)
+	return i, err
+}
+
 const listDynamicValueMappings = `-- name: listDynamicValueMappings :many
 
 WITH params AS (

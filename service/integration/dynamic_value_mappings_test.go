@@ -3,8 +3,10 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
@@ -46,6 +48,38 @@ func TestDynamicValueMappingsSuite(t *testing.T) {
 		t.Skip("skipping dynamic_value_mappings integration tests")
 	}
 	suite.Run(t, new(DynamicValueMappingsSuite))
+}
+
+func (s *DynamicValueMappingsSuite) Test_DynamicValueMapping_NarrowWriteReads_PreserveResponse() {
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "dynamic_write_projection",
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"first", "second"},
+	})
+	s.Require().NoError(err)
+	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionFqn: strings.TrimPrefix(attr.GetFqn(), "https://"),
+		NamespaceId:            attr.GetNamespace().GetId(),
+		ValueResolver:          s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions:                []*policy.Action{s.readAction()},
+		Metadata:               &common.MetadataMutable{Labels: map[string]string{"keep": "original", "replace": "old"}},
+	})
+	s.Require().NoError(err)
+	s.True(proto.Equal(attr, created.GetAttributeDefinition()))
+	updated, err := s.db.PolicyClient.UpdateDynamicValueMapping(s.ctx, &dynamicvaluemapping.UpdateDynamicValueMappingRequest{
+		Id:                     created.GetId(),
+		Actions:                []*policy.Action{{Name: "read"}},
+		Metadata:               &common.MetadataMutable{Labels: map[string]string{"replace": "new"}},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	s.Require().NoError(err)
+	s.True(proto.Equal(attr, updated.GetAttributeDefinition()))
+	s.Equal(created.GetNamespace().GetId(), updated.GetNamespace().GetId())
+	s.Equal(map[string]string{"keep": "original", "replace": "new"}, updated.GetMetadata().GetLabels())
+	s.Require().Len(updated.GetActions(), 1)
+	s.Equal("read", updated.GetActions()[0].GetName())
+	s.Equal(created.GetNamespace().GetId(), updated.GetActions()[0].GetNamespace().GetId())
 }
 
 func (s *DynamicValueMappingsSuite) TestCreateAndGet() {

@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/service/pkg/db"
 )
@@ -177,13 +176,17 @@ func (c PolicyDBClient) ListDynamicValueMappings(ctx context.Context, r *dynamic
 
 func (c PolicyDBClient) UpdateDynamicValueMapping(ctx context.Context, r *dynamicvaluemapping.UpdateDynamicValueMappingRequest) (*policy.DynamicValueMapping, error) {
 	id := r.GetId()
-	before, err := c.GetDynamicValueMapping(ctx, id)
+	before, err := c.queries.getDynamicValueMappingUpdateState(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		return before.GetMetadata(), nil
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(before.Metadata, metadata); err != nil {
+			return nil, err
+		}
+		return metadata, nil
 	})
 	if err != nil {
 		return nil, err
@@ -203,7 +206,7 @@ func (c PolicyDBClient) UpdateDynamicValueMapping(ctx context.Context, r *dynami
 		updateParams.Operator = pgtype.Int2{Int16: int16(resolver.GetOperator()), Valid: true}
 	}
 
-	targetNamespaceID := before.GetNamespace().GetId()
+	targetNamespaceID := UUIDToString(before.NamespaceID)
 	if actions := r.GetActions(); actions != nil {
 		actionIDs, err := c.resolveSubjectMappingActions(ctx, actions, pgtypeUUID(targetNamespaceID))
 		if err != nil {
@@ -285,16 +288,29 @@ func (c PolicyDBClient) hydrateDynamicValueMapping(ctx context.Context, row dyna
 }
 
 func (c PolicyDBClient) resolveDynamicValueMappingAttribute(ctx context.Context, id, fqn string) (*policy.Attribute, error) {
+	var params getDynamicValueMappingAttributeParams
 	switch {
 	case id != "":
-		return c.GetAttribute(ctx, id)
+		params.ID = pgtypeUUID(id)
+		if !params.ID.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
 	case fqn != "":
-		return c.GetAttribute(ctx, &attributes.GetAttributeRequest_Fqn{Fqn: fqn})
+		params.Fqn = pgtypeText(fqn)
 	default:
 		return nil, db.WrapIfKnownInvalidQueryErr(
 			errors.Join(db.ErrMissingValue, errors.New("either an attribute definition ID or FQN is required")),
 		)
 	}
+	row, err := c.queries.getDynamicValueMappingAttribute(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return &policy.Attribute{
+		Id:        row.ID,
+		Rule:      attributesRuleTypeEnumTransformOut(string(row.Rule)),
+		Namespace: &policy.Namespace{Id: row.NamespaceID},
+	}, nil
 }
 
 // validateDynamicValueResolverOperator rejects operators that are invalid for dynamic value

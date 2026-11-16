@@ -221,3 +221,16 @@ WHERE av.attribute_definition_id = $1;
 SELECT attribute_definition_id
 FROM attribute_values
 WHERE id = $1;
+
+-- name: getDynamicValueMappingAttribute :one
+SELECT ad.id, ad.rule, ad.namespace_id
+FROM attribute_definitions ad
+LEFT JOIN attribute_fqns fqns ON ad.id = fqns.attribute_id AND fqns.value_id IS NULL
+WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''));
+
+-- name: getDynamicValueMappingUpdateState :one
+SELECT namespace_id,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM dynamic_value_mappings
+WHERE id = sqlc.arg('id');

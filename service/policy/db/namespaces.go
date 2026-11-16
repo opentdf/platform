@@ -270,20 +270,15 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 }
 
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	attrs, err := c.GetAttributesByNamespace(ctx, id)
+	hasActiveAttributes, err := c.queries.namespaceHasAttributes(ctx, namespaceHasAttributesParams{
+		NamespaceID: id,
+		Active:      pgtypeBool(true),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	allAttrsDeactivated := true
-	for _, attr := range attrs {
-		if attr.GetActive().GetValue() {
-			allAttrsDeactivated = false
-			break
-		}
-	}
-
-	if !allAttrsDeactivated {
+	if hasActiveAttributes {
 		c.logger.Warn("deactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
@@ -305,12 +300,12 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 }
 
 func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	attrs, err := c.GetAttributesByNamespace(ctx, id)
+	hasAttributes, err := c.queries.namespaceHasAttributes(ctx, namespaceHasAttributesParams{NamespaceID: id})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if len(attrs) > 0 {
+	if hasAttributes {
 		c.logger.Warn("reactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 

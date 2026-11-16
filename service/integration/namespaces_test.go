@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -17,7 +18,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -863,6 +866,52 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	s.NotNil(gotNamespace)
 	s.Equal(n.GetId(), gotNamespace.GetId())
 	s.False(gotNamespace.GetActive().GetValue())
+}
+
+func (s *NamespacesSuite) Test_Namespace_StateChange_WarnsForMatchingAttributes() {
+	cases := []struct {
+		name           string
+		withAttribute  bool
+		active         bool
+		warnDeactivate bool
+	}{
+		{"empty", false, false, false},
+		{"inactive", true, false, false},
+		{"active", true, true, true},
+	}
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "warning-check-" + tc.name})
+			s.Require().NoError(err)
+			var attributeID string
+			if tc.withAttribute {
+				attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+					Name: "child", NamespaceId: ns.GetId(), Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				})
+				s.Require().NoError(err)
+				attributeID = attr.GetId()
+				if !tc.active {
+					_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attributeID)
+					s.Require().NoError(err)
+				}
+			}
+			var output bytes.Buffer
+			warningLogger := &logger.Logger{Logger: slog.New(slog.NewTextHandler(&output, nil))}
+			client := policydb.NewClient(s.db.Client, warningLogger, s.db.LimitMax, s.db.LimitDefault)
+			_, err = client.DeactivateNamespace(s.ctx, ns.GetId())
+			s.Require().NoError(err)
+			s.Equal(tc.warnDeactivate, strings.Contains(output.String(), "deactivating the namespace"))
+			output.Reset()
+			_, err = client.UnsafeReactivateNamespace(s.ctx, ns.GetId())
+			s.Require().NoError(err)
+			s.Equal(tc.withAttribute, strings.Contains(output.String(), "reactivating the namespace"))
+			if attributeID != "" {
+				attr, err := client.GetAttribute(s.ctx, attributeID)
+				s.Require().NoError(err)
+				s.False(attr.GetActive().GetValue())
+			}
+		})
+	}
 }
 
 // reusable setup for creating a namespace -> attr -> value and then deactivating the namespace (cascades down)

@@ -50,6 +50,7 @@ const (
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
 	ErrTokenExpirationBufferInvalid  = Error("token expiration buffer must not be negative")
+	ErrDPoPDiscoveryCacheTTLInvalid  = Error("DPoP discovery cache TTL must not be negative")
 	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
@@ -119,6 +120,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	cfg := &config{
 		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 		dpopMode:              auth.DPoPModeAuto,
+		dpopDiscoveryCacheTTL: auth.DefaultDPoPDiscoveryCacheTTL,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
@@ -130,6 +132,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 	if cfg.tokenExpirationBuffer < 0 {
 		return nil, ErrTokenExpirationBufferInvalid
+	}
+	if cfg.dpopDiscoveryCacheTTL < 0 {
+		return nil, ErrDPoPDiscoveryCacheTTLInvalid
 	}
 
 	// Only a logger the caller injected receives DPoP discovery records.
@@ -283,6 +288,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 // configureDPoPMode applies cfg's DPoP mode to the SDK's DPoP transport.
 func configureDPoPMode(t *auth.DPoPTransport, cfg *config, platformEndpoint string) error {
 	t.Mode = cfg.dpopMode
+	// Set before seeding, which reads the TTL.
+	t.DiscoveryCacheTTL = cfg.dpopDiscoveryCacheTTL
+	t.DisableDiscoveryCache = cfg.dpopDiscoveryCacheTTL == 0
 	// PlatformConfiguration is the platform's well-known configuration, fetched
 	// in New or supplied with WithPlatformConfiguration, so reuse it rather than
 	// discovering again. (With a custom core connection the config comes from

@@ -55,6 +55,7 @@ type config struct {
 	dpopAlgorithm                      SigningAlgorithm
 	dpopKeyPEM                         []byte
 	dpopMode                           auth.DPoPMode
+	dpopDiscoveryCacheTTL              time.Duration
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
 	customAccessTokenSource            auth.AccessTokenSource
@@ -282,13 +283,26 @@ func WithDPoPKeyPEM(pemBytes []byte) Option {
 // each origin and signs the full request URI (RFC 9449) for servers that
 // advertise support and the legacy procedure path for older servers (service
 // releases before v0.18.0), which reject a full-URI htu. Answers are cached for
-// five minutes, then asked again, because the services in front of an origin
-// are upgraded and reconfigured independently of a long-lived client. Use
+// five minutes (see WithDPoPDiscoveryCacheTTL), then asked again, because the
+// services in front of an origin are upgraded and reconfigured independently of
+// a long-lived client. Use
 // auth.DPoPModeRFC9449 or auth.DPoPModeLegacy to skip discovery when the
 // server's version is known. It has no effect unless DPoP is enabled.
 func WithDPoPMode(mode auth.DPoPMode) Option {
 	return func(c *config) {
 		c.dpopMode = mode
+	}
+}
+
+// WithDPoPDiscoveryCacheTTL sets how long auth.DPoPModeAuto reuses an origin's
+// answer before asking it again. The default is
+// auth.DefaultDPoPDiscoveryCacheTTL (five minutes). Zero disables caching
+// entirely, including the short-lived fallback after a failed discovery, so
+// discovery runs before every request. A negative value makes New fail with
+// ErrDPoPDiscoveryCacheTTLInvalid. It has no effect in the fixed modes.
+func WithDPoPDiscoveryCacheTTL(ttl time.Duration) Option {
+	return func(c *config) {
+		c.dpopDiscoveryCacheTTL = ttl
 	}
 }
 

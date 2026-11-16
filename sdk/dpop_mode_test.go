@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
@@ -215,4 +216,100 @@ func TestNew_DPoPDiscoveryLogsOnlyToInjectedLogger(t *testing.T) {
 			assert.Zero(t, global.count(), "discovery must not log to slog.Default")
 		})
 	}
+}
+
+const publicKeyProcedure = "/kas.AccessService/PublicKey"
+
+func TestNew_DPoPDiscoveryCacheTTL(t *testing.T) {
+	raw, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err)
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.ES256))
+	pub, err := key.PublicKey()
+	require.NoError(t, err)
+
+	idp := map[string]any{"issuer": "https://idp.example", "token_endpoint": "https://idp.example/token"}
+	advertising := PlatformConfiguration{"idp": idp, "dpop_signing_alg_values_supported": []any{"ES256"}}
+	tests := []struct {
+		name            string
+		config          PlatformConfiguration
+		opts            []Option
+		wantTTL         time.Duration
+		wantDisabled    bool
+		wantHTU         func(serverURL string) string
+		wantDiscoveries int
+	}{
+		{
+			name:            "default caches for five minutes",
+			config:          PlatformConfiguration{"idp": idp},
+			wantTTL:         auth.DefaultDPoPDiscoveryCacheTTL,
+			wantHTU:         func(string) string { return publicKeyProcedure },
+			wantDiscoveries: 1,
+		},
+		{
+			name:            "custom TTL",
+			config:          PlatformConfiguration{"idp": idp},
+			opts:            []Option{WithDPoPDiscoveryCacheTTL(time.Minute)},
+			wantTTL:         time.Minute,
+			wantHTU:         func(string) string { return publicKeyProcedure },
+			wantDiscoveries: 1,
+		},
+		{
+			name:            "zero discovers before every request, even when seeded",
+			config:          advertising,
+			opts:            []Option{WithDPoPDiscoveryCacheTTL(0)},
+			wantDisabled:    true,
+			wantHTU:         func(string) string { return publicKeyProcedure },
+			wantDiscoveries: 2,
+		},
+		{
+			name:    "no effect in a fixed mode",
+			config:  PlatformConfiguration{"idp": idp},
+			opts:    []Option{WithDPoPDiscoveryCacheTTL(0), WithDPoPMode(auth.DPoPModeRFC9449)},
+			wantHTU: func(u string) string { return u + publicKeyProcedure },
+			// The transport is configured, but never discovers.
+			wantDisabled: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			platform, server := newDPoPPlatform(t, pub)
+			defer server.Close()
+
+			opts := append([]Option{
+				WithPlatformConfiguration(tt.config),
+				withCustomAccessTokenSource(staticTokenSource{}),
+				WithDPoPJWK(key),
+			}, tt.opts...)
+			s, err := New(server.URL, opts...)
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn := s.Conn()
+			transport, ok := conn.Client.Transport.(*auth.DPoPTransport)
+			require.True(t, ok, "sdk.New should install a DPoP transport")
+			assert.Equal(t, tt.wantDisabled, transport.DisableDiscoveryCache)
+			if !tt.wantDisabled {
+				assert.Equal(t, tt.wantTTL, transport.DiscoveryCacheTTL)
+			}
+
+			client := kasconnect.NewAccessServiceClient(conn.Client, conn.Endpoint, conn.Options...)
+			for range 2 {
+				_, err = client.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+				require.NoError(t, err)
+			}
+			want := tt.wantHTU(server.URL)
+			assert.Equal(t, []string{want, want}, platform.htus)
+			assert.Equal(t, tt.wantDiscoveries, platform.discoveries)
+		})
+	}
+}
+
+func TestNew_NegativeDPoPDiscoveryCacheTTL(t *testing.T) {
+	_, err := New("http://localhost:8080",
+		WithPlatformConfiguration(PlatformConfiguration{}),
+		WithDPoPDiscoveryCacheTTL(-time.Second),
+	)
+	require.ErrorIs(t, err, ErrDPoPDiscoveryCacheTTLInvalid)
 }

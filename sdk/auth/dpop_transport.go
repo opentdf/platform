@@ -69,8 +69,19 @@ type DPoPTransport struct {
 	// after the transport is first used.
 	Logger *slog.Logger
 
-	// discoveryCacheTTL overrides dpopDiscoveryCacheTTL when positive.
-	discoveryCacheTTL time.Duration
+	// DiscoveryCacheTTL is how long DPoPModeAuto reuses a conclusive answer for
+	// an origin before asking it again. Zero or negative means
+	// DefaultDPoPDiscoveryCacheTTL, so a directly constructed transport caches;
+	// use DisableDiscoveryCache to turn caching off. Like Mode it must not be
+	// changed after the transport is first used.
+	DiscoveryCacheTTL time.Duration
+
+	// DisableDiscoveryCache, when true, makes DPoPModeAuto discover before every
+	// request: no answer is reused, whether discovered, inconclusive or recorded
+	// with SetServerRFC9449Support. Concurrent requests still share an in-flight
+	// discovery. It overrides DiscoveryCacheTTL and, like Mode, must not be
+	// changed after the transport is first used.
+	DisableDiscoveryCache bool
 
 	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex

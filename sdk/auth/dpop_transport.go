@@ -69,6 +69,9 @@ type DPoPTransport struct {
 	// after the transport is first used.
 	Logger *slog.Logger
 
+	// discoveryCacheTTL overrides dpopDiscoveryCacheTTL when positive.
+	discoveryCacheTTL time.Duration
+
 	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex
 	nonceCache        map[string]string
@@ -76,7 +79,7 @@ type DPoPTransport struct {
 	cachedTokenURLStr string
 
 	// rfc9449ByOrigin caches, per normalized origin, whether the server accepts
-	// RFC 9449 proofs. Only consulted in DPoPModeAuto.
+	// RFC 9449 proofs, until each entry expires. Only consulted in DPoPModeAuto.
 	styleMu         sync.RWMutex
 	rfc9449ByOrigin map[string]originStyle
 	discoveries     singleflight.Group

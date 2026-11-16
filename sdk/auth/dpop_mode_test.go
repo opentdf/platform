@@ -48,6 +48,7 @@ func (f *fakeDPoPServer) handler(t *testing.T) http.Handler {
 		f.mu.Lock()
 		f.discoveries++
 		status := f.wellKnownStatus
+		wellKnown := f.wellKnown
 		f.mu.Unlock()
 		assert.Empty(t, r.Header.Get("Authorization"), "discovery must not send credentials")
 		assert.Empty(t, r.Header.Get("DPoP"), "discovery must not send a proof")
@@ -63,12 +64,12 @@ func (f *fakeDPoPServer) handler(t *testing.T) http.Handler {
 			_, _ = w.Write([]byte(f.wellKnownRaw))
 			return
 		}
-		if f.wellKnown == nil {
+		if wellKnown == nil {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"configuration": f.wellKnown})
+		_ = json.NewEncoder(w).Encode(map[string]any{"configuration": wellKnown})
 	})
 	mux.HandleFunc("/advertise", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -239,6 +240,83 @@ func TestDPoPModeAuto_DiscoveryFailureIsLegacyAndRetried(t *testing.T) {
 		callPublicKey(t, inProcessOrigin, transport, 1)
 		assert.Equal(t, inProcessOrigin+publicKeyProcedure, f.htus[2], "a failed discovery must not be cached for good")
 		assert.Equal(t, 2, f.discoveries)
+	})
+}
+
+// setWellKnown changes what f's well-known configuration advertises.
+func (f *fakeDPoPServer) setWellKnown(cfg map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.wellKnown = cfg
+}
+
+func TestDPoPModeAuto_ConclusiveAnswerExpires(t *testing.T) {
+	advertising := map[string]any{"dpop_signing_alg_values_supported": []any{"ES256"}}
+	legacyServer := map[string]any{"platform_issuer": "https://idp"}
+	rfc9449HTU := inProcessOrigin + publicKeyProcedure
+	tests := []struct {
+		name          string
+		before, after map[string]any
+		wantBefore    string
+		wantAfter     string
+	}{
+		{"server upgraded to RFC 9449", legacyServer, advertising, legacyPublicKeyHTU, rfc9449HTU},
+		{"advertisement removed", advertising, legacyServer, rfc9449HTU, legacyPublicKeyHTU},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				f := &fakeDPoPServer{key: generateTestKey(t), wellKnown: tt.before}
+				transport := newInProcessAutoTransport(t, f)
+
+				callPublicKey(t, inProcessOrigin, transport, 1)
+				f.setWellKnown(tt.after)
+				time.Sleep(dpopDiscoveryCacheTTL - time.Nanosecond)
+				callPublicKey(t, inProcessOrigin, transport, 1)
+				assert.Equal(t, []string{tt.wantBefore, tt.wantBefore}, f.htus, "the answer is reused until the TTL")
+				assert.Equal(t, 1, f.discoveries)
+
+				time.Sleep(time.Nanosecond)
+				callPublicKey(t, inProcessOrigin, transport, 1)
+				assert.Equal(t, tt.wantAfter, f.htus[2], "an expired answer is discovered again")
+				assert.Equal(t, 2, f.discoveries)
+			})
+		})
+	}
+}
+
+func TestDPoPModeAuto_SeededAnswerExpires(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{key: generateTestKey(t)} // a non-platform origin: well-known 404s
+		transport := newInProcessAutoTransport(t, f)
+		require.NoError(t, transport.SetServerRFC9449Support(inProcessOrigin, true))
+
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Zero(t, f.discoveries)
+
+		time.Sleep(dpopDiscoveryCacheTTL)
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Equal(t, []string{inProcessOrigin + publicKeyProcedure, legacyPublicKeyHTU}, f.htus)
+		assert.Equal(t, 1, f.discoveries, "a seeded answer expires like a discovered one")
+	})
+}
+
+func TestDPoPModeAuto_RetryIntervalCappedByTTL(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const ttl = 10 * time.Second
+		require.Less(t, ttl, dpopDiscoveryRetryInterval)
+		f := &fakeDPoPServer{key: generateTestKey(t), wellKnownStatus: http.StatusServiceUnavailable}
+		transport := newInProcessAutoTransport(t, f)
+		transport.discoveryCacheTTL = ttl
+
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		time.Sleep(ttl - time.Nanosecond)
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Equal(t, 1, f.discoveries, "the fallback is reused until the TTL")
+
+		time.Sleep(time.Nanosecond)
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Equal(t, 2, f.discoveries, "a TTL shorter than the retry interval shortens the retry")
 	})
 }
 

@@ -48,8 +48,15 @@ const (
 	protectedResourceMetadataPath   = "/.well-known/oauth-protected-resource"
 	dpopDiscoveryTimeout            = 10 * time.Second
 	dpopDiscoveryMaxBody            = 1 << 20
+	// dpopDiscoveryCacheTTL is how long a conclusive answer, discovered or
+	// recorded with SetServerRFC9449Support, is reused before the origin is asked
+	// again. The KAS, gateway and IdP in front of an origin are upgraded and
+	// reconfigured on their own schedules, so a long-lived client must not keep
+	// an answer for good.
+	dpopDiscoveryCacheTTL = 5 * time.Minute
 	// dpopDiscoveryRetryInterval is how long an inconclusive discovery's legacy
-	// fallback is reused before the origin is asked again.
+	// fallback is reused before the origin is asked again. It is capped by the
+	// cache TTL.
 	dpopDiscoveryRetryInterval = 30 * time.Second
 )
 
@@ -80,6 +87,8 @@ func ServerSupportsRFC9449(cfg map[string]any) bool {
 // the server's well-known configuration can pass ServerSupportsRFC9449 of it.
 // Only the origin (scheme, host and port) of serverURL is used, and the value
 // replaces any discovered one. Recording false also skips the RFC 9728 check.
+// Like a discovered answer, the value expires after the discovery cache TTL,
+// and the origin is then asked directly.
 func (t *DPoPTransport) SetServerRFC9449Support(serverURL string, supported bool) error {
 	u, err := url.Parse(serverURL)
 	if err != nil {
@@ -88,19 +97,26 @@ func (t *DPoPTransport) SetServerRFC9449Support(serverURL string, supported bool
 	if u.Scheme == "" || u.Host == "" {
 		return fmt.Errorf("server URL %q needs a scheme and host", serverURL)
 	}
-	t.setOriginStyle(getOrigin(u), originStyle{rfc9449: supported})
+	t.setOriginStyle(getOrigin(u), originStyle{rfc9449: supported, expiresAt: time.Now().Add(t.cacheTTL())})
 	return nil
 }
 
 // originStyle is the cached htu form for one origin.
 type originStyle struct {
 	rfc9449 bool
-	// retryAt is zero for a conclusive answer. Otherwise discovery was
-	// inconclusive, and the origin is asked again once retryAt has passed.
-	retryAt time.Time
+	// expiresAt is when the origin is next asked: the cache TTL after a
+	// conclusive answer, or the retry interval (capped by the TTL) after an
+	// inconclusive one.
+	expiresAt time.Time
 }
 
-func (s originStyle) inconclusive() bool { return !s.retryAt.IsZero() }
+// cacheTTL is how long a conclusive answer is reused.
+func (t *DPoPTransport) cacheTTL() time.Duration {
+	if t.discoveryCacheTTL > 0 {
+		return t.discoveryCacheTTL
+	}
+	return dpopDiscoveryCacheTTL
+}
 
 func (t *DPoPTransport) setOriginStyle(origin string, style originStyle) {
 	t.styleMu.Lock()
@@ -114,11 +130,14 @@ func (t *DPoPTransport) setOriginStyle(origin string, style originStyle) {
 // useLegacyProof reports whether resource proofs for origin use the legacy htu.
 // Mode values other than DPoPModeLegacy and DPoPModeAuto sign RFC 9449 proofs.
 //
-// In DPoPModeAuto the answer is discovered once per origin and cached, with
-// concurrent first requests sharing one discovery. Discovery runs on the request
-// path, bounded by dpopDiscoveryTimeout. An inconclusive discovery falls back to
-// legacy for dpopDiscoveryRetryInterval. If ctx ends while waiting, its error is
-// returned.
+// In DPoPModeAuto the answer is discovered per origin and cached for the cache
+// TTL, after which the next request discovers it again: the servers in front of
+// an origin are upgraded and reconfigured independently of this client, so an
+// answer can go stale. Concurrent requests that find no fresh answer share one
+// discovery. Discovery runs on the request path, bounded by
+// dpopDiscoveryTimeout. An inconclusive discovery falls back to legacy for
+// dpopDiscoveryRetryInterval, or the TTL if shorter. If ctx ends while waiting,
+// its error is returned.
 func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripper, origin string) (bool, error) {
 	switch t.Mode {
 	case DPoPModeLegacy:
@@ -133,7 +152,7 @@ func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripp
 	t.styleMu.RLock()
 	style, known := t.rfc9449ByOrigin[origin]
 	t.styleMu.RUnlock()
-	if known && (!style.inconclusive() || time.Now().Before(style.retryAt)) {
+	if known && time.Now().Before(style.expiresAt) {
 		return !style.rfc9449, nil
 	}
 
@@ -155,11 +174,11 @@ func (t *DPoPTransport) useLegacyProof(ctx context.Context, base http.RoundTripp
 // result to t.Logger at debug level.
 func (t *DPoPTransport) discoverAndCache(ctx context.Context, base http.RoundTripper, origin string) bool {
 	d := discoverRFC9449(ctx, base, origin)
-	style := originStyle{rfc9449: d.supported}
+	ttl := t.cacheTTL()
 	if !d.conclusive {
-		style.retryAt = time.Now().Add(dpopDiscoveryRetryInterval)
+		ttl = min(ttl, dpopDiscoveryRetryInterval)
 	}
-	t.setOriginStyle(origin, style)
+	t.setOriginStyle(origin, originStyle{rfc9449: d.supported, expiresAt: time.Now().Add(ttl)})
 
 	if t.Logger != nil {
 		t.Logger.DebugContext(ctx, "discovered DPoP htu form",

@@ -271,7 +271,7 @@ func TestDPoPModeAuto_ConclusiveAnswerExpires(t *testing.T) {
 
 				callPublicKey(t, inProcessOrigin, transport, 1)
 				f.setWellKnown(tt.after)
-				time.Sleep(dpopDiscoveryCacheTTL - time.Nanosecond)
+				time.Sleep(DefaultDPoPDiscoveryCacheTTL - time.Nanosecond)
 				callPublicKey(t, inProcessOrigin, transport, 1)
 				assert.Equal(t, []string{tt.wantBefore, tt.wantBefore}, f.htus, "the answer is reused until the TTL")
 				assert.Equal(t, 1, f.discoveries)
@@ -294,7 +294,7 @@ func TestDPoPModeAuto_SeededAnswerExpires(t *testing.T) {
 		callPublicKey(t, inProcessOrigin, transport, 1)
 		assert.Zero(t, f.discoveries)
 
-		time.Sleep(dpopDiscoveryCacheTTL)
+		time.Sleep(DefaultDPoPDiscoveryCacheTTL)
 		callPublicKey(t, inProcessOrigin, transport, 1)
 		assert.Equal(t, []string{inProcessOrigin + publicKeyProcedure, legacyPublicKeyHTU}, f.htus)
 		assert.Equal(t, 1, f.discoveries, "a seeded answer expires like a discovered one")
@@ -307,7 +307,7 @@ func TestDPoPModeAuto_RetryIntervalCappedByTTL(t *testing.T) {
 		require.Less(t, ttl, dpopDiscoveryRetryInterval)
 		f := &fakeDPoPServer{key: generateTestKey(t), wellKnownStatus: http.StatusServiceUnavailable}
 		transport := newInProcessAutoTransport(t, f)
-		transport.discoveryCacheTTL = ttl
+		transport.DiscoveryCacheTTL = ttl
 
 		callPublicKey(t, inProcessOrigin, transport, 1)
 		time.Sleep(ttl - time.Nanosecond)
@@ -317,6 +317,43 @@ func TestDPoPModeAuto_RetryIntervalCappedByTTL(t *testing.T) {
 		time.Sleep(time.Nanosecond)
 		callPublicKey(t, inProcessOrigin, transport, 1)
 		assert.Equal(t, 2, f.discoveries, "a TTL shorter than the retry interval shortens the retry")
+	})
+}
+
+func TestDPoPModeAuto_DisabledCacheDiscoversEveryRequest(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		wellKnown map[string]any
+		status    int
+	}{
+		{"conclusive legacy", nil, 0},
+		{"conclusive RFC 9449", map[string]any{"dpop": map[string]any{"rfc9449": true}}, 0},
+		{"inconclusive", nil, http.StatusServiceUnavailable},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				f := &fakeDPoPServer{key: generateTestKey(t), wellKnown: tt.wellKnown, wellKnownStatus: tt.status}
+				transport := newInProcessAutoTransport(t, f)
+				transport.DisableDiscoveryCache = true
+				transport.DiscoveryCacheTTL = time.Hour // ignored
+
+				callPublicKey(t, inProcessOrigin, transport, 2)
+				assert.Equal(t, 2, f.discoveries)
+			})
+		})
+	}
+}
+
+func TestDPoPModeAuto_DisabledCacheIgnoresSeed(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := &fakeDPoPServer{key: generateTestKey(t)} // well-known 404s: legacy
+		transport := newInProcessAutoTransport(t, f)
+		transport.DisableDiscoveryCache = true
+		require.NoError(t, transport.SetServerRFC9449Support(inProcessOrigin, true))
+
+		callPublicKey(t, inProcessOrigin, transport, 1)
+		assert.Equal(t, []string{legacyPublicKeyHTU}, f.htus)
+		assert.Equal(t, 1, f.discoveries, "a seed is not reused when caching is disabled")
 	})
 }
 

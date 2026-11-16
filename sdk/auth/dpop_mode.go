@@ -43,17 +43,18 @@ func (m DPoPMode) String() string {
 	}
 }
 
+// DefaultDPoPDiscoveryCacheTTL is how long DPoPModeAuto reuses a conclusive
+// answer for an origin, discovered or recorded with SetServerRFC9449Support,
+// before asking the origin again. The KAS, gateway and IdP in front of an origin
+// are upgraded and reconfigured on their own schedules, so a long-lived client
+// must not keep an answer for good.
+const DefaultDPoPDiscoveryCacheTTL = 5 * time.Minute
+
 const (
 	wellKnownConfigurationProcedure = "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
 	protectedResourceMetadataPath   = "/.well-known/oauth-protected-resource"
 	dpopDiscoveryTimeout            = 10 * time.Second
 	dpopDiscoveryMaxBody            = 1 << 20
-	// dpopDiscoveryCacheTTL is how long a conclusive answer, discovered or
-	// recorded with SetServerRFC9449Support, is reused before the origin is asked
-	// again. The KAS, gateway and IdP in front of an origin are upgraded and
-	// reconfigured on their own schedules, so a long-lived client must not keep
-	// an answer for good.
-	dpopDiscoveryCacheTTL = 5 * time.Minute
 	// dpopDiscoveryRetryInterval is how long an inconclusive discovery's legacy
 	// fallback is reused before the origin is asked again. It is capped by the
 	// cache TTL.
@@ -110,12 +111,16 @@ type originStyle struct {
 	expiresAt time.Time
 }
 
-// cacheTTL is how long a conclusive answer is reused.
+// cacheTTL is how long a conclusive answer is reused. Zero means not at all.
 func (t *DPoPTransport) cacheTTL() time.Duration {
-	if t.discoveryCacheTTL > 0 {
-		return t.discoveryCacheTTL
+	switch {
+	case t.DisableDiscoveryCache:
+		return 0
+	case t.DiscoveryCacheTTL > 0:
+		return t.DiscoveryCacheTTL
+	default:
+		return DefaultDPoPDiscoveryCacheTTL
 	}
-	return dpopDiscoveryCacheTTL
 }
 
 func (t *DPoPTransport) setOriginStyle(origin string, style originStyle) {

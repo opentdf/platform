@@ -38,6 +38,8 @@ OpenTDF deployments commonly involve two different discovery documents:
 
 OpenTDF discovers the configured provider at startup and republishes selected metadata under `idp`, together with `platform_issuer`, in its own well-known configuration. OpenTDF Policy Enforcement Points (PEPs) should use the SDK to read this platform configuration and bootstrap IdP endpoint discovery from only the OpenTDF platform endpoint, rather than requiring separate IdP endpoint configuration. A PEP must still supply its client ID and any required credentials, and authentication still happens at the external IdP.
 
+The platform configuration also advertises which DPoP proof formats the server accepts. See [DPoP capability discovery](./DPoP.md).
+
 ## Relevant OIDC concepts in OpenTDF
 
 - **Issuer**
@@ -105,6 +107,7 @@ Today, the implementation uses validated token context in a few distinct places:
 ## See also
 
 - [Configuration](./Configuring.md#server-configuration)
+- [DPoP capability discovery](./DPoP.md)
 - [Entity Resolution configuration](./Configuring.md#entity-resolution)
 - [Casbin endpoint authorization](./Configuring.md#casbin-endpoint-authorization)
 - [Running the Platform Locally](./Consuming.md#running-the-platform-locally)

@@ -333,21 +333,40 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register dpop nonce required", slog.Any("error", err))
 	}
 
-	// DPoP capabilities block (DSPX-5635). A key's presence means the server
-	// implements that behavior; its value is the effective setting.
-	// htu_origins lists only configured origins, never request-derived ones;
-	// an empty list means the origin comes from the request.
-	advertisedOrigins := make([]any, len(htuOrigins))
-	for i, o := range htuOrigins {
-		advertisedOrigins[i] = o
-	}
-	if err := wellknownRegistration("dpop", map[string]any{
-		"htu_origins": advertisedOrigins,
-	}); err != nil {
+	if err := wellknownRegistration("dpop", dpopCapabilities(supportedAlgs, cfg.DPoP.RequireNonce, a.strictDPoPHTU, htuOrigins)); err != nil {
 		logger.Warn("failed to register dpop capabilities", slog.Any("error", err))
 	}
 
 	return a, nil
+}
+
+// dpopCapabilities builds the well-known `dpop` block that clients read to
+// choose a DPoP proof format before they authenticate. A key's presence means
+// the server implements that behavior, and its value is the setting the server
+// enforces; a key for unimplemented behavior is left out rather than given a
+// default. See docs/DPoP.md for the client contract.
+//
+// htuOrigins lists only configured origins, never request-derived ones; an
+// empty list means the origin comes from the request.
+func dpopCapabilities(supportedAlgs []any, requireNonce, strictHTU bool, htuOrigins []string) map[string]any {
+	pathOnlyHTUAccepted := !strictHTU
+	// structpb rejects []string, so convert to []any.
+	advertisedOrigins := make([]any, len(htuOrigins))
+	for i, o := range htuOrigins {
+		advertisedOrigins[i] = o
+	}
+	// A DPoP-bound token presented under the Bearer scheme is accepted with a
+	// warning. bearer_scheme_accepted is not advertised until that becomes
+	// configurable (DSPX-3573), but it still makes legacy proofs acceptable.
+	bearerSchemeAccepted := true
+	return map[string]any{
+		"rfc9449":                      true,
+		"signing_alg_values_supported": supportedAlgs,
+		"nonce_required":               requireNonce,
+		"path_only_htu_accepted":       pathOnlyHTUAccepted,
+		"htu_origins":                  advertisedOrigins,
+		"legacy_accepted":              bearerSchemeAccepted || pathOnlyHTUAccepted,
+	}
 }
 
 func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {

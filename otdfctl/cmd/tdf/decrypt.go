@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
@@ -53,25 +52,17 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		sessionKeyAlgorithm = ocrypto.RSA2048Key
 	}
 
-	// Prefer the file argument over piped input. An http(s) argument is read
-	// with range requests by the SDK instead of being opened here.
-	var tdfFile, tdfURL string
+	// Prefer the file argument over piped input.
+	var tdfFile string
 	if len(args) > 0 {
 		tdfFile = args[0]
 	}
-	var in io.ReadSeeker
-	closeIn := func() {}
-	var err error
-	if strings.HasPrefix(tdfFile, "http://") || strings.HasPrefix(tdfFile, "https://") {
-		tdfURL = tdfFile
-	} else {
-		in, closeIn, err = streamio.OpenSeekable(tdfFile)
-		switch {
-		case errors.Is(err, streamio.ErrNoInput):
-			cli.ExitWithError("Must provide ONE of the following to decrypt: [file argument, stdin input]", err)
-		case err != nil:
-			cli.ExitWithError("Failed to read file:", err)
-		}
+	in, closeIn, err := streamio.OpenSeekable(tdfFile)
+	switch {
+	case errors.Is(err, streamio.ErrNoInput):
+		cli.ExitWithError("Must provide ONE of the following to decrypt: [file argument, stdin input]", err)
+	case err != nil:
+		cli.ExitWithError("Failed to read file:", err)
 	}
 	defer closeIn()
 
@@ -104,7 +95,6 @@ func decryptRun(cmd *cobra.Command, args []string) {
 	ignoreAllowlist := len(kasAllowList) == 1 && kasAllowList[0] == "*"
 
 	err = h.Decrypt(c.Context(), dest, in, handlers.DecryptOptions{
-		URL:                           tdfURL,
 		AssertionVerificationKeysFile: assertionVerification,
 		DisableAssertionCheck:         disableAssertionVerification,
 		SessionKeyAlgorithm:           sessionKeyAlgorithm,

@@ -60,15 +60,11 @@ otdfctl decrypt hello.txt.tdf -o hello.txt
 cat hello.txt.tdf | otdfctl decrypt -o hello.txt
 ```
 
-Decrypt a plaintext byte range, or a TDF served over HTTP(S) -- EXPERIMENTAL
+Decrypt a plaintext byte range -- EXPERIMENTAL
 
 ```shell
 # decrypt 4096 bytes starting at plaintext offset 1048576
 otdfctl decrypt big.tdf --offset 1048576 --length 4096
-
-# decrypt a remote TDF using HTTP range requests; only the manifest and the
-# segments covering the range are downloaded (the server must support Range)
-otdfctl decrypt https://example.com/big.tdf --offset 1048576 --length 4096
 ```
 
 Output is streamed: if decryption fails partway (for example on a tampered

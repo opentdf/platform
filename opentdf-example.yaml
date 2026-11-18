@@ -56,6 +56,9 @@ server:
     enabled: true
     dpop:
       enforce: false
+      # Reject DPoP-bound (cnf) tokens sent with the Bearer scheme (RFC 9449 §7.2).
+      # Leave false until all clients use the DPoP scheme; web-sdk still sends Bearer.
+      strict_scheme: false
     audience: "http://localhost:8080"
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:

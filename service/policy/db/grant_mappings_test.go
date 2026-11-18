@@ -320,3 +320,9 @@ func sortKasPublicKeys(keys []*policy.KasPublicKey) {
 		return keys[i].GetKid() < keys[j].GetKid()
 	})
 }
+
+// RSA-3072 has no legacy KasPublicKeyAlgEnum value, so it maps to UNSPECIFIED
+// rather than to another RSA size.
+func TestMapAlgorithmToKasPublicKeyAlg_RSA3072(t *testing.T) {
+	assert.Equal(t, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED, mapAlgorithmToKasPublicKeyAlg(policy.Algorithm_ALGORITHM_RSA_3072))
+}

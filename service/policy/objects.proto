@@ -640,6 +640,10 @@ enum Algorithm {
   ALGORITHM_HPQT_SECP384R1_MLKEM1024 = 8;
   ALGORITHM_MLKEM_768 = 20;
   ALGORITHM_MLKEM_1024 = 21;
+  // RSA with a 3072-bit modulus. Policy can use it to describe RSA-3072 keys
+  // and certificates. KAS keys do not accept it: CreateKey, RotateKey and the
+  // ListKeys filter in kas-registry refuse it, and the SDK has no key type for it.
+  ALGORITHM_RSA_3072 = 22;
 }
 
 // The status of the key.

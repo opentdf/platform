@@ -93,6 +93,8 @@ func generateKeyPair(alg policy.Algorithm) (ocrypto.KeyPair, error) {
 		key, err = ocrypto.NewKeyPair(ocrypto.MLKEM768Key)
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:
 		key, err = ocrypto.NewKeyPair(ocrypto.MLKEM1024Key)
+	case policy.Algorithm_ALGORITHM_RSA_3072:
+		return nil, errors.New("unsupported algorithm: RSA 3072 is not a KAS key algorithm")
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

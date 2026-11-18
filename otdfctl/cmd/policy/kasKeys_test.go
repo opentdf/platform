@@ -41,3 +41,10 @@ func TestGenerateKeyPair_Unsupported(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported algorithm")
 }
+
+// RSA-3072 is not accepted for KAS keys, so otdfctl does not generate one.
+func TestGenerateKeyPair_RSA3072Unsupported(t *testing.T) {
+	_, err := generateKeyPair(policy.Algorithm_ALGORITHM_RSA_3072)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not a KAS key algorithm")
+}

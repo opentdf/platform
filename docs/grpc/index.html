@@ -4394,6 +4394,14 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ALGORITHM_RSA_3072</td>
+                <td>22</td>
+                <td><p>RSA with a 3072-bit modulus. Policy can use it to describe RSA-3072 keys
+and certificates. KAS keys do not accept it: CreateKey, RotateKey and the
+ListKeys filter in kas-registry refuse it, and the SDK has no key type for it.</p></td>
+              </tr>
+            
           </tbody>
         </table>
       

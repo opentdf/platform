@@ -228,6 +228,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
+<<<<<<< HEAD
 		origin := r.Header.Get("Origin")
 		if origin == "" {
 			origin = r.Host
@@ -238,6 +239,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			}
 		}
 		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
+=======
+		// Origin identifies the caller's page, not the URL receiving this proof.
+		origin := originFromHost(r.Host, r.TLS != nil)
+		ri := receiverInfo{
+>>>>>>> 0aca793 (fix(core): DSPX-4707 ignore Origin for DPoP htu matching (#4325))
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)

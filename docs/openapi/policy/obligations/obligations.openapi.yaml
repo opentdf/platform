@@ -1840,6 +1840,18 @@ components:
           title: namespace_fqn
           minLength: 1
           format: uri
+        attributeValueFqns:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            format: uri
+            maxItems: 250
+            uniqueItems: true
+          title: attribute_value_fqns
+          maxItems: 250
+          uniqueItems: true
+          description: Optional. Only return triggers on these attribute values.
         pagination:
           title: pagination
           description: Optional

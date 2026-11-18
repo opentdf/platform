@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -617,6 +619,62 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_MultipleTriggersNo
 	// Validate all triggers are found
 	for id := range createdTriggersMap {
 		s.Require().True(foundTriggers[id])
+	}
+}
+
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_FilterByAttributeValueFqns_Success() {
+	createdTriggersMap := s.createMultipleUniqueTriggers(2)
+	s.appendObligationValuesToClean(createdTriggersMap)
+	differentNS := s.createDifferentNamespaceWithTrigger("different-namespace-value-filter-test")
+	defer differentNS.CleanupNamespace()
+	defer differentNS.CleanupTrigger()
+
+	suiteValueFQN := s.attributeValue.GetFqn()
+	otherValueFQN := differentNS.AttributeValue.GetFqn()
+	s.Require().NotEqual(suiteValueFQN, otherValueFQN)
+
+	for _, tc := range []struct {
+		name        string
+		req         *obligations.ListObligationTriggersRequest
+		wantTrigger []string
+	}{
+		{
+			name:        "suite value, case-insensitive",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{strings.ToUpper(suiteValueFQN)}},
+			wantTrigger: slices.Collect(maps.Keys(createdTriggersMap)),
+		},
+		{
+			name:        "other namespace value",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{otherValueFQN}},
+			wantTrigger: []string{differentNS.Trigger.GetId()},
+		},
+		{
+			name:        "both values",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{suiteValueFQN, otherValueFQN}},
+			wantTrigger: append(slices.Collect(maps.Keys(createdTriggersMap)), differentNS.Trigger.GetId()),
+		},
+		{
+			name: "unknown value",
+			req:  &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{"https://unknown.example/attr/a/value/b"}},
+		},
+		{
+			name: "combined with a non-matching namespace",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{suiteValueFQN},
+				NamespaceId:        differentNS.Namespace.GetId(),
+			},
+		},
+	} {
+		s.Run(tc.name, func() {
+			triggers, pageResult, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, tc.req)
+			s.Require().NoError(err)
+			gotIDs := make([]string, 0, len(triggers))
+			for _, t := range triggers {
+				gotIDs = append(gotIDs, t.GetId())
+			}
+			s.ElementsMatch(tc.wantTrigger, gotIDs)
+			s.Equal(int32(len(tc.wantTrigger)), pageResult.GetTotal())
+		})
 	}
 }
 

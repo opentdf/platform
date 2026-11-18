@@ -348,6 +348,19 @@ message ListObligationTriggersRequest {
             uri : true
         }
     ];
+    // Optional. Only return triggers on these attribute values.
+    repeated string attribute_value_fqns = 3 [
+        (buf.validate.field).repeated = {
+            max_items: 250,
+            unique: true,
+            items: {
+                string: {
+                    min_len: 1,
+                    uri: true
+                }
+            },
+        }
+    ];
 
     // Optional
     policy.PageRequest pagination = 10;

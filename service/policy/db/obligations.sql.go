@@ -1558,17 +1558,19 @@ LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigg
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
     ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
-    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
+    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text) AND
+    ($3::text[] IS NULL OR av_fqns.fqn = ANY($3::text[]))
 ORDER BY ot.created_at DESC
-LIMIT $4
-OFFSET $3
+LIMIT $5
+OFFSET $4
 `
 
 type listObligationTriggersParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
+	NamespaceID        pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn       pgtype.Text `json:"namespace_fqn"`
+	AttributeValueFqns []string    `json:"attribute_value_fqns"`
+	Offset             int32       `json:"offset_"`
+	Limit              int32       `json:"limit_"`
 }
 
 type listObligationTriggersRow struct {
@@ -1643,14 +1645,16 @@ type listObligationTriggersRow struct {
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
 //	    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
-//	    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
+//	    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text) AND
+//	    ($3::text[] IS NULL OR av_fqns.fqn = ANY($3::text[]))
 //	ORDER BY ot.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligationTriggersParams) ([]listObligationTriggersRow, error) {
 	rows, err := q.db.Query(ctx, listObligationTriggers,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.AttributeValueFqns,
 		arg.Offset,
 		arg.Limit,
 	)

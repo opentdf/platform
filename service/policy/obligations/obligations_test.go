@@ -1,6 +1,7 @@
 package obligations
 
 import (
+	"strconv"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -39,6 +40,14 @@ func getValidator() protovalidate.Validator {
 		panic(err)
 	}
 	return v
+}
+
+func attributeValueFQNs(count int) []string {
+	fqns := make([]string, count)
+	for i := range fqns {
+		fqns[i] = "https://namespace.com/attr/a/value/v" + strconv.Itoa(i)
+	}
+	return fqns
 }
 
 func Test_GetObligation_Succeeds(t *testing.T) {
@@ -1277,6 +1286,45 @@ func Test_ListObligationTriggers_Request(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: errMessageOneOf,
+		},
+		{
+			name: "valid - attribute_value_fqns with namespace_id",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceId:        validUUID,
+				AttributeValueFqns: []string{"https://namespace.com/attr/a/value/b", "https://namespace.com/attr/a/value/c"},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid - attribute_value_fqns at the limit",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: attributeValueFQNs(250),
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid attribute_value_fqns - over the limit",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: attributeValueFQNs(251),
+			},
+			expectError:  true,
+			errorMessage: "repeated.max_items",
+		},
+		{
+			name: "invalid attribute_value_fqns - not a URI",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{invalidFQN},
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "invalid attribute_value_fqns - duplicates",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{"https://namespace.com/attr/a/value/b", "https://namespace.com/attr/a/value/b"},
+			},
+			expectError:  true,
+			errorMessage: errMessageUnique,
 		},
 	}
 

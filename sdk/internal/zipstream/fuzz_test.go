@@ -179,6 +179,27 @@ func FuzzReader(f *testing.F) {
 	// it back in bounds.
 	f.Add(overrunningCentralDirectorySeed(f))
 
+	// Both entries deflated, as another TDF writer may emit them. The payload
+	// carries ZIP64 sizes, so its compressed and uncompressed sizes come from
+	// the extra field and differ.
+	deflatedPayload := deflatedEntry(f, "0.payload", []byte(strings.Repeat("payload bytes ", 64)))
+	deflatedPayload.zip64 = true
+	f.Add(buildRawZip(f, []rawZipEntry{
+		deflatedPayload,
+		deflatedEntry(f, "0.manifest.json", []byte(`{"m":1}`)),
+	}, false))
+
+	// A deflated entry declaring more than it inflates to: in-range reads of
+	// it fail, and must do so without returning partial data.
+	overdeclared := deflatedEntry(f, "0.payload", []byte("payload bytes"))
+	overdeclared.uncompressedSize *= 2
+	f.Add(buildRawZip(f, []rawZipEntry{overdeclared}, false))
+
+	// An entry compressed with bzip2, which NewReader refuses.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{name: "0.payload", data: []byte("payload bytes"), method: 12, uncompressedSize: 13},
+	}, false))
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))
 		if err != nil {
@@ -198,11 +219,20 @@ func FuzzReader(f *testing.F) {
 			}
 
 			// NewReader placed the entry inside the archive, so in-range reads
-			// must succeed and a read just past the end must fail.
+			// of a stored entry must succeed and a read just past the end must
+			// fail. A deflated entry's data is only validated by inflating it,
+			// so its in-range reads may fail, but never with partial data.
 			size, err := reader.ReadFileSize(k)
 			require.NoError(t, err)
+			if entry.deflated == nil {
+				require.Equal(t, entry.length, size)
+			}
 			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size, 0}} {
 				got, err := reader.ReadFileData(k, r[0], r[1])
+				if entry.deflated != nil && err != nil {
+					assert.Nil(t, got)
+					continue
+				}
 				require.NoError(t, err)
 				assert.Len(t, got, int(r[1]))
 			}

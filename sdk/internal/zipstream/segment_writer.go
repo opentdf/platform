@@ -267,8 +267,12 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	sw.centralDir.AddFile(*sw.payloadEntry)
 
 	// 3. Write manifest file (local header + data)
+	manifestName := TDFManifestFileName
+	if sw.config.UnprefixedManifestName {
+		manifestName = TDFManifestFileNameSpec
+	}
 	manifestEntry := FileEntry{
-		Name:           TDFManifestFileName,
+		Name:           manifestName,
 		Offset:         totalPayloadSize + uint64(buffer.Len()), // Offset from start of complete file
 		Size:           uint64(len(manifest)),
 		CompressedSize: uint64(len(manifest)),

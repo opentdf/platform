@@ -358,7 +358,7 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 	}
 
 	return newChunkedWriter(chunkedWriterConfig{
-		archiveFactory: func(c clock) zipstream.SegmentWriter {
+		archiveFactory: func(c clock, opts ...zipstream.Option) zipstream.SegmentWriter {
 			archiveOpts := []zipstream.Option{
 				zipstream.WithZip64Mode(zipMode),
 				zipstream.WithClock(c.Now),
@@ -366,11 +366,13 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 			if declaredSegments > 0 {
 				archiveOpts = append(archiveOpts, zipstream.WithMaxSegments(declaredSegments))
 			}
+			archiveOpts = append(archiveOpts, opts...)
 			return zipstream.NewSegmentTDFWriter(declaredSegments, archiveOpts...)
 		},
-		cipherFactory: defaultSegmentCipherFactory,
-		clock:         systemClock{},
-		dek:           dek,
+		cipherFactory:          defaultSegmentCipherFactory,
+		clock:                  systemClock{},
+		dek:                    dek,
+		unprefixedManifestName: tdfConfig.unprefixedManifestName,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other

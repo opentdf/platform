@@ -3,6 +3,7 @@
 package tdf
 
 import (
+	"archive/zip"
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
@@ -63,6 +64,7 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"HybridXWingFlow", testHybridXWingFlow},
 		{"HybridP256MLKEM768Flow", testHybridP256MLKEM768Flow},
 		{"HybridP384MLKEM1024Flow", testHybridP384MLKEM1024Flow},
+		{"ManifestEntryName", testManifestEntryName},
 	}
 
 	for _, tc := range testCases {
@@ -1225,4 +1227,80 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 
 	// Ensure GetManifest returns a clone, not the same pointer
 	assert.NotSame(t, fin.Manifest, m2)
+}
+
+// assertManifestName checks that exactly one manifest entry exists with the expected name.
+func assertManifestName(t interface {
+	Errorf(string, ...interface{})
+	Helper()
+}, zipFiles []*zip.File, want string,
+) {
+	t.Helper()
+	var hasManifest, hasPrefixed bool
+	for _, f := range zipFiles {
+		if f.Name == "manifest.json" {
+			hasManifest = true
+		}
+		if f.Name == "0.manifest.json" {
+			hasPrefixed = true
+		}
+	}
+	if want == "manifest.json" && !hasManifest {
+		t.Errorf("should have %s", want)
+	}
+	if want == "manifest.json" && hasPrefixed {
+		t.Errorf("should not have 0.manifest.json")
+	}
+	if want == "0.manifest.json" && !hasPrefixed {
+		t.Errorf("should have %s", want)
+	}
+	if want == "0.manifest.json" && hasManifest {
+		t.Errorf("should not have manifest.json")
+	}
+}
+
+func testManifestEntryName(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		opts         []Option[*WriterConfig]
+		wantManifest string
+	}{
+		{name: "default is 0.manifest.json", wantManifest: "0.manifest.json"},
+		{name: "WithUnprefixedManifestName writes manifest.json", opts: []Option[*WriterConfig]{WithUnprefixedManifestName()}, wantManifest: "manifest.json"},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in first)",
+			opts:         []Option[*WriterConfig]{WithUnprefixedManifestName(), WithTargetMode("4.2.2")},
+			wantManifest: "0.manifest.json",
+		},
+		{
+			name:         "legacy target mode overrides opt-in (opt-in second)",
+			opts:         []Option[*WriterConfig]{WithTargetMode("4.2.2"), WithUnprefixedManifestName()},
+			wantManifest: "0.manifest.json",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			writer, err := NewWriter(ctx, tc.opts...)
+			require.NoError(t, err)
+
+			segResult, err := writer.WriteSegment(ctx, 0, []byte("payload"))
+			require.NoError(t, err)
+			segBytes, err := io.ReadAll(segResult.TDFData)
+			require.NoError(t, err)
+
+			attributes := []*policy.Value{
+				createTestAttribute("https://example.com/attr/Test/value/V", testKAS1, "kid1"),
+			}
+			finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+			require.NoError(t, err)
+
+			// Assemble full TDF: segment bytes + finalize data
+			tdfBytes := bytes.Join([][]byte{segBytes, finalizeResult.Data}, nil)
+
+			zipReader, err := zip.NewReader(bytes.NewReader(tdfBytes), int64(len(tdfBytes)))
+			require.NoError(t, err)
+
+			assertManifestName(t, zipReader.File, tc.wantManifest)
+		})
+	}
 }

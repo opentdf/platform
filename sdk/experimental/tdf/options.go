@@ -139,6 +139,10 @@ type WriterConfig struct {
 	// targetMode is the TDF spec version to write for, as semver.
 	// Empty selects the current format. See WithTargetMode.
 	targetMode string
+
+	// unprefixedManifestName writes the manifest under manifest.json
+	// instead of 0.manifest.json. See WithUnprefixedManifestName.
+	unprefixedManifestName bool
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -410,6 +414,19 @@ func WithExcludeVersionFromManifest(_ bool) Option[*WriterFinalizeConfig] {
 func WithTargetMode(mode string) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.targetMode = mode
+	}
+}
+
+// WithUnprefixedManifestName stores the manifest under the zip entry name
+// manifest.json, the name the TDF spec defines, instead of the legacy
+// 0.manifest.json written by default.
+//
+// Readers that predate manifest.json support, such as Go SDK releases before
+// v0.35.0, can't open the result. A pre-4.3.0 [WithTargetMode] overrides
+// this option.
+func WithUnprefixedManifestName() Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		c.unprefixedManifestName = true
 	}
 }
 

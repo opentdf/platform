@@ -1,0 +1,54 @@
+async function run({ github, context }) {
+  const { owner, repo } = context.repo;
+  const issue_number = context.issue.number;
+  const marker = '<!-- driver-review-attestation -->';
+  const isComment = context.eventName === 'issue_comment';
+  if (isComment && context.payload.comment.body !== '/reviewed') return;
+  const pr = (await github.rest.pulls.get({ owner, repo, pull_number: issue_number })).data;
+  if (pr.state !== 'open') return;
+  // Forks use two maintainer approvals instead; never post a tracking
+  // comment or status for their heads, even if the author comments.
+  if (!pr.head.repo || pr.head.repo.id !== pr.base.repo.id) return;
+
+  // Only a personally written, exact command from the human PR author counts.
+  if (isComment && (pr.user.type !== 'User' ||
+      context.payload.comment.user.type !== 'User' ||
+      context.payload.comment.user.id !== pr.user.id)) return;
+  // An old synchronize delivery must not reset the newer head's status.
+  if (!isComment && context.payload.action === 'synchronize' &&
+      context.payload.after !== pr.head.sha) return;
+
+  const sha = pr.head.sha;
+  const comments = await github.paginate(github.rest.issues.listComments, {
+    owner, repo, issue_number, per_page: 100,
+  });
+  const tracking = comments.find(comment =>
+    comment.user.login === 'github-actions[bot]' && comment.body.includes(marker));
+  const body = `${marker}\n**Driver review:** ${isComment ? 'attested' : 'awaiting author review'} for head \`${sha}\`.\n\n` +
+    'The human PR author must personally review the current PR and post a comment containing only `/reviewed`. ' +
+    'Alternatively, two distinct maintainer approvals satisfy the default policy without this attestation. ' +
+    'A new push resets this attestation. This is an author attestation, not an independent approval.';
+  let comment;
+  if (tracking) {
+    comment = (await github.rest.issues.updateComment({
+      owner, repo, comment_id: tracking.id, body,
+    })).data;
+  } else {
+    comment = (await github.rest.issues.createComment({
+      owner, repo, issue_number, body,
+    })).data;
+  }
+
+  // Avoid writing a status for a head that changed while this job was running.
+  const latest = (await github.rest.pulls.get({ owner, repo, pull_number: issue_number })).data;
+  if (latest.head.sha !== sha) return;
+  await github.rest.repos.createCommitStatus({
+    owner, repo, sha,
+    state: isComment ? 'success' : 'pending',
+    context: 'driver-review',
+    description: isComment ? 'PR author attested review of this head' : 'Awaiting PR author /reviewed',
+    target_url: comment.html_url,
+  });
+}
+
+module.exports = { run };

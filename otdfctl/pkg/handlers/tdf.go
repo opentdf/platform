@@ -159,23 +159,10 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 		if o.KASAllowList != nil {
 			opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))
 		}
-		var assertionVerificationKeys sdk.AssertionVerificationKeys
 		if o.AssertionVerificationKeysFile != "" {
-			// read the file
-			assertionVerificationBytes, err := utils.ReadBytesFromFile(o.AssertionVerificationKeysFile, MaxAssertionsFileSize)
+			assertionVerificationKeys, err := readAssertionVerificationKeys(o.AssertionVerificationKeysFile)
 			if err != nil {
-				return fmt.Errorf("unable to read assertions verification keys file: %w", err)
-			}
-			err = json.Unmarshal(assertionVerificationBytes, &assertionVerificationKeys)
-			if err != nil {
-				return fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
-			}
-			for assertionName, key := range assertionVerificationKeys.Keys {
-				correctedKey, err := correctKeyType(key, true)
-				if err != nil {
-					return fmt.Errorf("error with assertion signing key: %w", err)
-				}
-				assertionVerificationKeys.Keys[assertionName] = sdk.AssertionKey{Alg: key.Alg, Key: correctedKey}
+				return err
 			}
 			opts = append(opts, sdk.WithAssertionVerificationKeys(assertionVerificationKeys))
 		}
@@ -238,6 +225,73 @@ func (h Handler) InspectTDF(toInspect io.ReadSeeker) (TDFInspect, []error) {
 	}
 }
 
+// readAssertionVerificationKeys reads an assertion verification keys file:
+//
+//	{"keys": {"<assertion id>": {"alg": "RS256", "key": "<PEM>"}},
+//	 "defaultKey": {"alg": "HS256", "key": "<secret>"}}
+//
+// Keys under "keys" verify the assertion with exactly that id; "defaultKey",
+// if present, verifies assertions with no entry of their own. An RS256 key is
+// a PEM public (or private) key and an HS256 key is the secret's UTF-8 bytes.
+// A key that cannot be used is an error naming reason=configuration-error.
+func readAssertionVerificationKeys(path string) (sdk.AssertionVerificationKeys, error) {
+	var keys sdk.AssertionVerificationKeys
+	data, err := utils.ReadBytesFromFile(path, MaxAssertionsFileSize)
+	if err != nil {
+		return keys, fmt.Errorf("unable to read assertions verification keys file: %w", err)
+	}
+	if err := json.Unmarshal(data, &keys); err != nil {
+		return keys, fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
+	}
+	if err := checkVerificationKeysMembers(data); err != nil {
+		return keys, fmt.Errorf("assertion verification keys file, reason=configuration-error: %w", err)
+	}
+	for id, key := range keys.Keys {
+		converted, err := correctKeyType(key, true)
+		if err != nil {
+			return keys, fmt.Errorf("error with assertion verification key for %q, reason=configuration-error: %w", id, err)
+		}
+		keys.Keys[id] = sdk.AssertionKey{Alg: key.Alg, Key: converted}
+	}
+	if !keys.DefaultKey.IsEmpty() {
+		converted, err := correctKeyType(keys.DefaultKey, true)
+		if err != nil {
+			return keys, fmt.Errorf("error with default assertion verification key, reason=configuration-error: %w", err)
+		}
+		keys.DefaultKey = sdk.AssertionKey{Alg: keys.DefaultKey.Alg, Key: converted}
+	}
+	return keys, nil
+}
+
+// checkVerificationKeysMembers refuses top-level members of a keys file other
+// than "keys" and "defaultKey". Their names have always been matched without
+// regard to case, so "DefaultKey" is accepted too, but a misspelling such as
+// "default_key" would otherwise be silently ignored, leaving the payload key
+// to verify assertions the file meant to pin.
+func checkVerificationKeysMembers(data []byte) error {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(data, &members); err != nil {
+		return fmt.Errorf("not a JSON object: %w", err)
+	}
+	seen := map[string]string{}
+	for name := range members {
+		var field string
+		switch {
+		case strings.EqualFold(name, "keys"):
+			field = "keys"
+		case strings.EqualFold(name, "defaultKey"):
+			field = "defaultKey"
+		default:
+			return fmt.Errorf("unknown member %q; expected \"keys\" and \"defaultKey\"", name)
+		}
+		if other, dup := seen[field]; dup {
+			return fmt.Errorf("members %q and %q both set %q", other, name, field)
+		}
+		seen[field] = name
+	}
+	return nil
+}
+
 func correctKeyType(assertionKey sdk.AssertionKey, public bool) (interface{}, error) {
 	strKey, ok := assertionKey.Key.(string)
 	if !ok {
@@ -246,7 +300,11 @@ func correctKeyType(assertionKey sdk.AssertionKey, public bool) (interface{}, er
 
 	switch assertionKey.Alg {
 	case sdk.AssertionKeyAlgHS256:
-		// convert the hs256 key to []byte
+		// The secret is the string's UTF-8 bytes. PEM text is public-key
+		// material, which must never serve as an HMAC secret.
+		if strings.Contains(strKey, "-----BEGIN") {
+			return nil, errors.New("HS256 key is PEM text, not a shared secret")
+		}
 		return []byte(strKey), nil
 	case sdk.AssertionKeyAlgRS256:
 		// Decode the PEM block
@@ -262,7 +320,9 @@ func correctKeyType(assertionKey sdk.AssertionKey, public bool) (interface{}, er
 		switch block.Type {
 		case "RSA PRIVATE KEY":
 			privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-			publicKey = &privateKey.PublicKey
+			if err == nil {
+				publicKey = &privateKey.PublicKey
+			}
 		case "PRIVATE KEY":
 			parsedKey, parseErr := x509.ParsePKCS8PrivateKey(block.Bytes)
 			if parseErr != nil {

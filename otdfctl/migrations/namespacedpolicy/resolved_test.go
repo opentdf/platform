@@ -338,8 +338,9 @@ func TestResolveExistingRoutesStandardActionsByEnumRegardlessOfName(t *testing.T
 			Actions: []*DerivedAction{
 				{
 					Source: &policy.Action{
-						Id:    "legacy",
-						Name:  "decrypt",
+						Id:   "legacy",
+						Name: "decrypt",
+						//nolint:staticcheck // deliberately exercises the deprecated Action.Value oneof to reach the legacy standard-action path
 						Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT},
 					},
 					Targets: []*policy.Namespace{namespace},

@@ -118,7 +118,7 @@ between the services and the SDKs.
 
 ### Services
 
-Services `./services` are the core building blocks of the OpenTDF platform. Generally, each service is one or more gRPC services that
+Services `./service` are the core building blocks of the OpenTDF platform. Generally, each service is one or more gRPC services that
 are scoped to a namespace. The essence of the service is that it takes a modular binary architecture approach enabling
 multiple deployment models.
 

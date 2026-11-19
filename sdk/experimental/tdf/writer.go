@@ -39,10 +39,13 @@ var (
 	ErrAlreadyFinalized = sdk.ErrChunkedAlreadyFinalized
 	// ErrInvalidSegmentIndex is returned for negative segment indices
 	ErrInvalidSegmentIndex = sdk.ErrChunkedInvalidSegmentIndex
+	// ErrSegmentIndexExhausted is returned for a segment index at or past the
+	// most segments the archive can address
+	ErrSegmentIndexExhausted = sdk.ErrChunkedSegmentIndexExhausted
 	// ErrMissingSegmentZero is returned when Finalize is called without segment 0
 	ErrMissingSegmentZero = sdk.ErrChunkedMissingSegmentZero
-	// ErrAESGCMExhausted is returned when another segment would push the
-	// AES-GCM IV collision probability under the writer's key above 2^-32
+	// ErrAESGCMExhausted is returned once the writer's key has spent all
+	// ocrypto.MaxSeals (2^32-1) segment encryptions
 	ErrAESGCMExhausted = sdk.ErrAESGCMExhausted
 	// ErrSegmentAlreadyWritten is returned when trying to write to an existing segment index
 	ErrSegmentAlreadyWritten = sdk.ErrChunkedSegmentAlreadyWritten
@@ -170,6 +173,8 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 // Error conditions:
 //   - ErrAlreadyFinalized: Writer has been finalized, no more segments accepted
 //   - ErrInvalidSegmentIndex: Negative index provided
+//   - ErrSegmentIndexExhausted: Index at or past the most segments the archive
+//     can address; use a larger segment size
 //   - ErrSegmentAlreadyWritten: Segment index already contains data
 //   - ErrAESGCMExhausted: The writer has attempted as many segment encryptions
 //     as its key safely allows; start a new TDF

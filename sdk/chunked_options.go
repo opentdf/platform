@@ -44,27 +44,14 @@ func withChunkedArchiveWriterFactory(f archiveWriterFactory) ChunkedWriterOption
 	}
 }
 
-// withChunkedCipherFactory overrides the segment cipher factory used
+// withChunkedSealerFactory overrides the segment sealer factory used
 // by the [ChunkedWriter]. The factory must not be nil.
-func withChunkedCipherFactory(f segmentCipherFactory) ChunkedWriterOption {
+func withChunkedSealerFactory(f segmentSealerFactory) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
 		if f == nil {
-			return errors.New("chunked: cipher factory must not be nil")
+			return errors.New("chunked: sealer factory must not be nil")
 		}
-		c.cipherFactory = f
-		return nil
-	}
-}
-
-// withChunkedMaxEncryptions lowers the AES-GCM segment encryption cap
-// so tests can reach ErrAESGCMExhausted without encrypting 2^32
-// segments. n must be positive.
-func withChunkedMaxEncryptions(n uint64) ChunkedWriterOption {
-	return func(c *chunkedWriterConfig) error {
-		if n == 0 {
-			return errors.New("chunked: max encryptions must be positive")
-		}
-		c.maxEncryptions = n
+		c.sealerFactory = f
 		return nil
 	}
 }

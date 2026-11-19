@@ -161,3 +161,21 @@ func TestValidatePublicKeyPEM_HybridMismatch(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "algorithm mismatch")
 }
+
+// An RSA-3072 public key is refused: RSA-3072 is not accepted for KAS keys,
+// and it does not match the RSA 2048 or 4096 algorithms either.
+func TestValidatePublicKeyPEM_RSA3072_Refused(t *testing.T) {
+	k, err := rsa.GenerateKey(rand.Reader, 3072)
+	require.NoError(t, err)
+	pemBytes := pemBlockForKey(t, &k.PublicKey)
+
+	err = ValidatePublicKeyPEM(pemBytes, policy.Algorithm_ALGORITHM_RSA_3072)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not a KAS key algorithm")
+
+	for _, alg := range []policy.Algorithm{policy.Algorithm_ALGORITHM_RSA_2048, policy.Algorithm_ALGORITHM_RSA_4096} {
+		err = ValidatePublicKeyPEM(pemBytes, alg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "algorithm mismatch")
+	}
+}

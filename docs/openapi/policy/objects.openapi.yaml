@@ -26,6 +26,7 @@ components:
         - ALGORITHM_HPQT_SECP384R1_MLKEM1024
         - ALGORITHM_MLKEM_768
         - ALGORITHM_MLKEM_1024
+        - ALGORITHM_RSA_3072
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string

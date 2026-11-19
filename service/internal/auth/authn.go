@@ -219,14 +219,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			origin = r.Host
-			if r.TLS != nil {
-				origin = "https://" + strings.TrimSuffix(origin, ":443")
-			} else {
-				origin = "http://" + strings.TrimSuffix(origin, ":80")
-			}
+		// Origin identifies the caller's page, not the URL receiving this proof.
+		origin := r.Host
+		if r.TLS != nil {
+			origin = "https://" + strings.TrimSuffix(origin, ":443")
+		} else {
+			origin = "http://" + strings.TrimSuffix(origin, ":80")
 		}
 		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},

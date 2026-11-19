@@ -1,0 +1,15 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import KAOInspector from "@/components/KAOInspector";
+---
+
+<Layout title="KAO Inspector" description="Browser-side KAO validator">
+  <h1 class="text-2xl font-bold mb-4">KAO Inspector</h1>
+  <p class="text-sm text-slate-600 mb-6">
+    Paste any KAO JSON below. The browser-side validator at{" "}
+    <code>src/lib/kao-runtime.ts</code> mirrors the Python reference; both
+    surface findings tagged with stable <code>KAO-C-NNN</code> identifiers
+    from <a class="underline" href="../basetdf/basetdf-kao-conformance.md">BaseTDF-KAO-CONF</a>.
+  </p>
+  <KAOInspector client:load />
+</Layout>

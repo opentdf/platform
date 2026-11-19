@@ -1,0 +1,8 @@
+{
+  "id": "rsa-4096-test",
+  "algorithm": "RSA-4096",
+  "publicKey": "rsa-4096-test.pub.pem",
+  "privateKey": "rsa-4096-test.priv.pem",
+  "provenance": "Inlined static PEM (RSA keygen is not seedable in cryptography). Generated once with cryptography 42.x; do not regenerate.",
+  "WARNING": "NON-PRODUCTION TEST KEY -- DO NOT USE"
+}

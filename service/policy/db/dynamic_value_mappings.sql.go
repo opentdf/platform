@@ -11,67 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countDynamicValueMappingsByDefinitionID = `-- name: countDynamicValueMappingsByDefinitionID :one
-SELECT COUNT(id)
-FROM dynamic_value_mappings
-WHERE attribute_definition_id = $1
-`
-
-// Counts dynamic value entitlement mappings on the given definition. Used to enforce
-// no-coexistence from the subject-mapping create path.
-//
-//	SELECT COUNT(id)
-//	FROM dynamic_value_mappings
-//	WHERE attribute_definition_id = $1
-func (q *Queries) countDynamicValueMappingsByDefinitionID(ctx context.Context, attributeDefinitionID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countDynamicValueMappingsByDefinitionID, attributeDefinitionID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countRegisteredResourceActionAttributeValuesByDefinitionID = `-- name: countRegisteredResourceActionAttributeValuesByDefinitionID :one
-SELECT COUNT(rav.id)
-FROM registered_resource_action_attribute_values rav
-JOIN attribute_values av ON rav.attribute_value_id = av.id
-WHERE av.attribute_definition_id = $1
-`
-
-// Counts registered-resource action-attribute-values whose attribute value belongs to the given
-// definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
-//
-//	SELECT COUNT(rav.id)
-//	FROM registered_resource_action_attribute_values rav
-//	JOIN attribute_values av ON rav.attribute_value_id = av.id
-//	WHERE av.attribute_definition_id = $1
-func (q *Queries) countRegisteredResourceActionAttributeValuesByDefinitionID(ctx context.Context, attributeDefinitionID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countRegisteredResourceActionAttributeValuesByDefinitionID, attributeDefinitionID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countValueSubjectMappingsByDefinitionID = `-- name: countValueSubjectMappingsByDefinitionID :one
-SELECT COUNT(sm.id)
-FROM subject_mappings sm
-JOIN attribute_values av ON sm.attribute_value_id = av.id
-WHERE av.attribute_definition_id = $1
-`
-
-// Counts value-level subject mappings whose attribute value belongs to the given
-// definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
-//
-//	SELECT COUNT(sm.id)
-//	FROM subject_mappings sm
-//	JOIN attribute_values av ON sm.attribute_value_id = av.id
-//	WHERE av.attribute_definition_id = $1
-func (q *Queries) countValueSubjectMappingsByDefinitionID(ctx context.Context, attributeDefinitionID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countValueSubjectMappingsByDefinitionID, attributeDefinitionID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createDynamicValueMapping = `-- name: createDynamicValueMapping :one
 WITH inserted_mapping AS (
     INSERT INTO dynamic_value_mappings (
@@ -169,22 +108,35 @@ func (q *Queries) deleteDynamicValueMapping(ctx context.Context, id string) (int
 	return result.RowsAffected(), nil
 }
 
-const getAttributeDefinitionIDByValueID = `-- name: getAttributeDefinitionIDByValueID :one
-SELECT attribute_definition_id
-FROM attribute_values
-WHERE id = $1
+const getAttributeValueDynamicMappingState = `-- name: getAttributeValueDynamicMappingState :one
+SELECT av.attribute_definition_id,
+       EXISTS (
+           SELECT 1 FROM dynamic_value_mappings dvm
+           WHERE dvm.attribute_definition_id = av.attribute_definition_id
+       ) AS has_dynamic_mapping
+FROM attribute_values av
+WHERE av.id = $1
 `
 
-// getAttributeDefinitionIDByValueID
+type getAttributeValueDynamicMappingStateRow struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	HasDynamicMapping     bool   `json:"has_dynamic_mapping"`
+}
+
+// getAttributeValueDynamicMappingState
 //
-//	SELECT attribute_definition_id
-//	FROM attribute_values
-//	WHERE id = $1
-func (q *Queries) getAttributeDefinitionIDByValueID(ctx context.Context, id string) (string, error) {
-	row := q.db.QueryRow(ctx, getAttributeDefinitionIDByValueID, id)
-	var attribute_definition_id string
-	err := row.Scan(&attribute_definition_id)
-	return attribute_definition_id, err
+//	SELECT av.attribute_definition_id,
+//	       EXISTS (
+//	           SELECT 1 FROM dynamic_value_mappings dvm
+//	           WHERE dvm.attribute_definition_id = av.attribute_definition_id
+//	       ) AS has_dynamic_mapping
+//	FROM attribute_values av
+//	WHERE av.id = $1
+func (q *Queries) getAttributeValueDynamicMappingState(ctx context.Context, id string) (getAttributeValueDynamicMappingStateRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueDynamicMappingState, id)
+	var i getAttributeValueDynamicMappingStateRow
+	err := row.Scan(&i.AttributeDefinitionID, &i.HasDynamicMapping)
+	return i, err
 }
 
 const getDynamicValueMapping = `-- name: getDynamicValueMapping :one
@@ -301,35 +253,54 @@ func (q *Queries) getDynamicValueMapping(ctx context.Context, id string) (getDyn
 	return i, err
 }
 
-const getDynamicValueMappingAttribute = `-- name: getDynamicValueMappingAttribute :one
+const getDynamicValueMappingAttributeByFqn = `-- name: getDynamicValueMappingAttributeByFqn :one
 SELECT ad.id, ad.rule, ad.namespace_id
-FROM attribute_definitions ad
-LEFT JOIN attribute_fqns fqns ON ad.id = fqns.attribute_id AND fqns.value_id IS NULL
-WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
+FROM attribute_fqns fqns
+JOIN attribute_definitions ad ON ad.id = fqns.attribute_id
+WHERE fqns.value_id IS NULL
+  AND fqns.fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
 `
 
-type getDynamicValueMappingAttributeParams struct {
-	ID  pgtype.UUID `json:"id"`
-	Fqn pgtype.Text `json:"fqn"`
-}
-
-type getDynamicValueMappingAttributeRow struct {
+type getDynamicValueMappingAttributeByFqnRow struct {
 	ID          string                  `json:"id"`
 	Rule        AttributeDefinitionRule `json:"rule"`
 	NamespaceID string                  `json:"namespace_id"`
 }
 
-// getDynamicValueMappingAttribute
+// getDynamicValueMappingAttributeByFqn
 //
 //	SELECT ad.id, ad.rule, ad.namespace_id
-//	FROM attribute_definitions ad
-//	LEFT JOIN attribute_fqns fqns ON ad.id = fqns.attribute_id AND fqns.value_id IS NULL
-//	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
-func (q *Queries) getDynamicValueMappingAttribute(ctx context.Context, arg getDynamicValueMappingAttributeParams) (getDynamicValueMappingAttributeRow, error) {
-	row := q.db.QueryRow(ctx, getDynamicValueMappingAttribute, arg.ID, arg.Fqn)
-	var i getDynamicValueMappingAttributeRow
+//	FROM attribute_fqns fqns
+//	JOIN attribute_definitions ad ON ad.id = fqns.attribute_id
+//	WHERE fqns.value_id IS NULL
+//	  AND fqns.fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
+func (q *Queries) getDynamicValueMappingAttributeByFqn(ctx context.Context, fqn string) (getDynamicValueMappingAttributeByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getDynamicValueMappingAttributeByFqn, fqn)
+	var i getDynamicValueMappingAttributeByFqnRow
+	err := row.Scan(&i.ID, &i.Rule, &i.NamespaceID)
+	return i, err
+}
+
+const getDynamicValueMappingAttributeByID = `-- name: getDynamicValueMappingAttributeByID :one
+SELECT id, rule, namespace_id
+FROM attribute_definitions
+WHERE id = $1
+`
+
+type getDynamicValueMappingAttributeByIDRow struct {
+	ID          string                  `json:"id"`
+	Rule        AttributeDefinitionRule `json:"rule"`
+	NamespaceID string                  `json:"namespace_id"`
+}
+
+// getDynamicValueMappingAttributeByID
+//
+//	SELECT id, rule, namespace_id
+//	FROM attribute_definitions
+//	WHERE id = $1
+func (q *Queries) getDynamicValueMappingAttributeByID(ctx context.Context, id string) (getDynamicValueMappingAttributeByIDRow, error) {
+	row := q.db.QueryRow(ctx, getDynamicValueMappingAttributeByID, id)
+	var i getDynamicValueMappingAttributeByIDRow
 	err := row.Scan(&i.ID, &i.Rule, &i.NamespaceID)
 	return i, err
 }
@@ -357,6 +328,76 @@ func (q *Queries) getDynamicValueMappingUpdateState(ctx context.Context, id stri
 	var i getDynamicValueMappingUpdateStateRow
 	err := row.Scan(&i.NamespaceID, &i.Metadata)
 	return i, err
+}
+
+const hasDynamicValueMappingsByDefinitionID = `-- name: hasDynamicValueMappingsByDefinitionID :one
+SELECT EXISTS (
+    SELECT 1
+    FROM dynamic_value_mappings
+    WHERE attribute_definition_id = $1
+)
+`
+
+// hasDynamicValueMappingsByDefinitionID
+//
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM dynamic_value_mappings
+//	    WHERE attribute_definition_id = $1
+//	)
+func (q *Queries) hasDynamicValueMappingsByDefinitionID(ctx context.Context, attributeDefinitionID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasDynamicValueMappingsByDefinitionID, attributeDefinitionID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasRegisteredResourceActionAttributeValuesByDefinitionID = `-- name: hasRegisteredResourceActionAttributeValuesByDefinitionID :one
+SELECT EXISTS (
+    SELECT 1
+    FROM registered_resource_action_attribute_values rav
+    JOIN attribute_values av ON rav.attribute_value_id = av.id
+    WHERE av.attribute_definition_id = $1
+)
+`
+
+// Checks for static resource entitlements to enforce no-coexistence with dynamic mappings.
+//
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM registered_resource_action_attribute_values rav
+//	    JOIN attribute_values av ON rav.attribute_value_id = av.id
+//	    WHERE av.attribute_definition_id = $1
+//	)
+func (q *Queries) hasRegisteredResourceActionAttributeValuesByDefinitionID(ctx context.Context, attributeDefinitionID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRegisteredResourceActionAttributeValuesByDefinitionID, attributeDefinitionID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasValueSubjectMappingsByDefinitionID = `-- name: hasValueSubjectMappingsByDefinitionID :one
+SELECT EXISTS (
+    SELECT 1
+    FROM subject_mappings sm
+    JOIN attribute_values av ON sm.attribute_value_id = av.id
+    WHERE av.attribute_definition_id = $1
+)
+`
+
+// Checks for value-level subject mappings to enforce no-coexistence with dynamic mappings.
+//
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM subject_mappings sm
+//	    JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	    WHERE av.attribute_definition_id = $1
+//	)
+func (q *Queries) hasValueSubjectMappingsByDefinitionID(ctx context.Context, attributeDefinitionID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasValueSubjectMappingsByDefinitionID, attributeDefinitionID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listDynamicValueMappings = `-- name: listDynamicValueMappings :many

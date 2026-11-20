@@ -82,6 +82,45 @@ func (s *DynamicValueMappingsSuite) Test_DynamicValueMapping_NarrowWriteReads_Pr
 	s.Equal(created.GetNamespace().GetId(), updated.GetActions()[0].GetNamespace().GetId())
 }
 
+func (s *DynamicValueMappingsSuite) Test_DynamicValueMapping_AttributeIdentifiers_PreserveLookupBehavior() {
+	attr := s.createDefinition("dynamic_identifier_lookup", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF)
+	cases := []struct {
+		name    string
+		id      string
+		fqn     string
+		wantErr error
+	}{
+		{name: "CanonicalFqn", fqn: attr.GetFqn()},
+		{name: "BareFqn", fqn: strings.TrimPrefix(attr.GetFqn(), "https://")},
+		{name: "IdTakesPrecedence", id: attr.GetId(), fqn: "https://missing.example/attr/missing"},
+		{name: "InvalidIdTakesPrecedence", id: "invalid", fqn: attr.GetFqn(), wantErr: db.ErrUUIDInvalid},
+		{name: "MissingIdentifier", wantErr: db.ErrMissingValue},
+		{name: "MissingFqn", fqn: "https://missing.example/attr/missing", wantErr: db.ErrNotFound},
+		{name: "NamespaceFqn", fqn: attr.GetNamespace().GetFqn(), wantErr: db.ErrNotFound},
+		{name: "HttpFqn", fqn: strings.Replace(attr.GetFqn(), "https://", "http://", 1), wantErr: db.ErrNotFound},
+		{name: "UppercaseFqn", fqn: strings.ToUpper(attr.GetFqn()), wantErr: db.ErrNotFound},
+	}
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			got, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+				AttributeDefinitionId:  tc.id,
+				AttributeDefinitionFqn: tc.fqn,
+				NamespaceId:            attr.GetNamespace().GetId(),
+				ValueResolver:          s.resolver("."+tc.name+"[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+				Actions:                []*policy.Action{s.readAction()},
+			})
+			if tc.wantErr != nil {
+				s.Require().ErrorIs(err, tc.wantErr)
+				return
+			}
+			s.Require().NoError(err)
+			s.Equal(attr.GetId(), got.GetAttributeDefinition().GetId())
+			s.Equal(attr.GetRule(), got.GetAttributeDefinition().GetRule())
+			s.Equal(attr.GetNamespace().GetId(), got.GetNamespace().GetId())
+		})
+	}
+}
+
 func (s *DynamicValueMappingsSuite) TestCreateAndGet() {
 	attr := s.createDefinition("dvem_create_ok", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 

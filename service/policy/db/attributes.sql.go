@@ -975,7 +975,7 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
-LIMIT $3
+LIMIT NULLIF($3::integer, 0)
 OFFSET $2
 `
 
@@ -999,7 +999,7 @@ type listAttributesSummaryRow struct {
 	Total          int64                   `json:"total"`
 }
 
-// listAttributesSummary
+// An unset limit must return every attribute for GetAttributesByNamespace.
 //
 //	WITH params AS (
 //	    SELECT
@@ -1029,7 +1029,7 @@ type listAttributesSummaryRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.id ASC
-//	LIMIT $3
+//	LIMIT NULLIF($3::integer, 0)
 //	OFFSET $2
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesSummary,

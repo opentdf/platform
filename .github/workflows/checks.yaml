@@ -2,6 +2,10 @@ name: "Checks"
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
+  # mkcert publishes no checksum file; when bumping MKCERT_VERSION, recompute
+  # MKCERT_SHA256 from the linux-amd64 release asset.
+  MKCERT_VERSION: v1.4.4
+  MKCERT_SHA256: 6d31c65b03972c6dc4a14ab429f2928300518b26503f58723e532d1b0a3bbb52
 
 on:
   pull_request:
@@ -212,9 +216,10 @@ jobs:
       - name: Install mkcert
         run: |
           sudo apt-get install -y libnss3-tools
-          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-          chmod +x mkcert-v*-linux-amd64
-          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/mkcert" \
+            "https://github.com/FiloSottile/mkcert/releases/download/${MKCERT_VERSION}/mkcert-${MKCERT_VERSION}-linux-amd64"
+          echo "${MKCERT_SHA256}  $RUNNER_TEMP/mkcert" | sha256sum -c -
+          sudo install -m 0755 "$RUNNER_TEMP/mkcert" /usr/local/bin/mkcert
       - run: |
           .github/scripts/init-temp-keys.sh
           mkcert -install
@@ -290,9 +295,10 @@ jobs:
       - name: Install mkcert
         run: |
           sudo apt-get install -y libnss3-tools
-          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-          chmod +x mkcert-v*-linux-amd64
-          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/mkcert" \
+            "https://github.com/FiloSottile/mkcert/releases/download/${MKCERT_VERSION}/mkcert-${MKCERT_VERSION}-linux-amd64"
+          echo "${MKCERT_SHA256}  $RUNNER_TEMP/mkcert" | sha256sum -c -
+          sudo install -m 0755 "$RUNNER_TEMP/mkcert" /usr/local/bin/mkcert
       - run: |
           .github/scripts/init-temp-keys.sh
           mkcert -install
@@ -465,9 +471,10 @@ jobs:
           # Remove containerd if present to prevent conflict
           sudo apt-get remove -y containerd containerd.io || true
           sudo apt-get install -y curl docker.io docker-compose-v2 lsof coreutils libnss3-tools
-          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-          chmod +x mkcert-v*-linux-amd64
-          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/mkcert" \
+            "https://github.com/FiloSottile/mkcert/releases/download/${MKCERT_VERSION}/mkcert-${MKCERT_VERSION}-linux-amd64"
+          echo "${MKCERT_SHA256}  $RUNNER_TEMP/mkcert" | sha256sum -c -
+          sudo install -m 0755 "$RUNNER_TEMP/mkcert" /usr/local/bin/mkcert
 
       - name: "Checkout"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -532,9 +539,10 @@ jobs:
           # Remove containerd if present to prevent conflict
           sudo apt-get remove -y containerd containerd.io || true
           sudo apt-get install -y curl docker.io docker-compose-v2 lsof coreutils libnss3-tools
-          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-          chmod +x mkcert-v*-linux-amd64
-          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/mkcert" \
+            "https://github.com/FiloSottile/mkcert/releases/download/${MKCERT_VERSION}/mkcert-${MKCERT_VERSION}-linux-amd64"
+          echo "${MKCERT_SHA256}  $RUNNER_TEMP/mkcert" | sha256sum -c -
+          sudo install -m 0755 "$RUNNER_TEMP/mkcert" /usr/local/bin/mkcert
 
       - name: "Checkout"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

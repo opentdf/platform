@@ -252,6 +252,43 @@ func (q *Queries) getAttribute(ctx context.Context, arg getAttributeParams) (get
 	return i, err
 }
 
+const getAttributeUpdateState = `-- name: getAttributeUpdateState :one
+
+SELECT ad.rule,
+       (CASE WHEN $1::boolean
+        THEN ARRAY(SELECT av.id::text FROM attribute_values av WHERE av.attribute_definition_id = ad.id)
+        ELSE ARRAY[]::text[] END)::text[] AS value_ids
+FROM attribute_definitions ad
+WHERE ad.id = $2
+`
+
+type getAttributeUpdateStateParams struct {
+	IncludeValueIds bool   `json:"include_value_ids"`
+	ID              string `json:"id"`
+}
+
+type getAttributeUpdateStateRow struct {
+	Rule     AttributeDefinitionRule `json:"rule"`
+	ValueIds []string                `json:"value_ids"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTES
+// --------------------------------------------------------------
+//
+//	SELECT ad.rule,
+//	       (CASE WHEN $1::boolean
+//	        THEN ARRAY(SELECT av.id::text FROM attribute_values av WHERE av.attribute_definition_id = ad.id)
+//	        ELSE ARRAY[]::text[] END)::text[] AS value_ids
+//	FROM attribute_definitions ad
+//	WHERE ad.id = $2
+func (q *Queries) getAttributeUpdateState(ctx context.Context, arg getAttributeUpdateStateParams) (getAttributeUpdateStateRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeUpdateState, arg.IncludeValueIds, arg.ID)
+	var i getAttributeUpdateStateRow
+	err := row.Scan(&i.Rule, &i.ValueIds)
+	return i, err
+}
+
 const listAttributesByDefOrValueFqns = `-- name: listAttributesByDefOrValueFqns :many
 WITH target_definition AS (
     SELECT DISTINCT
@@ -757,7 +794,6 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAt
 }
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
-
 WITH params AS (
     SELECT
         COALESCE(NULLIF($7::text, ''), 'created_at') AS resolved_field,
@@ -843,9 +879,7 @@ type listAttributesDetailRow struct {
 	Total          int64                   `json:"total"`
 }
 
-// --------------------------------------------------------------
-// ATTRIBUTES
-// --------------------------------------------------------------
+// listAttributesDetail
 //
 //	WITH params AS (
 //	    SELECT

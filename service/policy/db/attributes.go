@@ -436,28 +436,30 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	} else {
 		allowTraversal = pgtypeBool(r.GetAllowTraversal().GetValue())
 	}
-	before, err := c.GetAttribute(ctx, id)
+	if !pgtypeUUID(id).Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+	lenNewValues := len(r.GetValuesOrder())
+	before, err := c.queries.getAttributeUpdateState(ctx, getAttributeUpdateStateParams{
+		ID:              id,
+		IncludeValueIds: lenNewValues > 0,
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// Validate that the values_order contains all the children value id's of this attribute
-	lenExistingValues := len(before.GetValues())
-	lenNewValues := len(r.GetValuesOrder())
+	lenExistingValues := len(before.ValueIds)
 	if lenNewValues > 0 {
 		if lenExistingValues != lenNewValues {
 			return nil, fmt.Errorf("values_order can only be updated with current attribute values: %w", db.ErrForeignKeyViolation)
 		}
-		// check if all the children value id's of this attribute are in the values_order
-		for _, v := range before.GetValues() {
-			found := false
-			for _, vo := range r.GetValuesOrder() {
-				if v.GetId() == vo {
-					found = true
-					break
-				}
-			}
-			if !found {
+		requestedIDs := make(map[string]struct{}, lenNewValues)
+		for _, valueID := range r.GetValuesOrder() {
+			requestedIDs[valueID] = struct{}{}
+		}
+		for _, valueID := range before.ValueIds {
+			if _, found := requestedIDs[valueID]; !found {
 				return nil, fmt.Errorf("values_order can only be updated with current attribute values: %w", db.ErrForeignKeyViolation)
 			}
 		}
@@ -466,7 +468,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	// Guard the reverse of validateDynamicValueMappingAttribute: a definition
 	// with a dynamic value entitlement mapping cannot be changed to HIERARCHY, which requires
 	// statically ordered values incompatible with pass-through dynamic values.
-	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.Rule != AttributeDefinitionRuleHIERARCHY {
 		hasDynamicMapping, err := c.queries.hasDynamicValueMappingsByDefinitionID(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)

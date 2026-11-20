@@ -194,30 +194,37 @@ FROM update_count;
 -- name: deleteDynamicValueMapping :execrows
 DELETE FROM dynamic_value_mappings WHERE id = $1;
 
--- name: countValueSubjectMappingsByDefinitionID :one
--- Counts value-level subject mappings whose attribute value belongs to the given
--- definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
-SELECT COUNT(sm.id)
-FROM subject_mappings sm
-JOIN attribute_values av ON sm.attribute_value_id = av.id
-WHERE av.attribute_definition_id = $1;
+-- name: hasValueSubjectMappingsByDefinitionID :one
+-- Checks for value-level subject mappings to enforce no-coexistence with dynamic mappings.
+SELECT EXISTS (
+    SELECT 1
+    FROM subject_mappings sm
+    JOIN attribute_values av ON sm.attribute_value_id = av.id
+    WHERE av.attribute_definition_id = $1
+);
 
--- name: countDynamicValueMappingsByDefinitionID :one
--- Counts dynamic value entitlement mappings on the given definition. Used to enforce
--- no-coexistence from the subject-mapping create path.
-SELECT COUNT(id)
-FROM dynamic_value_mappings
-WHERE attribute_definition_id = $1;
+-- name: hasDynamicValueMappingsByDefinitionID :one
+SELECT EXISTS (
+    SELECT 1
+    FROM dynamic_value_mappings
+    WHERE attribute_definition_id = $1
+);
 
--- name: countRegisteredResourceActionAttributeValuesByDefinitionID :one
--- Counts registered-resource action-attribute-values whose attribute value belongs to the given
--- definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
-SELECT COUNT(rav.id)
-FROM registered_resource_action_attribute_values rav
-JOIN attribute_values av ON rav.attribute_value_id = av.id
-WHERE av.attribute_definition_id = $1;
+-- name: hasRegisteredResourceActionAttributeValuesByDefinitionID :one
+-- Checks for static resource entitlements to enforce no-coexistence with dynamic mappings.
+SELECT EXISTS (
+    SELECT 1
+    FROM registered_resource_action_attribute_values rav
+    JOIN attribute_values av ON rav.attribute_value_id = av.id
+    WHERE av.attribute_definition_id = $1
+);
 
--- name: getAttributeDefinitionIDByValueID :one
-SELECT attribute_definition_id
-FROM attribute_values
-WHERE id = $1;
+-- name: getAttributeValueDynamicMappingState :one
+SELECT av.attribute_definition_id,
+       EXISTS (
+           SELECT 1 FROM dynamic_value_mappings dvm
+           WHERE dvm.attribute_definition_id = av.attribute_definition_id
+       ) AS has_dynamic_mapping
+FROM attribute_values av
+WHERE av.id = $1;
+

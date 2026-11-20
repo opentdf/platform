@@ -330,11 +330,11 @@ func validateDynamicValueMappingAttribute(attr *policy.Attribute) error {
 // ensureNoValueSubjectMappingCoexistence rejects creation of a dynamic mapping when the
 // definition's values already carry value-level subject mappings.
 func (c PolicyDBClient) ensureNoValueSubjectMappingCoexistence(ctx context.Context, definitionID string) error {
-	count, err := c.queries.countValueSubjectMappingsByDefinitionID(ctx, definitionID)
+	has, err := c.queries.hasValueSubjectMappingsByDefinitionID(ctx, definitionID)
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if count > 0 {
+	if has {
 		return errors.Join(db.ErrRestrictViolation,
 			fmt.Errorf("attribute definition [%s] already has value-level subject mappings; it cannot also have a dynamic value mapping", definitionID))
 	}
@@ -345,11 +345,11 @@ func (c PolicyDBClient) ensureNoValueSubjectMappingCoexistence(ctx context.Conte
 // definition's values are already referenced by a registered resource's action attribute values.
 // Mirrors the forward guard in createRegisteredResourceActionAttributeValues.
 func (c PolicyDBClient) ensureNoRegisteredResourceAAVCoexistence(ctx context.Context, definitionID string) error {
-	count, err := c.queries.countRegisteredResourceActionAttributeValuesByDefinitionID(ctx, definitionID)
+	has, err := c.queries.hasRegisteredResourceActionAttributeValuesByDefinitionID(ctx, definitionID)
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if count > 0 {
+	if has {
 		return errors.Join(db.ErrRestrictViolation,
 			fmt.Errorf("attribute definition [%s] has values referenced by a registered resource's action attribute values; it cannot also have a dynamic value mapping", definitionID))
 	}
@@ -364,7 +364,7 @@ func (c PolicyDBClient) definitionHasDynamicValueMapping(ctx context.Context, at
 	if attributeValueID == "" {
 		return "", false, nil
 	}
-	definitionID, err := c.queries.getAttributeDefinitionIDByValueID(ctx, attributeValueID)
+	state, err := c.queries.getAttributeValueDynamicMappingState(ctx, attributeValueID)
 	if err != nil {
 		wrapped := db.WrapIfKnownInvalidQueryErr(err)
 		if errors.Is(wrapped, db.ErrNotFound) {
@@ -372,11 +372,7 @@ func (c PolicyDBClient) definitionHasDynamicValueMapping(ctx context.Context, at
 		}
 		return "", false, wrapped
 	}
-	count, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, definitionID)
-	if err != nil {
-		return "", false, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	return definitionID, count > 0, nil
+	return state.AttributeDefinitionID, state.HasDynamicMapping, nil
 }
 
 // ensureNoDynamicValueMappingCoexistence rejects creation of a value-level

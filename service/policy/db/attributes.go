@@ -469,11 +469,11 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	// with a dynamic value entitlement mapping cannot be changed to HIERARCHY, which requires
 	// statically ordered values incompatible with pass-through dynamic values.
 	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.Rule != AttributeDefinitionRuleHIERARCHY {
-		dynamicCount, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, id)
+		hasDynamicMapping, err := c.queries.hasDynamicValueMappingsByDefinitionID(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
-		if dynamicCount > 0 {
+		if hasDynamicMapping {
 			return nil, errors.Join(db.ErrRestrictViolation,
 				fmt.Errorf("attribute definition [%s] has a dynamic value mapping; its rule cannot be changed to HIERARCHY", id))
 		}

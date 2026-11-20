@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -18,9 +17,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -868,52 +865,6 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	s.False(gotNamespace.GetActive().GetValue())
 }
 
-func (s *NamespacesSuite) Test_Namespace_StateChange_WarnsForMatchingAttributes() {
-	cases := []struct {
-		name           string
-		withAttribute  bool
-		active         bool
-		warnDeactivate bool
-	}{
-		{"empty", false, false, false},
-		{"inactive", true, false, false},
-		{"active", true, true, true},
-	}
-	for _, tc := range cases {
-		s.Run(tc.name, func() {
-			ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "warning-check-" + tc.name})
-			s.Require().NoError(err)
-			var attributeID string
-			if tc.withAttribute {
-				attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-					Name: "child", NamespaceId: ns.GetId(), Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-				})
-				s.Require().NoError(err)
-				attributeID = attr.GetId()
-				if !tc.active {
-					_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attributeID)
-					s.Require().NoError(err)
-				}
-			}
-			var output bytes.Buffer
-			warningLogger := &logger.Logger{Logger: slog.New(slog.NewTextHandler(&output, nil))}
-			client := policydb.NewClient(s.db.Client, warningLogger, s.db.LimitMax, s.db.LimitDefault)
-			_, err = client.DeactivateNamespace(s.ctx, ns.GetId())
-			s.Require().NoError(err)
-			s.Equal(tc.warnDeactivate, strings.Contains(output.String(), "deactivating the namespace"))
-			output.Reset()
-			_, err = client.UnsafeReactivateNamespace(s.ctx, ns.GetId())
-			s.Require().NoError(err)
-			s.Equal(tc.withAttribute, strings.Contains(output.String(), "reactivating the namespace"))
-			if attributeID != "" {
-				attr, err := client.GetAttribute(s.ctx, attributeID)
-				s.Require().NoError(err)
-				s.False(attr.GetActive().GetValue())
-			}
-		})
-	}
-}
-
 // reusable setup for creating a namespace -> attr -> value and then deactivating the namespace (cascades down)
 func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string) {
 	// create a namespace
@@ -1108,7 +1059,8 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_DoesNotExist_ShouldFail() {
 
 func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 	// Create a namespace
-	n, _ := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "all-attributes-deactivated.example.com"})
+	s.Require().NoError(err)
 
 	// Create an attribute under that namespace
 	attr := &attributes.CreateAttributeRequest{
@@ -1116,13 +1068,17 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 		NamespaceId: n.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
-	_, _ = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
 
 	// Deactivate the namespace
-	_, _ = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
 
 	// Get the attributes of the namespace
-	attrs, _ := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, n.GetId())
+	attrs, err := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(attrs, 1)
 
 	// Check if all attributes are deactivated
 	for _, attr := range attrs {

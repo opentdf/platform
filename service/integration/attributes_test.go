@@ -452,6 +452,46 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	s.False(gotAttr.GetActive().GetValue())
 }
 
+func (s *AttributesSuite) Test_GetAttributesByNamespace_ReturnsAllNamespaceAttributes() {
+	for _, tc := range []struct {
+		name   string
+		states []bool
+	}{
+		{"Empty", nil},
+		{"Active", []bool{true}},
+		{"Inactive", []bool{false}},
+		{"Mixed", []bool{true, false, true}},
+	} {
+		s.Run(tc.name, func() {
+			ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "lookup-" + strings.ToLower(tc.name)})
+			s.Require().NoError(err)
+			expected := make(map[string]bool, len(tc.states))
+			for i, active := range tc.states {
+				attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+					Name: fmt.Sprintf("child-%d", i), NamespaceId: ns.GetId(), Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				})
+				s.Require().NoError(err)
+				if !active {
+					_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
+					s.Require().NoError(err)
+				}
+				expected[attr.GetId()] = active
+			}
+			attrs, err := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, ns.GetId())
+			s.Require().NoError(err)
+			s.Require().Len(attrs, len(expected))
+			for _, attr := range attrs {
+				active, ok := expected[attr.GetId()]
+				s.Require().True(ok, "attribute belongs to the requested namespace")
+				s.Equal(ns.GetId(), attr.GetNamespace().GetId())
+				s.Equal(active, attr.GetActive().GetValue())
+				delete(expected, attr.GetId())
+			}
+			s.Empty(expected)
+		})
+	}
+}
+
 func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 	fixtures := s.getAttributeFixtures()
 

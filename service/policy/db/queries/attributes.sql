@@ -91,7 +91,8 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
-LIMIT @limit_
+-- An unset limit must return every attribute for GetAttributesByNamespace.
+LIMIT NULLIF(@limit_::integer, 0)
 OFFSET @offset_;
 
 -- name: listAttributesByDefOrValueFqns :many

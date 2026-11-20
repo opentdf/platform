@@ -2,14 +2,6 @@
 -- NAMESPACES
 ----------------------------------------------------------------
 
--- name: namespaceHasAttributes :one
-SELECT EXISTS (
-    SELECT 1
-    FROM attribute_definitions
-    WHERE namespace_id = sqlc.arg('namespace_id')
-      AND (sqlc.narg('active')::boolean IS NULL OR active = sqlc.narg('active')::boolean)
-);
-
 -- name: listNamespaces :many
 WITH params AS (
     SELECT

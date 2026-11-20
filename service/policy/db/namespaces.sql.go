@@ -188,6 +188,7 @@ func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (get
 }
 
 const listNamespaces = `-- name: listNamespaces :many
+
 WITH params AS (
     SELECT
         COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
@@ -243,7 +244,9 @@ type listNamespacesRow struct {
 	Fqn      pgtype.Text `json:"fqn"`
 }
 
-// listNamespaces
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
 //
 //	WITH params AS (
 //	    SELECT
@@ -312,38 +315,6 @@ func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) 
 		return nil, err
 	}
 	return items, nil
-}
-
-const namespaceHasAttributes = `-- name: namespaceHasAttributes :one
-
-SELECT EXISTS (
-    SELECT 1
-    FROM attribute_definitions
-    WHERE namespace_id = $1
-      AND ($2::boolean IS NULL OR active = $2::boolean)
-)
-`
-
-type namespaceHasAttributesParams struct {
-	NamespaceID string      `json:"namespace_id"`
-	Active      pgtype.Bool `json:"active"`
-}
-
-// --------------------------------------------------------------
-// NAMESPACES
-// --------------------------------------------------------------
-//
-//	SELECT EXISTS (
-//	    SELECT 1
-//	    FROM attribute_definitions
-//	    WHERE namespace_id = $1
-//	      AND ($2::boolean IS NULL OR active = $2::boolean)
-//	)
-func (q *Queries) namespaceHasAttributes(ctx context.Context, arg namespaceHasAttributesParams) (bool, error) {
-	row := q.db.QueryRow(ctx, namespaceHasAttributes, arg.NamespaceID, arg.Active)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const removeKeyAccessServerFromNamespace = `-- name: removeKeyAccessServerFromNamespace :execrows

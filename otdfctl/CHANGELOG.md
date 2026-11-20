@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.42.0](https://github.com/opentdf/platform/compare/otdfctl/v0.41.0...otdfctl/v0.42.0) (2026-11-20)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/xo/terminfo from 0.0.0-20220910002029-abceb7e1c41e to 1.3.1 in /otdfctl ([#4290](https://github.com/opentdf/platform/issues/4290)) ([d550ea4](https://github.com/opentdf/platform/commit/d550ea41cbe02a0406591da2b956d988fc2d1c1c))
+* **deps:** bump go.opentelemetry.io/otel/trace from 1.44.0 to 1.47.0 in /otdfctl ([#4330](https://github.com/opentdf/platform/issues/4330)) ([3aedd6d](https://github.com/opentdf/platform/commit/3aedd6dda376926267cde4d7a33210e6a3a1f7e2))
+
 ## [0.41.0](https://github.com/opentdf/platform/compare/otdfctl/v0.40.0...otdfctl/v0.41.0) (2026-11-02)
 
 

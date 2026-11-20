@@ -496,25 +496,27 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 }
 
 const getAttributeValueNamespaceByFqn = `-- name: getAttributeValueNamespaceByFqn :one
-SELECT av.id AS attribute_value_id, ad.namespace_id
-FROM attribute_values av
-JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-JOIN attribute_fqns fqns ON av.id = fqns.value_id
-WHERE REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($1::text, '^https://', '')
+SELECT value_id AS attribute_value_id, namespace_id
+FROM attribute_fqns
+WHERE value_id IS NOT NULL
+  AND attribute_id IS NOT NULL
+  AND namespace_id IS NOT NULL
+  AND fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
 `
 
 type getAttributeValueNamespaceByFqnRow struct {
-	AttributeValueID string `json:"attribute_value_id"`
-	NamespaceID      string `json:"namespace_id"`
+	AttributeValueID pgtype.UUID `json:"attribute_value_id"`
+	NamespaceID      pgtype.UUID `json:"namespace_id"`
 }
 
 // getAttributeValueNamespaceByFqn
 //
-//	SELECT av.id AS attribute_value_id, ad.namespace_id
-//	FROM attribute_values av
-//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-//	JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	WHERE REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($1::text, '^https://', '')
+//	SELECT value_id AS attribute_value_id, namespace_id
+//	FROM attribute_fqns
+//	WHERE value_id IS NOT NULL
+//	  AND attribute_id IS NOT NULL
+//	  AND namespace_id IS NOT NULL
+//	  AND fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
 func (q *Queries) getAttributeValueNamespaceByFqn(ctx context.Context, fqn string) (getAttributeValueNamespaceByFqnRow, error) {
 	row := q.db.QueryRow(ctx, getAttributeValueNamespaceByFqn, fqn)
 	var i getAttributeValueNamespaceByFqnRow

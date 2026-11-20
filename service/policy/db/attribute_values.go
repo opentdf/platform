@@ -183,7 +183,7 @@ func (c PolicyDBClient) getAttributeValueNamespaceID(ctx context.Context, attrib
 	if err != nil {
 		return "", db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return row.NamespaceID, nil
+	return UUIDToString(row.NamespaceID), nil
 }
 
 func (c PolicyDBClient) getAttributeValueNamespaceIDByID(ctx context.Context, id string) (string, error) {

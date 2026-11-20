@@ -706,7 +706,7 @@ func (c PolicyDBClient) resolveRegResAAV(ctx context.Context, aav *registeredres
 		if err != nil {
 			return "", "", db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attributeValueID = av.AttributeValueID
+		attributeValueID = UUIDToString(av.AttributeValueID)
 	default:
 		return "", "", db.ErrSelectIdentifierInvalid
 	}

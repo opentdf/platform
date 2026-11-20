@@ -234,3 +234,11 @@ SELECT av.id AS attribute_value_id, ad.namespace_id
 FROM attribute_values av
 JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 WHERE av.id = ANY(sqlc.arg('ids')::uuid[]);
+
+-- name: getAttributeValueNamespaceByFqn :one
+SELECT value_id AS attribute_value_id, namespace_id
+FROM attribute_fqns
+WHERE value_id IS NOT NULL
+  AND attribute_id IS NOT NULL
+  AND namespace_id IS NOT NULL
+  AND fqn = 'https://' || REGEXP_REPLACE(sqlc.arg('fqn')::text, '^https://', '');

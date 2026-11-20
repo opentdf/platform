@@ -495,6 +495,35 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 	return i, err
 }
 
+const getAttributeValueNamespaceByFqn = `-- name: getAttributeValueNamespaceByFqn :one
+SELECT value_id AS attribute_value_id, namespace_id
+FROM attribute_fqns
+WHERE value_id IS NOT NULL
+  AND attribute_id IS NOT NULL
+  AND namespace_id IS NOT NULL
+  AND fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
+`
+
+type getAttributeValueNamespaceByFqnRow struct {
+	AttributeValueID pgtype.UUID `json:"attribute_value_id"`
+	NamespaceID      pgtype.UUID `json:"namespace_id"`
+}
+
+// getAttributeValueNamespaceByFqn
+//
+//	SELECT value_id AS attribute_value_id, namespace_id
+//	FROM attribute_fqns
+//	WHERE value_id IS NOT NULL
+//	  AND attribute_id IS NOT NULL
+//	  AND namespace_id IS NOT NULL
+//	  AND fqn = 'https://' || REGEXP_REPLACE($1::text, '^https://', '')
+func (q *Queries) getAttributeValueNamespaceByFqn(ctx context.Context, fqn string) (getAttributeValueNamespaceByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueNamespaceByFqn, fqn)
+	var i getAttributeValueNamespaceByFqnRow
+	err := row.Scan(&i.AttributeValueID, &i.NamespaceID)
+	return i, err
+}
+
 const getAttributeValueNamespaceIDs = `-- name: getAttributeValueNamespaceIDs :many
 SELECT av.id AS attribute_value_id, ad.namespace_id
 FROM attribute_values av

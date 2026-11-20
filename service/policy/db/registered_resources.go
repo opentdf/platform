@@ -702,13 +702,11 @@ func (c PolicyDBClient) resolveRegResAAV(ctx context.Context, aav *registeredres
 	case *registeredresources.ActionAttributeValue_AttributeValueId:
 		attributeValueID = ident.AttributeValueId
 	case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-		av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-			Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
-		})
+		av, err := c.queries.getAttributeValueNamespaceByFqn(ctx, strings.ToLower(ident.AttributeValueFqn))
 		if err != nil {
 			return "", "", db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attributeValueID = av.ID
+		attributeValueID = UUIDToString(av.AttributeValueID)
 	default:
 		return "", "", db.ErrSelectIdentifierInvalid
 	}
@@ -728,17 +726,13 @@ func (c PolicyDBClient) validateRRAAVNamespaceConsistency(
 ) error {
 	// Attribute value namespace check only applies when the RR is namespaced
 	if targetNsID != "" {
-		av, err := c.GetAttributeValue(ctx, attributeValueID)
+		valueNamespaceID, err := c.getAttributeValueNamespaceIDByID(ctx, attributeValueID)
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
-		}
-		if attr.GetNamespace().GetId() != targetNsID {
+		if valueNamespaceID != targetNsID {
 			return errors.Join(db.ErrNamespaceMismatch,
-				fmt.Errorf("attribute value namespace [%s] does not match the specified registered resource namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+				fmt.Errorf("attribute value namespace [%s] does not match the specified registered resource namespace [%s]", valueNamespaceID, targetNsID))
 		}
 	}
 

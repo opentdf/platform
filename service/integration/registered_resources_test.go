@@ -800,6 +800,49 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithMetada
 	s.Require().Len(created.GetMetadata().GetLabels(), 2)
 }
 
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_AttributeValueFqnLookup() {
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        "test_attribute_value_fqn_lookup",
+	})
+	s.Require().NoError(err)
+	const fqn = "https://example.com/attr/attr1/value/value1"
+	cases := []struct {
+		name string
+		fqn  string
+		err  error
+	}{
+		{"Canonical", fqn, nil},
+		{"WithoutScheme", strings.TrimPrefix(fqn, "https://"), nil},
+		{"Uppercase", strings.ToUpper(fqn), nil},
+		{"NamespaceFqn", "https://example.com", db.ErrNotFound},
+		{"AttributeFqn", "https://example.com/attr/attr1", db.ErrNotFound},
+		{"MissingValue", "https://example.com/attr/attr1/value/missing", db.ErrNotFound},
+		{"HttpScheme", "http://example.com/attr/attr1/value/value1", db.ErrNotFound},
+	}
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: res.GetId(),
+				Value:      strings.ToLower(tc.name),
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{{
+					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{ActionName: actions.ActionNameCreate},
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+						AttributeValueFqn: tc.fqn,
+					},
+				}},
+			})
+			if tc.err != nil {
+				s.Require().ErrorIs(err, tc.err)
+				return
+			}
+			s.Require().NoError(err)
+			s.Require().Len(created.GetActionAttributeValues(), 1)
+			s.Equal(fqn, created.GetActionAttributeValues()[0].GetAttributeValue().GetFqn())
+		})
+	}
+}
+
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_With_ActionAttributeValues_Succeeds() {
 	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
 		NamespaceId: s.getNamespaceID("example.com"),

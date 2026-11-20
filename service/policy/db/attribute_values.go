@@ -55,11 +55,10 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 
 	var attributeNamespaceID string
 	if len(r.GetSubjectMappings()) > 0 {
-		attr, err := c.GetAttribute(ctx, attributeID)
+		attributeNamespaceID, err = c.getAttributeValueNamespaceIDByID(ctx, createdID)
 		if err != nil {
 			return nil, err
 		}
-		attributeNamespaceID = attr.GetNamespace().GetId()
 	}
 
 	for _, mapping := range r.GetSubjectMappings() {
@@ -170,6 +169,36 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Obligations:     obligations,
 		SubjectMappings: subjectMappings,
 	}, nil
+}
+
+// getAttributeValueNamespaceID resolves a value's namespace without hydrating its parent attribute.
+func (c PolicyDBClient) getAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
+	if attributeValue.GetId() != "" {
+		return c.getAttributeValueNamespaceIDByID(ctx, attributeValue.GetId())
+	}
+	if !pgtypeText(attributeValue.GetFqn()).Valid {
+		return "", db.ErrSelectIdentifierInvalid
+	}
+	row, err := c.queries.getAttributeValueNamespaceByFqn(ctx, attributeValue.GetFqn())
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return UUIDToString(row.NamespaceID), nil
+}
+
+func (c PolicyDBClient) getAttributeValueNamespaceIDByID(ctx context.Context, id string) (string, error) {
+	valueID := pgtypeUUID(id)
+	if !valueID.Valid {
+		return "", db.ErrUUIDInvalid
+	}
+	rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, []string{UUIDToString(valueID)})
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if len(rows) == 0 {
+		return "", db.ErrNotFound
+	}
+	return rows[0].NamespaceID, nil
 }
 
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {

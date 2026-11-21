@@ -172,7 +172,21 @@ type offSpecSpecVersion struct {
 // hex when no version is recorded (pre-4.3.0), raw bytes otherwise. So a
 // container whose version is recorded only under the deprecated name is read
 // with the encoding its writer used.
+//
+// The manifest is first parsed under the ZTDF assertions specification,
+// Section 3, which rejects duplicate member names, case variants at any
+// level the SDK models (such as "Assertions", or "payload" with "Payload"),
+// invalid UTF-8, and assertion objects that are not I-JSON. Those failures are ErrAssertionFailure values.
 func (m *Manifest) UnmarshalJSON(data []byte) error {
+	if err := checkManifestSection3(data); err != nil {
+		return err
+	}
+	return m.unmarshalChecked(data)
+}
+
+// unmarshalChecked decodes a manifest that checkManifestSection3 has already
+// accepted.
+func (m *Manifest) unmarshalChecked(data []byte) error {
 	var base manifestJSON
 	if err := json.Unmarshal(data, &base); err != nil {
 		return err

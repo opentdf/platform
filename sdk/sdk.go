@@ -515,9 +515,12 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	default:
 		manifestSchemaString = string(manifestLaxSchema)
 	}
+	document, err := decodeManifestJSON(manifest)
+	if err != nil {
+		return false, fmt.Errorf("could not validate manifest.json: %w", err)
+	}
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
-	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
-	result, err := gojsonschema.Validate(loader, manifestStringLoader)
+	result, err := gojsonschema.Validate(loader, gojsonschema.NewRawLoader(document))
 	if err != nil {
 		return false, errors.New("could not validate manifest.json")
 	}
@@ -527,6 +530,24 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	}
 
 	return true, nil
+}
+
+// decodeManifestJSON parses the manifest the way gojsonschema's own loaders
+// do (json.Number for numbers), but rejects anything other than whitespace
+// after the top-level value. gojsonschema's string loader stops after the
+// first value, so trailing data would pass validation even though LoadTDF's
+// json.Unmarshal rejects it.
+func decodeManifestJSON(manifest string) (any, error) {
+	dec := json.NewDecoder(strings.NewReader(manifest))
+	dec.UseNumber()
+	var document any
+	if err := dec.Decode(&document); err != nil {
+		return nil, err
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, errors.New("unexpected data after top-level value")
+	}
+	return document, nil
 }
 
 // checkPlatformHealth issues a single gRPC Health v1 Check against the platform endpoint and

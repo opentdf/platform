@@ -100,6 +100,7 @@ func init() {
 		tdf.EncryptCmd,
 		tdf.DecryptCmd,
 		tdf.InspectCmd,
+		tdf.ValidateCmd,
 		// auth
 		auth.Cmd,
 		// policy
@@ -179,6 +180,7 @@ func init() {
 	tdf.InitEncryptCommand()
 	tdf.InitDecryptCommand()
 	tdf.InitInspectCommand()
+	tdf.InitValidateCommand()
 	InitProfileCommands()
 
 	// Add interactive command

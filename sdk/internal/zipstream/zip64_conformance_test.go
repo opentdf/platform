@@ -25,6 +25,9 @@ type rawZipEntry struct {
 	name string
 	// data is the stored (compressed) content.
 	data []byte
+	// method is the compression method written to both headers. Zero is
+	// STORED.
+	method uint16
 	// uncompressedSize overrides the declared original size. Zero means
 	// len(data), i.e. a normal STORED entry.
 	uncompressedSize uint64
@@ -87,12 +90,13 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 	for i, e := range entries {
 		offsets[i] = uint64(buf.Len())
 		lfh := LocalFileHeader{
-			Signature:        fileHeaderSignature,
-			Version:          zipVersion,
-			Crc32:            crc32.ChecksumIEEE(e.data),
-			CompressedSize:   clamp32(uint64(len(e.data))),
-			UncompressedSize: clamp32(e.uncompressed()),
-			FilenameLength:   uint16(len(e.name)),
+			Signature:         fileHeaderSignature,
+			Version:           zipVersion,
+			CompressionMethod: e.method,
+			Crc32:             crc32.ChecksumIEEE(e.data),
+			CompressedSize:    clamp32(uint64(len(e.data))),
+			UncompressedSize:  clamp32(e.uncompressed()),
+			FilenameLength:    uint16(len(e.name)),
 		}
 		require.NoError(t, binary.Write(buf, binary.LittleEndian, lfh))
 		buf.WriteString(e.name)
@@ -108,6 +112,7 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 			Signature:         centralDirectoryHeaderSignature,
 			VersionCreated:    zipVersion,
 			VersionNeeded:     zipVersion,
+			CompressionMethod: e.method,
 			Crc32:             crc32.ChecksumIEEE(e.data),
 			CompressedSize:    clamp32(uint64(len(e.data))),
 			UncompressedSize:  clamp32(e.uncompressed()),
@@ -182,31 +187,54 @@ func timestampExtraField() []byte {
 
 // TestReaderZip64ExtraFieldOrder asserts the reader follows APPNOTE 4.5.3's
 // ZIP64 value order -- original size, compressed size, local header offset.
-// Reading the compressed size first is invisible for STORED entries where
-// the two match, so the fixture makes them differ.
+// Reading the compressed size first is invisible when the two match, so the
+// values here differ. NewReader rejects a STORED entry whose sizes differ
+// (see TestReaderRejectsStoredEntryWithDifferingSizes), so no archive it
+// accepts can show the order; the parser is driven directly instead.
 func TestReaderZip64ExtraFieldOrder(t *testing.T) {
-	payload := []byte("seventeen bytes!!")
-	require.Len(t, payload, 17)
+	const original, compressed, offset = 99, 17, 5
 
-	data := buildRawZip(t, []rawZipEntry{{
-		name:             "differing.bin",
-		data:             payload,
-		uncompressedSize: 99, // deliberately not len(payload)
-		zip64:            true,
-	}}, true)
+	for _, tc := range []struct {
+		name   string
+		header CDFileHeader
+		values []uint64
+		want   zip64ExtraValues
+	}{
+		{
+			name: "all three deferred",
+			header: CDFileHeader{
+				UncompressedSize:  zip64MagicVal,
+				CompressedSize:    zip64MagicVal,
+				LocalHeaderOffset: zip64MagicVal,
+			},
+			values: []uint64{original, compressed, offset},
+			want:   zip64ExtraValues{found: true, uncompressedSize: original, compressedSize: compressed, localHeaderOffset: offset},
+		},
+		{
+			// A value is present only if its 32-bit field holds the sentinel,
+			// so with the original size kept in the header the compressed
+			// size comes first.
+			name: "original size not deferred",
+			header: CDFileHeader{
+				UncompressedSize:  original,
+				CompressedSize:    zip64MagicVal,
+				LocalHeaderOffset: zip64MagicVal,
+			},
+			values: []uint64{compressed, offset},
+			want:   zip64ExtraValues{found: true, compressedSize: compressed, localHeaderOffset: offset},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			extra := &bytes.Buffer{}
+			require.NoError(t, binary.Write(extra, binary.LittleEndian, uint16(zip64ExternalID)))
+			require.NoError(t, binary.Write(extra, binary.LittleEndian, uint16(8*len(tc.values))))
+			require.NoError(t, binary.Write(extra, binary.LittleEndian, tc.values))
 
-	reader, err := NewReader(bytes.NewReader(data))
-	require.NoError(t, err)
-
-	size, err := reader.ReadFileSize("differing.bin")
-	require.NoError(t, err)
-	// 99 here would mean the reader took the original size for the
-	// compressed one, i.e. read the two values in the wrong order.
-	assert.Equal(t, int64(len(payload)), size)
-
-	got, err := reader.ReadAllFileData("differing.bin", oneMB)
-	require.NoError(t, err)
-	assert.Equal(t, payload, got)
+			got, err := parseZip64ExtraField(extra.Bytes(), tc.header)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
 
 // TestReaderZip64ExtraFieldNotFirst asserts the ZIP64 extra field need not
@@ -341,7 +369,7 @@ const (
 
 // overwrite re-encodes v over the region of data starting at off, which must
 // already hold a record of the same width.
-func overwrite(t *testing.T, data []byte, off int, v any) []byte {
+func overwrite(t testing.TB, data []byte, off int, v any) []byte {
 	t.Helper()
 
 	buf := &bytes.Buffer{}
@@ -425,9 +453,12 @@ func TestReaderEntryBoundaryIsCentralDirectory(t *testing.T) {
 	require.Less(t, cdStart, uint64(len(data)), "the bound has to be tighter than the archive")
 
 	// Claim every byte from where the data starts up to the central
-	// directory. The override changes only the declared size, so the layout --
-	// and with it cdStart and the archive length -- is unchanged.
+	// directory. The overrides change only the declared sizes, so the layout --
+	// and with it cdStart and the archive length -- is unchanged. Both sizes
+	// move together: a STORED entry whose sizes differ is rejected on that
+	// ground alone, which would hide the bound under test.
 	payload.zip64CompressedSize = cdStart - dataStart
+	payload.uncompressedSize = payload.zip64CompressedSize
 	require.NotZero(t, payload.zip64CompressedSize, "a zero override would revert to the honest size")
 	exact := buildRawZip(t, []rawZipEntry{payload, manifest}, false)
 	require.Len(t, exact, len(data))
@@ -436,6 +467,7 @@ func TestReaderEntryBoundaryIsCentralDirectory(t *testing.T) {
 	require.NoError(t, err, "an entry ending on the byte before the central directory is in bounds")
 
 	payload.zip64CompressedSize++
+	payload.uncompressedSize++
 	_, err = NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{payload, manifest}, false)))
 	require.ErrorIs(t, err, errZipFormat, "one byte into the central directory is not")
 	require.ErrorContains(t, err, "runs past the "+boundCDStart,
@@ -592,9 +624,10 @@ func (c *countingSeeker) Seek(offset int64, whence int) (int64, error) {
 }
 
 // TestReaderRejectsEntryCountBeyondArchive checks the ZIP64 entry count is
-// bounded by the room the archive actually has: each central directory record
-// is at least cdFileHeaderSize bytes, so a uint64 count is self-evidently a
-// lie before the walk begins.
+// bounded by the room the central directory actually has (its declared size,
+// already checked against the archive): each record is at least
+// cdFileHeaderSize bytes, so a uint64 count is self-evidently a lie before the
+// walk begins.
 //
 // The assertion is on the seek count, not the error. Removing the guard
 // entirely still produces errZipFormat -- the second iteration lands on the

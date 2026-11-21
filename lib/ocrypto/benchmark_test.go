@@ -455,6 +455,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 }
 
 func TestWrappedKeySizeComparison(t *testing.T) {
+	skipCIRCLWhenFIPS(t)
 	type sizeResult struct {
 		scheme     string
 		wrappedLen int

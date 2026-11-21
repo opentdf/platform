@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto/subtle"
 	"encoding/asn1"
 	"errors"
 	"fmt"
@@ -12,12 +13,14 @@ import (
 var errNotKEM = errors.New("not a recognised KEM key")
 
 const (
-	MLKEM768PublicKeySize   = 1184 // mlkem768 encapsulation key
-	MLKEM768PrivateKeySize  = 64   // mlkem768 seed (d || z)
-	MLKEM768CiphertextSize  = 1088 // mlkem768 ciphertext
-	MLKEM1024PublicKeySize  = 1568 // mlkem1024 encapsulation key
-	MLKEM1024PrivateKeySize = 64   // mlkem1024 seed (d || z)
-	MLKEM1024CiphertextSize = 1568 // mlkem1024 ciphertext
+	MLKEM768PublicKeySize    = 1184 // mlkem768 encapsulation key
+	MLKEM768PrivateKeySize   = 64   // mlkem768 seed (d || z)
+	MLKEM768ExpandedKeySize  = 2400
+	MLKEM768CiphertextSize   = 1088 // mlkem768 ciphertext
+	MLKEM1024PublicKeySize   = 1568 // mlkem1024 encapsulation key
+	MLKEM1024PrivateKeySize  = 64   // mlkem1024 seed (d || z)
+	MLKEM1024ExpandedKeySize = 3168
+	MLKEM1024CiphertextSize  = 1568 // mlkem1024 ciphertext
 )
 
 // NIST-assigned OIDs for ML-KEM (FIPS 203).
@@ -82,25 +85,104 @@ func ParseKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	return s.Algorithm.Algorithm, s.PublicKey.RightAlign(), nil
 }
 
-// parseKEMPrivatePKCS8 returns the OID and raw seed bytes from any PKCS#8 DER
-// blob whose AlgorithmIdentifier matches a registered KEM scheme and whose
-// inner private key is encoded as [0] IMPLICIT OCTET STRING. The sentinel
-// errNotKEM is returned for any non-KEM PKCS#8 blob so the caller can fall
-// through to other parsers.
+// parseKEMPrivatePKCS8 returns the OID and seed or expanded private key from a
+// registered pure ML-KEM PKCS#8 key. For the both form it validates the pair
+// and returns the seed. Other algorithms return errNotKEM for routing.
 func parseKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
-	var p kemPKCS8
-	rest, err := asn1.Unmarshal(der, &p)
-	if err != nil || len(rest) != 0 {
+	var outer asn1.RawValue
+	outerRest, err := asn1.Unmarshal(der, &outer)
+	if err != nil || outer.Class != asn1.ClassUniversal || outer.Tag != asn1.TagSequence || !outer.IsCompound {
 		return nil, nil, errNotKEM
 	}
-	if _, ok := kemRegistry[p.Algorithm.Algorithm.String()]; !ok {
+	var version int
+	rest, err := asn1.Unmarshal(outer.Bytes, &version)
+	if err != nil {
 		return nil, nil, errNotKEM
 	}
-
-	var innerSeed []byte
-	innerRest, err := asn1.UnmarshalWithParams(p.PrivateKey, &innerSeed, "tag:0,implicit")
-	if err != nil || len(innerRest) != 0 {
-		return nil, nil, fmt.Errorf("KEM PKCS#8 inner seed parse failed: %w", err)
+	var algorithm asn1.RawValue
+	rest, err = asn1.Unmarshal(rest, &algorithm)
+	if err != nil || algorithm.Class != asn1.ClassUniversal || algorithm.Tag != asn1.TagSequence || !algorithm.IsCompound {
+		return nil, nil, errNotKEM
 	}
-	return p.Algorithm.Algorithm, innerSeed, nil
+	var oid asn1.ObjectIdentifier
+	algorithmRest, err := asn1.Unmarshal(algorithm.Bytes, &oid)
+	if err != nil {
+		return nil, nil, errNotKEM
+	}
+	m, ok := kemByOID(oid)
+	if !ok {
+		return nil, nil, errNotKEM
+	}
+	if len(outerRest) != 0 || len(algorithmRest) != 0 {
+		return nil, nil, errors.New("ML-KEM PKCS#8 has trailing bytes or algorithm parameters")
+	}
+	if version != 0 {
+		return nil, nil, fmt.Errorf("ML-KEM PKCS#8 version %d: want 0", version)
+	}
+	var privateKey []byte
+	rest, err = asn1.Unmarshal(rest, &privateKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ML-KEM PKCS#8 privateKey parse failed: %w", err)
+	}
+	if len(rest) != 0 {
+		return nil, nil, errors.New("ML-KEM PKCS#8 has extra fields")
+	}
+	key, ok := m.(mlkemKEM)
+	if !ok {
+		return nil, nil, errNotKEM
+	}
+	var inner asn1.RawValue
+	innerRest, err := asn1.Unmarshal(privateKey, &inner)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ML-KEM private key CHOICE parse failed: %w", err)
+	}
+	if len(innerRest) != 0 {
+		return nil, nil, errors.New("ML-KEM private key CHOICE parse failed: trailing bytes")
+	}
+	var raw []byte
+	switch {
+	case inner.Class == asn1.ClassContextSpecific && inner.Tag == 0 && !inner.IsCompound:
+		raw = inner.Bytes
+		if len(raw) != key.privSize() {
+			return nil, nil, fmt.Errorf("ML-KEM seed length: got %d want %d", len(raw), key.privSize())
+		}
+	case inner.Class == asn1.ClassUniversal && inner.Tag == asn1.TagOctetString && !inner.IsCompound:
+		raw = inner.Bytes
+		if len(raw) != key.expandedSize() {
+			return nil, nil, fmt.Errorf("ML-KEM expandedKey length: got %d want %d", len(raw), key.expandedSize())
+		}
+		if err := key.validateExpanded(raw); err != nil {
+			return nil, nil, fmt.Errorf("ML-KEM expandedKey invalid: %w", err)
+		}
+	case inner.Class == asn1.ClassUniversal && inner.Tag == asn1.TagSequence && inner.IsCompound:
+		var seed, expanded []byte
+		bothRest, err := asn1.Unmarshal(inner.Bytes, &seed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("ML-KEM both seed parse failed: %w", err)
+		}
+		bothRest, err = asn1.Unmarshal(bothRest, &expanded)
+		if err != nil {
+			return nil, nil, fmt.Errorf("ML-KEM both parse failed: %w", err)
+		}
+		if len(bothRest) != 0 {
+			return nil, nil, errors.New("ML-KEM both parse failed: extra fields")
+		}
+		if len(seed) != key.privSize() {
+			return nil, nil, fmt.Errorf("ML-KEM both seed length: got %d want %d", len(seed), key.privSize())
+		}
+		if len(expanded) != key.expandedSize() {
+			return nil, nil, fmt.Errorf("ML-KEM both expandedKey length: got %d want %d", len(expanded), key.expandedSize())
+		}
+		expected, err := key.expandSeed(seed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("ML-KEM both validation failed: %w", err)
+		}
+		if subtle.ConstantTimeCompare(expected, expanded) != 1 {
+			return nil, nil, errors.New("ML-KEM both seed and expandedKey disagree")
+		}
+		raw = seed
+	default:
+		return nil, nil, fmt.Errorf("ML-KEM private key CHOICE invalid tag: class %d tag %d compound %t", inner.Class, inner.Tag, inner.IsCompound)
+	}
+	return oid, raw, nil
 }

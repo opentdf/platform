@@ -106,3 +106,27 @@ func TestInspectTDFRejectsNonTDFInput(t *testing.T) {
 	require.ErrorIs(t, errs[0], ErrTDFInspectFailNotValidTDF)
 	assert.Nil(t, result.ZTDFManifest)
 }
+
+func TestRangeWriter(t *testing.T) {
+	var out bytes.Buffer
+	rw := &rangeWriter{w: &out, remaining: 5}
+
+	// Partial segment: everything passes through, no stop yet.
+	n, err := rw.Write([]byte("abc"))
+	require.NoError(t, err)
+	assert.Equal(t, 3, n)
+
+	// Crossing the end: truncated to the range and told to stop.
+	n, err = rw.Write([]byte("defgh"))
+	require.ErrorIs(t, err, errRangeComplete)
+	assert.Equal(t, 2, n)
+	assert.Equal(t, "abcde", out.String())
+
+	// Exactly filling the range also stops, so no further segment is fetched.
+	out.Reset()
+	rw = &rangeWriter{w: &out, remaining: 3}
+	n, err = rw.Write([]byte("xyz"))
+	require.ErrorIs(t, err, errRangeComplete)
+	assert.Equal(t, 3, n)
+	assert.Equal(t, "xyz", out.String())
+}

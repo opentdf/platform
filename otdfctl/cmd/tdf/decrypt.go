@@ -19,6 +19,8 @@ const decryptedOutputFileMode = 0o600
 var (
 	assertionVerification string
 	kasAllowList          []string
+	decryptOffset         int64
+	decryptLength         int64
 
 	decryptDoc = man.Docs.GetCommand("decrypt", man.WithRun(decryptRun))
 	DecryptCmd = &decryptDoc.Command
@@ -98,6 +100,8 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		SessionKeyAlgorithm:           sessionKeyAlgorithm,
 		KASAllowList:                  kasAllowList,
 		IgnoreAllowlist:               ignoreAllowlist,
+		RangeOffset:                   decryptOffset,
+		RangeLimit:                    decryptLength,
 	})
 	if err != nil {
 		fail("Failed to decrypt file", err)
@@ -147,6 +151,19 @@ func InitDecryptCommand() {
 		decryptDoc.GetDocFlag("kas-allowlist").Shorthand,
 		nil,
 		decryptDoc.GetDocFlag("kas-allowlist").Description,
+	)
+
+	decryptDoc.Flags().Int64Var(
+		&decryptOffset,
+		decryptDoc.GetDocFlag("offset").Name,
+		0,
+		decryptDoc.GetDocFlag("offset").Description,
+	)
+	decryptDoc.Flags().Int64Var(
+		&decryptLength,
+		decryptDoc.GetDocFlag("length").Name,
+		-1,
+		decryptDoc.GetDocFlag("length").Description,
 	)
 
 	decryptDoc.GroupID = TDF

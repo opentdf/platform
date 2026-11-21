@@ -230,42 +230,49 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 	assert.Equal(t, "testsig", sig)
 }
 
+// TestVerifyAssertionWithJWKInHeader checks that a jwk in the JWS header
+// never replaces the key the caller gives Verify.
 func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
-	// 1. Setup: Create an assertion signed with RS256 and JWK in header
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
+	signWithJWK := func(t *testing.T, privateKey *rsa.PrivateKey) Assertion {
+		t.Helper()
+		publicKey, err := jwk.FromRaw(privateKey.Public())
+		require.NoError(t, err)
 
-	publicKey, err := jwk.FromRaw(privateKey.Public())
-	require.NoError(t, err)
-	_ = publicKey.Set(jwk.AlgorithmKey, jwa.RS256)
+		tok := jwt.New()
+		require.NoError(t, tok.Set(kAssertionHash, "testhash"))
+		require.NoError(t, tok.Set(kAssertionSignature, "testsig"))
 
-	tok := jwt.New()
-	_ = tok.Set(kAssertionHash, "testhash")
-	_ = tok.Set(kAssertionSignature, "testsig")
+		headers := jws.NewHeaders()
+		require.NoError(t, headers.Set(jws.JWKKey, publicKey))
 
-	headers := jws.NewHeaders()
-	_ = headers.Set(jws.JWKKey, publicKey)
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey, jws.WithProtectedHeaders(headers)))
-	require.NoError(t, err)
-
-	assertion := Assertion{
-		Binding: Binding{
-			Method:    JWS.String(),
-			Signature: string(signedTok),
-		},
+		signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey, jws.WithProtectedHeaders(headers)))
+		require.NoError(t, err)
+		return Assertion{
+			ID:      "test-assertion",
+			Binding: Binding{Method: JWS.String(), Signature: string(signedTok)},
+		}
 	}
 
-	// 2. Try to verify with a dummy HS256 key (simulating default behavior in tdf.go)
-	dummyKey := AssertionKey{
-		Alg: AssertionKeyAlgHS256,
-		Key: []byte("dummy payload key"),
-	}
-
-	hash, sig, err := assertion.Verify(dummyKey)
-
-	// This should succeed after the fix
+	signer, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	require.Equal(t, "testhash", hash)
-	require.Equal(t, "testsig", sig)
+	other, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	assertion := signWithJWK(t, signer)
+
+	t.Run("HMAC key rejects an RS256 binding that embeds its key", func(t *testing.T) {
+		_, _, err := assertion.Verify(AssertionKey{Alg: AssertionKeyAlgHS256, Key: []byte("dummy payload key")})
+		require.Error(t, err)
+	})
+
+	t.Run("other RSA key rejects the binding", func(t *testing.T) {
+		_, _, err := assertion.Verify(AssertionKey{Alg: AssertionKeyAlgRS256, Key: &other.PublicKey})
+		require.Error(t, err)
+	})
+
+	t.Run("matching RSA key verifies", func(t *testing.T) {
+		hash, sig, err := assertion.Verify(AssertionKey{Alg: AssertionKeyAlgRS256, Key: &signer.PublicKey})
+		require.NoError(t, err)
+		require.Equal(t, "testhash", hash)
+		require.Equal(t, "testsig", sig)
+	})
 }

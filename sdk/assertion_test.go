@@ -4,10 +4,17 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/gowebpki/jcs"
+	"github.com/lestrrat-go/jwx/v2/cert"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -228,42 +235,112 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 	assert.Equal(t, "testsig", sig)
 }
 
-func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
-	// 1. Setup: Create an assertion signed with RS256 and JWK in header
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	publicKey, err := jwk.FromRaw(privateKey.Public())
-	require.NoError(t, err)
-	_ = publicKey.Set(jwk.AlgorithmKey, jwa.RS256)
-
+// signBinding returns an assertion whose binding is a JWS over the given
+// claims, signed by signer under alg, with headers in its protected header.
+func signBinding(t *testing.T, alg jwa.SignatureAlgorithm, signer any, headers jws.Headers) Assertion {
+	t.Helper()
 	tok := jwt.New()
-	_ = tok.Set(kAssertionHash, "testhash")
-	_ = tok.Set(kAssertionSignature, "testsig")
+	require.NoError(t, tok.Set(kAssertionHash, "testhash"))
+	require.NoError(t, tok.Set(kAssertionSignature, "testsig"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(alg, signer, jws.WithProtectedHeaders(headers)))
+	require.NoError(t, err)
+	return Assertion{
+		ID:      "test-assertion",
+		Binding: Binding{Method: JWS.String(), Signature: string(signedTok)},
+	}
+}
 
+// jwkHeader returns protected headers carrying the public key of k as a jwk.
+func jwkHeader(t *testing.T, k *rsa.PrivateKey) jws.Headers {
+	t.Helper()
+	publicKey, err := jwk.FromRaw(k.Public())
+	require.NoError(t, err)
 	headers := jws.NewHeaders()
-	_ = headers.Set(jws.JWKKey, publicKey)
+	require.NoError(t, headers.Set(jws.JWKKey, publicKey))
+	return headers
+}
 
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey, jws.WithProtectedHeaders(headers)))
+// x5cHeader returns protected headers carrying a self-signed certificate for
+// k as an x5c.
+func x5cHeader(t *testing.T, k *rsa.PrivateKey) jws.Headers {
+	t.Helper()
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "assertion signer"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, k.Public(), k)
+	require.NoError(t, err)
+	var chain cert.Chain
+	require.NoError(t, chain.AddString(base64.StdEncoding.EncodeToString(der)))
+	headers := jws.NewHeaders()
+	require.NoError(t, headers.Set(jws.X509CertChainKey, &chain))
+	return headers
+}
+
+// TestVerifyUsesOnlyTheGivenKey checks that Verify checks the binding with
+// the key it is given and that key's algorithm, whatever the JWS header holds.
+func TestVerifyUsesOnlyTheGivenKey(t *testing.T) {
+	signer, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	other, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	assertion := Assertion{
-		Binding: Binding{
+	signerKey := AssertionKey{Alg: AssertionKeyAlgRS256, Key: &signer.PublicKey}
+	payloadKey := AssertionKey{Alg: AssertionKeyAlgHS256, Key: []byte("payload key for the test")}
+
+	t.Run("jwk of the given key verifies", func(t *testing.T) {
+		assertion := signBinding(t, jwa.RS256, signer, jwkHeader(t, signer))
+		hash, sig, err := assertion.Verify(signerKey)
+		require.NoError(t, err)
+		assert.Equal(t, "testhash", hash)
+		assert.Equal(t, "testsig", sig)
+	})
+
+	t.Run("x5c of the given key verifies", func(t *testing.T) {
+		assertion := signBinding(t, jwa.RS256, signer, x5cHeader(t, signer))
+		_, _, err := assertion.Verify(signerKey)
+		require.NoError(t, err)
+	})
+
+	for _, tc := range []struct {
+		name    string
+		headers func(*testing.T, *rsa.PrivateKey) jws.Headers
+		key     AssertionKey
+	}{
+		{"jwk does not replace the given RSA key", jwkHeader, signerKey},
+		{"x5c does not replace the given RSA key", x5cHeader, signerKey},
+		{"jwk is not used with the payload key", jwkHeader, payloadKey},
+		{"x5c is not used with the payload key", x5cHeader, payloadKey},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assertion := signBinding(t, jwa.RS256, other, tc.headers(t, other))
+			_, _, err := assertion.Verify(tc.key)
+			require.ErrorIs(t, err, errAssertionVerifyKeyFailure)
+		})
+	}
+
+	t.Run("header alg must match the key's alg", func(t *testing.T) {
+		// An RS256 signature by the given key under a header naming RS512.
+		header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS512"}`))
+		claims := base64.RawURLEncoding.EncodeToString([]byte(`{"assertionHash":"testhash","assertionSig":"testsig"}`))
+		digest := sha256.Sum256([]byte(header + "." + claims))
+		sig, err := rsa.SignPKCS1v15(rand.Reader, signer, crypto.SHA256, digest[:])
+		require.NoError(t, err)
+		assertion := Assertion{Binding: Binding{
 			Method:    JWS.String(),
-			Signature: string(signedTok),
-		},
-	}
+			Signature: header + "." + claims + "." + base64.RawURLEncoding.EncodeToString(sig),
+		}}
+		_, _, err = assertion.Verify(signerKey)
+		require.ErrorIs(t, err, errAssertionVerifyKeyFailure)
+	})
 
-	// 2. Try to verify with a dummy HS256 key (simulating default behavior in tdf.go)
-	dummyKey := AssertionKey{
-		Alg: AssertionKeyAlgHS256,
-		Key: []byte("dummy payload key"),
-	}
-
-	hash, sig, err := assertion.Verify(dummyKey)
-
-	// This should succeed after the fix
-	require.NoError(t, err)
-	require.Equal(t, "testhash", hash)
-	require.Equal(t, "testsig", sig)
+	t.Run("HS256 binding fails with an RSA key", func(t *testing.T) {
+		assertion := signBinding(t, jwa.HS256, []byte("payload key for the test"), jws.NewHeaders())
+		_, _, err := assertion.Verify(signerKey)
+		require.ErrorIs(t, err, errAssertionVerifyKeyFailure)
+		_, _, err = assertion.Verify(payloadKey)
+		require.NoError(t, err)
+	})
 }

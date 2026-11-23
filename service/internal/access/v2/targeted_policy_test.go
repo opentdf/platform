@@ -96,9 +96,9 @@ func registeredResourceValue(id, resourceID, resourceName, value string, aavs ..
 	}
 }
 
-func actionAttributeValue(action, valueFQN string) *policy.RegisteredResourceValue_ActionAttributeValue {
+func actionAttributeValue(valueFQN string) *policy.RegisteredResourceValue_ActionAttributeValue {
 	return &policy.RegisteredResourceValue_ActionAttributeValue{
-		Action:         &policy.Action{Name: action},
+		Action:         &policy.Action{Name: "read"},
 		AttributeValue: &policy.Value{Fqn: valueFQN},
 	}
 }
@@ -129,7 +129,8 @@ func TestFetchRegisteredResources_GroupsAndSkipsUnknown(t *testing.T) {
 			"https://example.com/reg_res/other/value/gamma":  gamma,
 		},
 		errByFQN: map[string]error{
-			"https://example.com/reg_res/bad/value/x": connect.NewError(connect.CodeInvalidArgument, errors.New("bad fqn")),
+			"https://example.com/not-a-registered-resource": connect.NewError(connect.CodeInternal, errors.New("invalid fqn")),
+			"https://example.com/reg_res/bad/value/x":       connect.NewError(connect.CodeInvalidArgument, errors.New("bad fqn")),
 		},
 	}
 
@@ -141,6 +142,7 @@ func TestFetchRegisteredResources_GroupsAndSkipsUnknown(t *testing.T) {
 		"https://example.com/reg_res/other/value/gamma",
 		"https://example.com/reg_res/system/value/missing",
 		"https://example.com/reg_res/bad/value/x",
+		"https://example.com/not-a-registered-resource",
 		"",
 	})
 	require.NoError(t, err)
@@ -258,8 +260,8 @@ func newTargetedPolicyFixture() *targetedPolicyFixture {
 			Actions:             []*policy.Action{{Name: "read"}},
 		}
 	}
-	alphaSys := registeredResourceValue("alpha-sys-id", "system-id", "system", "alpha-sys", actionAttributeValue("read", fixtureSecret))
-	betaSys := registeredResourceValue("beta-sys-id", "system-id", "system", "beta-sys", actionAttributeValue("read", fixtureBeta))
+	alphaSys := registeredResourceValue("alpha-sys-id", "system-id", "system", "alpha-sys", actionAttributeValue(fixtureSecret))
+	betaSys := registeredResourceValue("beta-sys-id", "system-id", "system", "beta-sys", actionAttributeValue(fixtureBeta))
 	return &targetedPolicyFixture{
 		definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
 			fixtureClassification: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},

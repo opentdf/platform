@@ -360,6 +360,13 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
 			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 			s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+			got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+				Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{Fqn: v.GetFqn()},
+			})
+			s.Require().NoError(err)
+			s.Require().Len(got.GetActionAttributeValues(), 1)
+			s.True(proto.Equal(aav.GetAction(), got.GetActionAttributeValues()[0].GetAction()), "single lookup must hydrate the same action namespace as listing")
+			s.True(proto.Equal(r.GetMetadata(), got.GetResource().GetMetadata()), "alias precedence needs the parent creation timestamp")
 
 			switch v.GetId() {
 			case val1.GetId():
@@ -2740,6 +2747,57 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
 
 	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_LegacyCollisionPrecedence() {
+	// Both namespaces contain the same resource/value pair. Legacy aliases use
+	// the last match in the default full listing, including its ID tiebreaker.
+	var resources []*policy.RegisteredResource
+	for _, name := range []string{"legacy-older.example", "legacy-newer.example"} {
+		ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		s.T().Cleanup(func() { _, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn()); s.NoError(err) })
+		rr, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: ns.GetId(), Name: "collision-test", Values: []string{"shared"},
+		})
+		s.Require().NoError(err)
+		resources = append(resources, rr)
+	}
+	for _, tied := range []bool{false, true} {
+		for i, rr := range resources {
+			created := time.Unix(10, 0)
+			if !tied {
+				created = created.Add(time.Duration(i) * time.Hour)
+			}
+			_, err := s.db.Client.Pgx.Exec(s.ctx, "UPDATE "+s.db.TableName("registered_resources")+" SET created_at = $1 WHERE id = $2", created, rr.GetId())
+			s.Require().NoError(err)
+		}
+		listed, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+		s.Require().NoError(err)
+		var expected *policy.RegisteredResourceValue
+		for _, rr := range listed.GetResources() {
+			if rr.GetName() == "collision-test" {
+				expected = rr.GetValues()[0]
+			}
+		}
+		s.Require().NotNil(expected)
+		got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{Fqn: "https://reg_res/collision-test/value/shared"},
+		})
+		s.Require().NoError(err)
+		s.Equal(expected.GetId(), got.GetId(), "tied=%v", tied)
+		if !tied {
+			s.Equal(resources[0].GetId(), got.GetResource().GetId())
+		}
+		// Explicit namespaces must still select their own value.
+		for _, rr := range resources {
+			qualifiedValue, qualifiedErr := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+				Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{Fqn: rr.GetValues()[0].GetFqn()},
+			})
+			s.Require().NoError(qualifiedErr)
+			s.Equal(rr.GetId(), qualifiedValue.GetResource().GetId())
+		}
+	}
 }
 
 // Sort test helpers

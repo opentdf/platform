@@ -211,18 +211,22 @@ SELECT
         )
     ELSE NULL END as namespace,
     r.name as resource_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as resource_metadata,
     JSON_AGG(
-    	JSON_BUILD_OBJECT(
-    		'action', JSON_BUILD_OBJECT(
-    			'id', a.id,
-    			'name', a.name
-    		),
-    		'attribute_value', JSON_BUILD_OBJECT(
-    			'id', av.id,
-    			'value', av.value,
-    			'fqn', fqns.fqn
-    		)
-    	)
+        JSON_BUILD_OBJECT(
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', CONCAT('https://', ans.name))
+                END
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', fqns.fqn
+            )
+        )
     ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
@@ -230,6 +234,7 @@ LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
@@ -237,7 +242,11 @@ WHERE
     (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text) AND
     (sqlc.narg('value')::text IS NULL OR v.value = sqlc.narg('value')::text) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
-GROUP BY v.id, r.name, n.id, ns_fqns.fqn;
+GROUP BY v.id, r.id, n.id, ns_fqns.fqn
+-- Legacy FQNs omit the namespace. Match the alias winner from the PDP's default
+-- full listing (created_at DESC, id ASC, last value wins).
+ORDER BY r.created_at ASC, r.id DESC
+LIMIT 1;
 
 -- name: listRegisteredResourceValues :many
 WITH counted AS (

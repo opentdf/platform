@@ -1560,7 +1560,7 @@ WHERE
     ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
     ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text) AND
     ($3::text[] IS NULL OR av_fqns.fqn = ANY($3::text[]))
-ORDER BY ot.created_at DESC
+ORDER BY ot.created_at DESC, ot.id ASC
 LIMIT $5
 OFFSET $4
 `
@@ -1647,7 +1647,7 @@ type listObligationTriggersRow struct {
 //	    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
 //	    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text) AND
 //	    ($3::text[] IS NULL OR av_fqns.fqn = ANY($3::text[]))
-//	ORDER BY ot.created_at DESC
+//	ORDER BY ot.created_at DESC, ot.id ASC
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligationTriggersParams) ([]listObligationTriggersRow, error) {

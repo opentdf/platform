@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -30,6 +31,11 @@ func fetchRegisteredResources(ctx context.Context, sdk *otdfSDK.SDK, fqns []stri
 	seenValueIDs := make(map[string]struct{})
 
 	for _, fqn := range normalizeFQNs(fqns) {
+		// The policy service currently reports malformed identifiers as Internal.
+		// Omit them locally so one invalid resource does not abort a mixed decision.
+		if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn); err != nil {
+			continue
+		}
 		rsp, err := sdk.RegisteredResources.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
 			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{Fqn: fqn},
 		})
@@ -53,6 +59,7 @@ func fetchRegisteredResources(ctx context.Context, sdk *otdfSDK.SDK, fqns []stri
 				Id:        parent.GetId(),
 				Name:      parent.GetName(),
 				Namespace: parent.GetNamespace(),
+				Metadata:  parent.GetMetadata(),
 			}
 			resourcesByID[parent.GetId()] = resource
 			resources = append(resources, resource)

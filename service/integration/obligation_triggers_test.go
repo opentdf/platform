@@ -886,6 +886,52 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoContext_Success(
 	s.validateTriggerWithDefaults(listedTrigger, false)
 }
 
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_FilteredPaginationWithTiedTimestamps() {
+	created := s.createMultipleUniqueTriggers(60)
+	s.appendObligationValuesToClean(created)
+	type orderedTrigger struct {
+		id    string
+		group int
+	}
+	expected := make([]orderedTrigger, 0, len(created))
+	for id := range created {
+		group := len(expected) % 4
+		_, err := s.db.Client.Pgx.Exec(s.ctx, "UPDATE "+s.db.TableName("obligation_triggers")+" SET created_at = $1 WHERE id = $2", time.Unix(int64(group), 0), id)
+		s.Require().NoError(err)
+		expected = append(expected, orderedTrigger{id: id, group: group})
+	}
+	slices.SortFunc(expected, func(a, b orderedTrigger) int {
+		if a.group != b.group {
+			return b.group - a.group
+		}
+		return strings.Compare(a.id, b.id)
+	})
+	want := make([]string, 0, len(expected))
+	for _, trigger := range expected {
+		want = append(want, trigger.id)
+	}
+	for _, limit := range []int32{1, 7, 13} {
+		var got []string
+		var offset int32
+		for page := 0; page < len(expected); page++ {
+			triggers, pagination, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{s.attributeValue.GetFqn()},
+				Pagination:         &policy.PageRequest{Limit: limit, Offset: offset},
+			})
+			s.Require().NoError(err)
+			s.Equal(int32(len(expected)), pagination.GetTotal())
+			for _, trigger := range triggers {
+				got = append(got, trigger.GetId())
+			}
+			offset = pagination.GetNextOffset()
+			if offset == 0 {
+				break
+			}
+		}
+		s.Equal(want, got, "limit=%d: every trigger must appear exactly once in a stable order", limit)
+	}
+}
+
 func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigger {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},

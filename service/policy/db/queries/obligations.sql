@@ -764,6 +764,6 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR trigger_ns.id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR trigger_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
     (sqlc.narg('attribute_value_fqns')::text[] IS NULL OR av_fqns.fqn = ANY(sqlc.narg('attribute_value_fqns')::text[]))
-ORDER BY ot.created_at DESC
+ORDER BY ot.created_at DESC, ot.id ASC
 LIMIT @limit_
 OFFSET @offset_;

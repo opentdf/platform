@@ -20,11 +20,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opentdf/platform/service/internal/jwtclaims"
+
 	"connectrpc.com/connect/v2"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -202,7 +204,7 @@ func jwkThumbprintAttr(key jwk.Key) slog.Attr {
 // parseSRT parses the JWT payload without validation, returning the token and embedded
 // request body string while translating parse errors into client-facing status codes.
 func (p *Provider) parseSRT(ctx context.Context, srt string) (jwt.Token, string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithValidate(false))
+	token, err := jwt.ParseInsecure([]byte(srt))
 	if err != nil {
 		p.Logger.WarnContext(
 			ctx,
@@ -235,32 +237,32 @@ func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token,
 
 	failureClaims := map[string]struct{}{}
 
-	issuedAt := token.IssuedAt()
-	if !issuedAt.IsZero() {
+	issuedAt, hasIssuedAt := token.IssuedAt()
+	if hasIssuedAt {
 		fields = append(
 			fields,
 			slog.Time("iat", issuedAt),
 			slog.Duration("iat_delta", issuedAt.Sub(now)),
 		)
-		if errors.Is(err, jwt.ErrInvalidIssuedAt()) {
+		if errors.Is(err, jwt.InvalidIssuedAtError()) {
 			failureClaims["iat"] = struct{}{}
 		}
 	}
 
-	expires := token.Expiration()
-	if !expires.IsZero() {
+	expires, hasExpiration := token.Expiration()
+	if hasExpiration {
 		fields = append(
 			fields,
 			slog.Time("exp", expires),
 			slog.Duration("exp_delta", now.Sub(expires)),
 		)
-		if errors.Is(err, jwt.ErrTokenExpired()) {
+		if errors.Is(err, jwt.TokenExpiredError()) {
 			failureClaims["exp"] = struct{}{}
 		}
 	}
 
-	notBefore := token.NotBefore()
-	if !notBefore.IsZero() {
+	notBefore, hasNotBefore := token.NotBefore()
+	if hasNotBefore {
 		fields = append(
 			fields,
 			slog.Time("nbf", notBefore),
@@ -268,7 +270,7 @@ func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token,
 		)
 	}
 
-	if errors.Is(err, jwt.ErrTokenNotYetValid()) {
+	if errors.Is(err, jwt.TokenNotYetValidError()) {
 		failureClaims["nbf"] = struct{}{}
 	}
 
@@ -308,16 +310,16 @@ func (p *Provider) validateSRTClaims(ctx context.Context, token jwt.Token, requi
 // the signed request token. The SRT is signed with the client's DPoP key, so its
 // algorithm follows the key type (RS256/PS* for RSA, ES256/384/512 for EC).
 // Mirrors the DPoP proof allowlist in the auth package.
-var srtSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
-	jwa.RS256: true,
-	jwa.RS384: true,
-	jwa.RS512: true,
-	jwa.ES256: true,
-	jwa.ES384: true,
-	jwa.ES512: true,
-	jwa.PS256: true,
-	jwa.PS384: true,
-	jwa.PS512: true,
+var srtSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ // only asymmetric algorithms
+	jwa.RS256(): true,
+	jwa.RS384(): true,
+	jwa.RS512(): true,
+	jwa.ES256(): true,
+	jwa.ES384(): true,
+	jwa.ES512(): true,
+	jwa.PS256(): true,
+	jwa.PS384(): true,
+	jwa.PS512(): true,
 }
 
 // verifySRTSignature validates the SRT signature against the supplied DPoP key when
@@ -327,12 +329,10 @@ func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK j
 	// the key type. Read the algorithm from the SRT header (validated against an
 	// asymmetric allowlist) instead of assuming RS256, so EC DPoP keys (e.g.
 	// ES256) verify.
-	alg := jwa.RS256
-	if parsed, perr := jws.Parse([]byte(srt)); perr == nil {
-		if sigs := parsed.Signatures(); len(sigs) > 0 {
-			if headers := sigs[0].ProtectedHeaders(); headers != nil {
-				alg = headers.Algorithm()
-			}
+	alg := jwa.RS256()
+	if parsed, perr := jws.Parse([]byte(srt)); perr == nil && len(parsed.Signatures()) > 0 {
+		if headerAlg, ok := parsed.Signatures()[0].ProtectedHeaders().Algorithm(); ok {
+			alg = headerAlg
 		}
 	}
 	var err error
@@ -361,7 +361,7 @@ func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK j
 }
 
 func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger) (string, error) {
-	rb, exists := token.Get("requestBody")
+	rb, exists := jwtclaims.Field(token, "requestBody")
 	if !exists {
 		logger.WarnContext(ctx, "missing request body")
 		return "", err400("missing request body")
@@ -617,7 +617,7 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 		return nil, err401("missing access token")
 	}
 
-	sub, found := token.Get("sub")
+	sub, found := jwtclaims.Field(token, "sub")
 	if found {
 		var subAssert bool
 		info.EntityID, subAssert = sub.(string)

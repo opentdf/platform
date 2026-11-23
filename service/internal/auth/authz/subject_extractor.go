@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/jwtclaims"
+
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/dotnotation"
@@ -135,17 +137,14 @@ func (e SubjectExtractor) ClaimsForRequest(ctx context.Context, token jwt.Token,
 	return claims, nil
 }
 
-func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token) (string, error) {
+func (e SubjectExtractor) ClientIDFromToken(_ context.Context, token jwt.Token) (string, error) {
 	if e.clientIDClaim == "" {
 		return "", ErrClientIDClaimNotConfigured
 	}
 	if token == nil {
 		return "", ErrTokenRequired
 	}
-	claims, err := token.AsMap(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.clientIDClaim, err)
-	}
+	claims := jwtclaims.Map(token)
 	found := dotnotation.Dotnotation(claims, e.clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, e.clientIDClaim)
@@ -181,7 +180,7 @@ func (e SubjectExtractor) usernameFromToken(token jwt.Token) string {
 		return ""
 	}
 
-	claim, found := token.Get(e.userNameClaim)
+	claim, found := jwtclaims.Field(token, e.userNameClaim)
 	if !found {
 		return ""
 	}

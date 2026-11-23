@@ -8,6 +8,8 @@ import (
 	"maps"
 	"reflect"
 
+	"github.com/opentdf/platform/service/internal/jwtclaims"
+
 	dotnotation "github.com/opentdf/platform/service/internal/dotnotation"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
@@ -28,13 +30,7 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 		return
 	}
 
-	claimsMap, err := token.AsMap(ctx)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "failed to read JWT claims for audit enrichment", slog.Any("error", err))
-		return
-	}
-
-	a.applyMappedJWTClaims(ctx, entry, claimsMap, a.config.JWTClaimMappings)
+	a.applyMappedJWTClaims(ctx, entry, jwtclaims.Map(token), a.config.JWTClaimMappings)
 }
 
 func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any, mappings []JWTClaimMapping) {

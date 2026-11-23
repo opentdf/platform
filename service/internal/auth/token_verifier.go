@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/httprc/v3"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	"github.com/opentdf/platform/service/logger"
 )
@@ -32,7 +33,10 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 		return nil, nil, err
 	}
 
-	cache := jwk.NewCache(ctx)
+	cache, err := jwk.NewCache(ctx, httprc.NewClient())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, log)
 	if err != nil {
@@ -53,7 +57,7 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 		cacheInterval = refreshInterval
 	}
 
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
+	if err := cache.Register(ctx, oidcConfig.JwksURI, jwk.WithMinInterval(cacheInterval)); err != nil {
 		return nil, nil, err
 	}
 
@@ -61,8 +65,13 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 		return nil, nil, err
 	}
 
+	cachedKeySet, err := cache.CachedSet(oidcConfig.JwksURI)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &TokenVerifier{
-		cachedKeySet:      jwk.NewCachedSet(cache, oidcConfig.JwksURI),
+		cachedKeySet:      cachedKeySet,
 		oidcConfiguration: cfg,
 		log:               log,
 	}, oidcConfig, nil

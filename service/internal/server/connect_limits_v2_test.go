@@ -71,7 +71,7 @@ func TestReadLimitMountOptions_ConnectProtocol(t *testing.T) {
 
 func TestReadLimitMountOptions_GzipStopsDecompressionAtLimit(t *testing.T) {
 	const (
-		limit        = 16 * 1024
+		limit        = 64 * 1024
 		expandedSize = 8 * 1024 * 1024
 	)
 	handler, calls := newReadLimitV2TestHandler(ReadLimitMountOptions(limit)...)

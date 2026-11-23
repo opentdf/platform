@@ -60,7 +60,7 @@ func TestReadLimitHandlerOptions_ConnectProtocol(t *testing.T) {
 
 func TestReadLimitHandlerOptions_GzipStopsDecompressionAtLimit(t *testing.T) {
 	const (
-		limit        = 16 * 1024
+		limit        = 64 * 1024
 		expandedSize = 8 * 1024 * 1024
 	)
 	compressed := gzipCompress(t, make([]byte, expandedSize))

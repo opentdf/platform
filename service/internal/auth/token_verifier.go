@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/lestrrat-go/httprc/v3"
@@ -24,17 +25,15 @@ type AccessTokenVerifier interface {
 // TokenVerifier validates access tokens against the platform's configured IdP.
 type TokenVerifier struct {
 	cachedKeySet      jwk.Set
+	cache             *jwk.Cache
+	closeOnce         sync.Once
+	closeErr          error
 	oidcConfiguration AuthNConfig
 	log               *logger.Logger
 }
 
 func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) (*TokenVerifier, *OIDCConfiguration, error) {
 	if err := cfg.validateAuthNConfig(log); err != nil {
-		return nil, nil, err
-	}
-
-	cache, err := jwk.NewCache(ctx, httprc.NewClient())
-	if err != nil {
 		return nil, nil, err
 	}
 
@@ -56,6 +55,16 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 		)
 		cacheInterval = refreshInterval
 	}
+	cache, err := jwk.NewCache(ctx, httprc.NewClient())
+	if err != nil {
+		return nil, nil, err
+	}
+	ready := false
+	defer func() {
+		if !ready {
+			_ = cache.Shutdown(context.WithoutCancel(ctx))
+		}
+	}()
 
 	if err := cache.Register(ctx, oidcConfig.JwksURI, jwk.WithMinInterval(cacheInterval)); err != nil {
 		return nil, nil, err
@@ -70,17 +79,42 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 		return nil, nil, err
 	}
 
-	return &TokenVerifier{
+	verifier := &TokenVerifier{
 		cachedKeySet:      cachedKeySet,
+		cache:             cache,
 		oidcConfiguration: cfg,
 		log:               log,
-	}, oidcConfig, nil
+	}
+	context.AfterFunc(ctx, func() {
+		_ = verifier.Close(context.WithoutCancel(ctx))
+	})
+	ready = true
+	return verifier, oidcConfig, nil
 }
 
 // NewTokenVerifier creates a reusable verifier backed by the IdP JWKS endpoint.
 func NewTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) (*TokenVerifier, error) {
 	verifier, _, err := newTokenVerifier(ctx, cfg, log)
 	return verifier, err
+}
+
+// Close releases the background JWKS refresh workers and timers.
+func (v *TokenVerifier) Close(ctx context.Context) error {
+	if v == nil || v.cache == nil {
+		return nil
+	}
+	v.closeOnce.Do(func() {
+		v.closeErr = v.cache.Shutdown(ctx)
+	})
+	return v.closeErr
+}
+
+// Close releases the authenticator's JWKS cache.
+func (a *Authentication) Close(ctx context.Context) error {
+	if a == nil {
+		return nil
+	}
+	return a.tokenVerifier.Close(ctx)
 }
 
 // AccessTokenVerifier returns the authenticator's shared access-token verifier.

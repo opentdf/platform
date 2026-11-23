@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -58,11 +60,12 @@ type EntitlementPolicyCache struct {
 
 	// Refresh state
 	configuredRefreshInterval time.Duration
-	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
+	lifecycleMu               sync.Mutex
+	cancelRefresh             context.CancelFunc
 
 	// isCacheFilled indicates if the cache has been filled
-	isCacheFilled bool
+	isCacheFilled atomic.Bool
 }
 
 // The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
@@ -98,8 +101,6 @@ func NewEntitlementPolicyCache(
 		retriever:                 retriever,
 		allowDynamicValueMappings: allowDynamicValueMappings,
 		configuredRefreshInterval: cacheRefreshInterval,
-		stopRefresh:               make(chan struct{}),
-		refreshCompleted:          make(chan struct{}),
 	}
 
 	// Try to start the cache
@@ -116,64 +117,60 @@ func (c *EntitlementPolicyCache) IsEnabled() bool {
 	return c != nil
 }
 
-func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
+// IsReady never retrieves policy. Cold requests use the targeted policy path while the
+// service-lifetime background worker fills the cache.
+func (c *EntitlementPolicyCache) IsReady(_ context.Context) bool {
 	if !c.IsEnabled() || c.retriever == nil {
 		return false
 	}
-	if !c.isCacheFilled {
-		if err := c.Refresh(ctx); err != nil {
-			c.logger.ErrorContext(ctx, "cache is not ready", slog.Any("error", err))
-			return false
-		}
-	}
-	return true
+	return c.isCacheFilled.Load()
 }
 
 // Start initiates the cache and begins periodic refresh
 func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
-	// Reset channels in case Start is called multiple times
-	// Only reset if stopRefresh is closed or nil
-	select {
-	case <-c.stopRefresh:
-		// Channel was closed, recreate it
-		c.stopRefresh = make(chan struct{})
-		c.refreshCompleted = make(chan struct{})
-	default:
-		// Channel is still open, do nothing
+	if c.configuredRefreshInterval <= 0 {
+		return ErrCacheDisabled
 	}
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
+	if c.refreshCompleted != nil {
+		select {
+		case <-c.refreshCompleted:
+		default:
+			return nil // One worker owns warmup and periodic retries.
+		}
+	}
+	refreshCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	c.cancelRefresh = cancel
+	c.refreshCompleted = done
 
 	c.logger.DebugContext(ctx,
 		"starting periodic cache refresh",
 		slog.Float64("seconds", c.configuredRefreshInterval.Seconds()),
 	)
-	go c.periodicRefresh(ctx)
+	go c.periodicRefresh(refreshCtx, done)
 
 	return nil
 }
 
 // Stop stops the periodic refresh goroutine if it's running
 func (c *EntitlementPolicyCache) Stop() {
-	// Only attempt to stop the refresh goroutine if an interval was set
-	if c.configuredRefreshInterval > 0 {
-		// Check if stopRefresh is already closed
-		select {
-		case <-c.stopRefresh:
-			// Channel is already closed, nothing to do
-			c.logger.Debug("stop called on already stopped cache")
-			return
-		default:
-			// Channel is still open, proceed with closing
-			// Signal the goroutine to stop
-			close(c.stopRefresh)
-			// Wait with a timeout for the refresh goroutine to complete
-			select {
-			case <-c.refreshCompleted:
-				// Goroutine completed successfully
-			case <-time.After(stopTimeout):
-				// Timeout as a safety mechanism in case the goroutine is stuck
-				c.logger.Warn("timed out waiting for refresh goroutine to complete")
-			}
-		}
+	if !c.IsEnabled() {
+		return
+	}
+	c.lifecycleMu.Lock()
+	cancel, done := c.cancelRefresh, c.refreshCompleted
+	c.lifecycleMu.Unlock()
+	if cancel == nil {
+		return
+	}
+	// Cancel the active SDK read, not just the next timer tick.
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(stopTimeout):
+		c.logger.Warn("timed out waiting for refresh goroutine to complete")
 	}
 }
 
@@ -209,16 +206,19 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	// On a Set error, mark not filled until the background worker retries successfully.
 	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
 	if err != nil {
-		c.isCacheFilled = false
+		c.isCacheFilled.Store(false)
 		return errors.Join(ErrFailedToSet, err)
 	}
 
 	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
 	if err != nil {
-		c.isCacheFilled = false
+		c.isCacheFilled.Store(false)
 		return errors.Join(ErrFailedToSet, err)
 	}
 
@@ -227,20 +227,20 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	if c.allowDynamicValueMappings {
 		err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags)
 		if err != nil {
-			c.isCacheFilled = false
+			c.isCacheFilled.Store(false)
 			return errors.Join(ErrFailedToSet, err)
 		}
 	}
 
 	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
 	if err != nil {
-		c.isCacheFilled = false
+		c.isCacheFilled.Store(false)
 		return errors.Join(ErrFailedToSet, err)
 	}
 
 	err = c.cacheClient.Set(ctx, obligationsCacheKey, obligations, authzCacheTags)
 	if err != nil {
-		c.isCacheFilled = false
+		c.isCacheFilled.Store(false)
 		return errors.Join(ErrFailedToSet, err)
 	}
 
@@ -253,7 +253,7 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	)
 
 	// Mark the cache as filled after a successful refresh
-	c.isCacheFilled = true
+	c.isCacheFilled.Store(true)
 
 	return nil
 }
@@ -369,28 +369,32 @@ func (c *EntitlementPolicyCache) ListAllObligations(ctx context.Context) ([]*pol
 }
 
 // periodicRefresh refreshes the cache at the specified interval
-func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
+func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context, done chan<- struct{}) {
 	waitTimeout := c.configuredRefreshInterval
 
 	ticker := time.NewTicker(c.configuredRefreshInterval)
 	defer func() {
 		ticker.Stop()
 		// Always signal completion, regardless of how we exit
-		close(c.refreshCompleted)
+		close(done)
 	}()
+	refresh := func() {
+		if ctx.Err() != nil || c.retriever == nil || !c.retriever.IsEnabled() {
+			return
+		}
+		refreshCtx, cancel := context.WithTimeout(ctx, waitTimeout)
+		defer cancel()
+		if err := c.Refresh(refreshCtx); err != nil && ctx.Err() == nil {
+			c.logger.ErrorContext(ctx, "failed to refresh cache", slog.Any("error", err))
+		}
+	}
+	// Warm immediately in this worker; never wait for a tick or fill from a request.
+	refresh()
 
 	for {
 		select {
 		case <-ticker.C:
-			// Create a child context that can be canceled if refresh takes too long
-			refreshCtx, cancel := context.WithTimeout(ctx, waitTimeout)
-			err := c.Refresh(refreshCtx)
-			cancel() // Always cancel the context to prevent leaks
-			if err != nil {
-				c.logger.ErrorContext(ctx, "failed to refresh cache", slog.Any("error", err))
-			}
-		case <-c.stopRefresh:
-			return
+			refresh()
 		case <-ctx.Done():
 			c.logger.DebugContext(ctx, "context canceled, stopping periodic refresh")
 			return

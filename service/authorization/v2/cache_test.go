@@ -23,9 +23,10 @@ func Test_NewEntitlementPolicyCache(t *testing.T) {
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 	assert.NotNil(t, c)
 	assert.Equal(t, refreshInterval, c.configuredRefreshInterval)
-	assert.False(t, c.isCacheFilled)
+	assert.False(t, c.isCacheFilled.Load())
 }
 
 func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
@@ -39,6 +40,7 @@ func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	refreshInterval = 10 * time.Second
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 	assert.NotNil(t, c)
 }
 
@@ -55,6 +57,7 @@ func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
 
 	c, err = NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 	assert.NotNil(t, c)
 	assert.True(t, c.IsEnabled())
 	// Retriever is nil, so cache is not ready
@@ -67,6 +70,7 @@ func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 
 	// No errors, but empty lists on cache misses
 	attrs, err := c.ListAllAttributes(ctx)
@@ -95,6 +99,7 @@ func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 
 	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
 	time.Sleep(10 * time.Millisecond)
@@ -121,6 +126,7 @@ func Test_EntitlementPolicyCache_DynamicValueMappings(t *testing.T) {
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, true)
 	require.NoError(t, err)
+	t.Cleanup(c.Stop)
 	assert.True(t, c.allowDynamicValueMappings)
 
 	// Cache miss: empty result, no error

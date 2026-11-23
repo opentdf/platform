@@ -27,20 +27,32 @@ jobs:
           while IFS="" read -r line || [ -n "$line" ]; do
             (cd "$line" && go mod tidy)
           done < <(go work edit --json | jq -r '.Use.[].DiskPath')
-          # check if any changes were made
-          git status --porcelain >>"$GITHUB_OUTPUT"
+          # record any files go mod tidy changed as a multiline step output
+          changes="$(git status --porcelain)"
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "changes<<${delimiter}"
+            echo "${changes}"
+            echo "${delimiter}"
+          } >>"$GITHUB_OUTPUT"
+          if [ -n "${changes}" ]; then
+            echo "::warning title=go mod tidy::go mod tidy changed files; run it locally and commit the result"
+          fi
 
+      # Fork PRs get a read-only token, so they only see the warning above.
       - name: Post comment if go.mod was changed
-        if: steps.go-mod-tidy.outputs.stdout != ''
+        if: >-
+          steps.go-mod-tidy.outputs.changes != '' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          GO_MOD_TIDY_OUTPUT: ${{ steps.go-mod-tidy.outputs.changes }}
         with:
           script: |
-            github.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋 Friendly reminder: go.mod was changed. Make sure to run `go mod tidy`!\n\n' +
-                    '```\n$GO_MOD_TIDY_OUTPUT\n```'
+              body: '👋 Friendly reminder: `go mod tidy` changed these files. Run it locally and commit the result.\n\n' +
+                    '```\n' + process.env.GO_MOD_TIDY_OUTPUT + '\n```'
             })
-        env:
-          GO_MOD_TIDY_OUTPUT: ${{ steps.go-mod-tidy.outputs.stdout }}

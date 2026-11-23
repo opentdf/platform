@@ -77,14 +77,19 @@ func TestEntitlementPolicyCache_ColdRequestsDoNotWaitForWarmup(t *testing.T) {
 	requestCtx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	var wg sync.WaitGroup
-	for range 8 {
+	// Collect results so assertions that stop the test run on the test goroutine.
+	pdps := make([]*access.JustInTimePDP, 8)
+	errs := make([]error, 8)
+	for i := range 8 {
 		wg.Go(func() {
-			pdp, err := access.NewJustInTimePDP(requestCtx, l, sdk, c, false, false, false)
-			assert.NoError(t, err)
-			assert.NotNil(t, pdp)
+			pdps[i], errs[i] = access.NewJustInTimePDP(requestCtx, l, sdk, c, false, false, false)
 		})
 	}
 	wg.Wait()
+	for i := range 8 {
+		require.NoError(t, errs[i])
+		require.NotNil(t, pdps[i])
+	}
 	require.NoError(t, requestCtx.Err(), "cold PDP construction must finish while full-policy retrieval is still blocked")
 	select {
 	case <-entered:

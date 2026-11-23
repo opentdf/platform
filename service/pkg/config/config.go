@@ -326,13 +326,13 @@ func (c *Config) Reload(ctx context.Context) error {
 func (c SDKConfig) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Group("core",
-			"endpoint", c.CorePlatformConnection.Endpoint,
-			"plaintext", c.CorePlatformConnection.Plaintext,
-			"insecure", c.CorePlatformConnection.Insecure),
+			slog.String("endpoint", c.CorePlatformConnection.Endpoint),
+			slog.Bool("plaintext", c.CorePlatformConnection.Plaintext),
+			slog.Bool("insecure", c.CorePlatformConnection.Insecure)),
 		slog.Group("entityresolution",
-			"endpoint", c.EntityResolutionConnection.Endpoint,
-			"plaintext", c.EntityResolutionConnection.Plaintext,
-			"insecure", c.EntityResolutionConnection.Insecure),
+			slog.String("endpoint", c.EntityResolutionConnection.Endpoint),
+			slog.Bool("plaintext", c.EntityResolutionConnection.Plaintext),
+			slog.Bool("insecure", c.EntityResolutionConnection.Insecure)),
 		slog.String("client_id", c.ClientID),
 		slog.String("client_secret", "[REDACTED]"),
 	)

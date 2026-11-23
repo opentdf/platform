@@ -19,7 +19,7 @@ var _ types.Mapper = (*Mapper)(nil)
 // NewMapper creates a new LDAP mapper
 func NewMapper() *Mapper {
 	return &Mapper{
-		providerType: "ldap",
+		providerType: providerTypeLDAP,
 	}
 }
 
@@ -123,7 +123,7 @@ func (m *Mapper) GetSupportedTransformations() []string {
 
 // ApplyTransformation applies LDAP-specific transformations
 func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
-	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "ldap")
+	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, providerTypeLDAP)
 }
 
 // escapeLDAPFilter escapes special characters in LDAP filter values
@@ -177,7 +177,7 @@ func isValidLDAPAttribute(name string) bool {
 
 // isTransformationSupported checks if a transformation is supported by LDAP mapper
 func (m *Mapper) isTransformationSupported(transformationName string) bool {
-	return transformation.IsSupportedByProvider(transformationName, "ldap")
+	return transformation.IsSupportedByProvider(transformationName, providerTypeLDAP)
 }
 
 func isASCIIAlpha(char byte) bool {

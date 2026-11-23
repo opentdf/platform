@@ -8,6 +8,15 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
+// Names of the value transformations shared by the mappers in this package.
+const (
+	transformationCSVToArray = "csv_to_array"
+	transformationArray      = "array"
+	transformationString     = "string"
+	transformationLowercase  = "lowercase"
+	transformationUppercase  = "uppercase"
+)
+
 // BaseMapper provides common functionality for all mapper implementations
 type BaseMapper struct {
 	providerType string
@@ -70,7 +79,7 @@ func (m *BaseMapper) ApplyTransformation(value interface{}, transformation strin
 	}
 
 	switch transformation {
-	case "csv_to_array":
+	case transformationCSVToArray:
 		if str, ok := value.(string); ok {
 			if str == "" {
 				return []string{}, nil
@@ -83,7 +92,7 @@ func (m *BaseMapper) ApplyTransformation(value interface{}, transformation strin
 		}
 		return nil, fmt.Errorf("csv_to_array transformation requires string input, got %T", value)
 
-	case "array":
+	case transformationArray:
 		// Ensure value is an array
 		if arr, ok := value.([]interface{}); ok {
 			return arr, nil
@@ -97,16 +106,16 @@ func (m *BaseMapper) ApplyTransformation(value interface{}, transformation strin
 		}
 		return []interface{}{value}, nil
 
-	case "string":
+	case transformationString:
 		return fmt.Sprintf("%v", value), nil
 
-	case "lowercase":
+	case transformationLowercase:
 		if str, ok := value.(string); ok {
 			return strings.ToLower(str), nil
 		}
 		return strings.ToLower(fmt.Sprintf("%v", value)), nil
 
-	case "uppercase":
+	case transformationUppercase:
 		if str, ok := value.(string); ok {
 			return strings.ToUpper(str), nil
 		}
@@ -120,10 +129,10 @@ func (m *BaseMapper) ApplyTransformation(value interface{}, transformation strin
 // GetCommonTransformations returns transformations supported by all mappers
 func (m *BaseMapper) GetCommonTransformations() []string {
 	return []string{
-		"csv_to_array",
-		"array",
-		"string",
-		"lowercase",
-		"uppercase",
+		transformationCSVToArray,
+		transformationArray,
+		transformationString,
+		transformationLowercase,
+		transformationUppercase,
 	}
 }

@@ -195,61 +195,61 @@ assert_algorithm_roundtrip() {
   local expected="Hello $algorithm wrappers!"
 
   printf '%s' "$expected" > "$plaintext"
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS \
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS \
     --wrapping-key-algorithm "$algorithm" --attr "$FQN" --out "$ciphertext" "$plaintext"
 
   local inspect_output
-  inspect_output=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect "$ciphertext")
+  inspect_output=$(./otdfctl --host "$HOST" $WITH_CREDS inspect "$ciphertext")
   assert_equal "$(jq -r '.manifest.encryptionInformation.keyAccess[0].type' <<< "$inspect_output")" "$kao_type"
   assert_equal "$(jq -r '.manifest.encryptionInformation.keyAccess[0].kid' <<< "$inspect_output")" "$kid"
-  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS "$ciphertext")" "$expected"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS "$ciphertext")" "$expected"
 }
 
 @test "roundtrip TDF3, no attributes, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 }
 
 @test "roundtrip TDF3, no attributes, ec-wrapping, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --wrapping-key-algorithm $WRAPPING_KEY_ALGORITHM $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm $SESSION_KEY_ALGORITHM $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --wrapping-key-algorithm $WRAPPING_KEY_ALGORITHM $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm $SESSION_KEY_ALGORITHM $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 }
 
 @test "roundtrip TDF3, no attributes, mlkem:768 session key, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm mlkem:768 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm mlkem:768 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 }
 
 @test "roundtrip TDF3, no attributes, mlkem:1024 session key, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm mlkem:1024 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --session-key-algorithm mlkem:1024 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 }
 
 @test "roundtrip TDF3, one attribute, stdin" {
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
-  ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN
+  ./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
 }
 
 @test "roundtrip TDF3, one attribute, mixed case FQN, stdin" {
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $MIXED_CASE_FQN
-  ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $MIXED_CASE_FQN
+  ./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
 }
 
 @test "inspect TDF3, one attribute, stdin" {
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN
 
-  inspect_output=$(cat $OUTFILE_TXT | ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect)
+  inspect_output=$(cat $OUTFILE_TXT | ./otdfctl --host $HOST $WITH_CREDS inspect)
   assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess | length')" "1"
 }
 
 @test "inspect rejects extra positional arguments" {
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN
 
-  run sh -c "./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT extra-arg"
+  run sh -c "./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_TXT extra-arg"
   assert_failure
 }
 
@@ -283,9 +283,9 @@ assert_algorithm_roundtrip() {
   run sh -c "./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes key assign --attribute $attr_id --key-id $key_system_id --json"
   assert_success
 
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a "$missing_value_fqn"
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a "$missing_value_fqn"
 
-  inspect_output=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT)
+  inspect_output=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_TXT)
   policy_b64=$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.policy')
   assert_not_equal "$policy_b64" "null"
   assert_not_equal "$policy_b64" ""
@@ -342,9 +342,9 @@ assert_algorithm_roundtrip() {
   run sh -c "./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values key assign --value $value_id --key-id $val_key_system_id --json"
   assert_success
 
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a "$value_fqn"
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a "$value_fqn"
 
-  inspect_output=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT)
+  inspect_output=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_TXT)
   assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess | length')" "1"
   assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')" "$val_key_id"
   assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess[0].url')" "$kas_uri"
@@ -384,7 +384,7 @@ assert_algorithm_roundtrip() {
   run sh -c "./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values deactivate --id $value_id --force"
   assert_success
 
-  run sh -c "echo \"$SECRET_TEXT\" | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a \"$value_fqn\""
+  run sh -c "echo \"$SECRET_TEXT\" | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a \"$value_fqn\""
   assert_failure
 
   run sh -c "./otdfctl --host $HOST $WITH_CREDS policy attributes unsafe delete --id $attr_id --force"
@@ -392,85 +392,85 @@ assert_algorithm_roundtrip() {
 }
 
 @test "roundtrip TDF3, assertions, stdin" {
-  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions "$ASSERTIONS"
-  ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
-  ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT
-  assertions_present=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT | jq '.manifest.assertions[0].id')
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions "$ASSERTIONS"
+  ./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
+  ./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_TXT
+  assertions_present=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_TXT | jq '.manifest.assertions[0].id')
   [[ $assertions_present == "\"assertion1\"" ]]
 }
 
 @test "roundtrip TDF3, assertions with HS256 keys and verification, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions $SIGNED_ASSERTIONS_HS256 --tdf-type tdf3 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --with-assertion-verification-keys $SIGNED_ASSERTION_VERIFICATON_HS256 --tdf-type tdf3 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions $SIGNED_ASSERTIONS_HS256 --tdf-type tdf3 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --with-assertion-verification-keys $SIGNED_ASSERTION_VERIFICATON_HS256 --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
-  ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD
-  assertions_present=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest.assertions[0].id')
+  ./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD
+  assertions_present=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest.assertions[0].id')
   [[ $assertions_present == "\"assertion1\"" ]]
 }
 
 @test "roundtrip TDF3, assertions with RS256 keys and verification, file" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions $SIGNED_ASSERTIONS_RS256 --tdf-type tdf3 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --with-assertion-verification-keys $SIGNED_ASSERTION_VERIFICATON_RS256 --tdf-type tdf3 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $FQN --with-assertions $SIGNED_ASSERTIONS_RS256 --tdf-type tdf3 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --with-assertion-verification-keys $SIGNED_ASSERTION_VERIFICATON_RS256 --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
-  ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD
-  assertions_present=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest.assertions[0].id')
+  ./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD
+  assertions_present=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest.assertions[0].id')
   [[ $assertions_present == "\"assertion1\"" ]]
 }
 
 @test "roundtrip TDF3, with target version < 4.3.0" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --target-mode v4.2.2 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --target-mode v4.2.2 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 
-  schema_version_present=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest | has("schemaVersion")')
+  schema_version_present=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest | has("schemaVersion")')
   [[ $schema_version_present == false ]]
 }
 
 @test "roundtrip TDF3, with target version >= 4.3.0" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --target-mode v4.3.1 $INFILE_GO_MOD
-  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --target-mode v4.3.1 $INFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
 
-  schema_version_present=$(./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest | has("schemaVersion")')
+  schema_version_present=$(./otdfctl --host $HOST $WITH_CREDS inspect $OUTFILE_GO_MOD | jq '.manifest | has("schemaVersion")')
   [[ $schema_version_present == true ]]
 }
 
 @test "roundtrip TDF3, with allowlist containing platform kas" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3  $INFILE_GO_MOD
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://localhost:8080/kas $OUTFILE_GO_MOD"
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3  $INFILE_GO_MOD
+  run sh -c "./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://localhost:8080/kas $OUTFILE_GO_MOD"
   assert_success
 }
 
 @test "roundtrip TDF3, with allowlist containing non existent kas (should fail)" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://not-a-real-kas.com/kas $OUTFILE_GO_MOD"
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
+  run sh -c "./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://not-a-real-kas.com/kas $OUTFILE_GO_MOD"
   assert_failure
   assert_output --partial "KasAllowlist: kas url http://localhost:8080/kas is not allowed"
 }
 
 @test "roundtrip TDF3, ignoring allowlist" {
-  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3  $INFILE_GO_MOD
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist '*' $OUTFILE_GO_MOD"
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3  $INFILE_GO_MOD
+  run sh -c "./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist '*' $OUTFILE_GO_MOD"
   assert_success
   assert_output --partial "kasAllowlist is ignored"
 }
 
 @test "roundtrip TDF3, not entitled to data, no required obligations returned" {
-  run sh -c "./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $ATTR_OBL_VAL_FQN $INFILE_GO_MOD"
+  run sh -c "./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $ATTR_OBL_VAL_FQN $INFILE_GO_MOD"
   assert_success
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD"
+  run sh -c "./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD"
   assert_failure
   refute_output --partial "required obligations"
 }
 
 @test "roundtrip TDF3, entitled to data, required obligations returned" {
   # Handle subject mapping
-  run sh -c "./otdfctl policy subject-mappings create --attribute-value-id $ATTR_OBL_VAL_ID --action read --subject-condition-set-new '[{\"conditionGroups\":[{\"conditions\":[{\"operator\":\"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\"subjectExternalValues\":[\"opentdf\"],\"subjectExternalSelectorValue\":\".clientId\"}], \"booleanOperator\":\"CONDITION_BOOLEAN_TYPE_ENUM_OR\"}]}]' --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS"
+  run sh -c "./otdfctl policy subject-mappings create --attribute-value-id $ATTR_OBL_VAL_ID --action read --subject-condition-set-new '[{\"conditionGroups\":[{\"conditions\":[{\"operator\":\"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\"subjectExternalValues\":[\"opentdf\"],\"subjectExternalSelectorValue\":\".clientId\"}], \"booleanOperator\":\"CONDITION_BOOLEAN_TYPE_ENUM_OR\"}]}]' --host $HOST $DEBUG_LEVEL $WITH_CREDS"
   assert_success
 
-  run sh -c "./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $ATTR_OBL_VAL_FQN $INFILE_GO_MOD"
+  run sh -c "./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST $DEBUG_LEVEL $WITH_CREDS -a $ATTR_OBL_VAL_FQN $INFILE_GO_MOD"
   assert_success
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD"
+  run sh -c "./otdfctl decrypt --host $HOST $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD"
   assert_failure
   assert_output --partial "required obligations: [$OBL_VAL_FQN]"
 }
@@ -504,23 +504,23 @@ assert_algorithm_roundtrip() {
   printf '%s' "Hello Legacy" > legacy-no-kid.txt
   printf '%s' "Hello with Key Identifier" > legacy-with-kid.txt
 
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-no-kid-source.txt.tdf legacy-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS --out legacy-no-kid-source.txt.tdf legacy-no-kid.txt
   make_kid_free_tdf legacy-no-kid-source.txt.tdf legacy-no-kid.txt.tdf
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-with-kid.txt.tdf legacy-with-kid.txt
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS --out legacy-with-kid.txt.tdf legacy-with-kid.txt
 
-  no_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-no-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid // ""')
-  with_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-with-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
+  no_kid=$(./otdfctl --host "$HOST" $WITH_CREDS inspect legacy-no-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid // ""')
+  with_kid=$(./otdfctl --host "$HOST" $WITH_CREDS inspect legacy-with-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
   assert_equal "$no_kid" ""
   assert_equal "$with_kid" "r1"
 
   apply_kas_fixture "$MODERN_ROTATION_FIXTURE" r2 e2
 
   printf '%s' "rotated" > legacy-rotated.txt
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-rotated.txt.tdf legacy-rotated.txt
-  rotated_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-rotated.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS --out legacy-rotated.txt.tdf legacy-rotated.txt
+  rotated_kid=$(./otdfctl --host "$HOST" $WITH_CREDS inspect legacy-rotated.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
   assert_equal "$rotated_kid" "r2"
-  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-no-kid.txt.tdf)" "Hello Legacy"
-  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-with-kid.txt.tdf)" "Hello with Key Identifier"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS legacy-no-kid.txt.tdf)" "Hello Legacy"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS legacy-with-kid.txt.tdf)" "Hello with Key Identifier"
 }
 
 @test "legacy KAS and crypto provider configuration decrypts existing TDFs" {
@@ -528,21 +528,21 @@ assert_algorithm_roundtrip() {
   printf '%s' "Hello Legacy Config" > legacy-config-no-kid.txt
   printf '%s' "Hello Legacy Config with KID" > legacy-config-with-kid.txt
 
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS --out legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt
   make_kid_free_tdf legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt.tdf
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-with-kid.txt.tdf legacy-config-with-kid.txt
+  ./otdfctl encrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS --out legacy-config-with-kid.txt.tdf legacy-config-with-kid.txt
 
   apply_kas_fixture "$LEGACY_KAS_FIXTURE" r1 e1
 
-  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-no-kid.txt.tdf)" "Hello Legacy Config"
-  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-with-kid.txt.tdf)" "Hello Legacy Config with KID"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS legacy-config-no-kid.txt.tdf)" "Hello Legacy Config"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" $DEBUG_LEVEL $WITH_CREDS legacy-config-with-kid.txt.tdf)" "Hello Legacy Config with KID"
 }
 
 # Partial decrypt. The plaintext is distinct per byte position (seq) and spans
 # three 2 MiB segments, so ranges can cross a segment boundary.
 partial_setup() {
   seq 1 700000 > partial.txt
-  ./otdfctl encrypt -o partial.txt.tdf --host $HOST --tls-no-verify $WITH_CREDS partial.txt
+  ./otdfctl encrypt -o partial.txt.tdf --host $HOST $WITH_CREDS partial.txt
 }
 
 # expected_range OFFSET LENGTH: the matching plaintext bytes, via tail/head.
@@ -552,14 +552,14 @@ expected_range() {
 
 @test "partial decrypt, range spanning a segment boundary" {
   partial_setup
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 2097000 --length 400 partial.txt.tdf > partial.out
+  ./otdfctl decrypt --host $HOST $WITH_CREDS --offset 2097000 --length 400 partial.txt.tdf > partial.out
   expected_range 2097000 400
   cmp partial.out expected.out
 }
 
 @test "partial decrypt, offset to end of payload" {
   partial_setup
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 4000000 -o partial.out partial.txt.tdf
+  ./otdfctl decrypt --host $HOST $WITH_CREDS --offset 4000000 -o partial.out partial.txt.tdf
   tail -c +4000001 partial.txt > expected.out
   cmp partial.out expected.out
 }
@@ -567,33 +567,33 @@ expected_range() {
 @test "partial decrypt, length past end is clamped" {
   partial_setup
   size=$(wc -c < partial.txt | tr -d ' ')
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset $((size - 10)) --length 1000 partial.txt.tdf > partial.out
+  ./otdfctl decrypt --host $HOST $WITH_CREDS --offset $((size - 10)) --length 1000 partial.txt.tdf > partial.out
   tail -c 10 partial.txt > expected.out
   cmp partial.out expected.out
 }
 
 @test "partial decrypt, piped stdin" {
   partial_setup
-  cat partial.txt.tdf | ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 4567 > partial.out
+  cat partial.txt.tdf | ./otdfctl decrypt --host $HOST $WITH_CREDS --offset 123 --length 4567 > partial.out
   expected_range 123 4567
   cmp partial.out expected.out
 }
 
 @test "partial decrypt, length 0 succeeds with empty output" {
   partial_setup
-  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 123 --length 0 partial.txt.tdf > partial.out
+  ./otdfctl decrypt --host $HOST $WITH_CREDS --offset 123 --length 0 partial.txt.tdf > partial.out
   [ ! -s partial.out ]
 }
 
 @test "partial decrypt, length 0 still unwraps and fails with bad credentials" {
   partial_setup
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify --with-client-creds '{\"clientId\":\"nobody\",\"clientSecret\":\"wrong\"}' --offset 123 --length 0 -o partial.out partial.txt.tdf"
+  run sh -c "./otdfctl decrypt --host $HOST --with-client-creds '{\"clientId\":\"nobody\",\"clientSecret\":\"wrong\"}' --offset 123 --length 0 -o partial.out partial.txt.tdf"
   assert_failure
 }
 
 @test "partial decrypt, offset beyond end fails without writing output" {
   partial_setup
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS --offset 999999999 -o partial.out partial.txt.tdf"
+  run sh -c "./otdfctl decrypt --host $HOST $WITH_CREDS --offset 999999999 -o partial.out partial.txt.tdf"
   assert_failure
   [ ! -e partial.out ]
 }

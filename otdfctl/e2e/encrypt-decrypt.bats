@@ -585,10 +585,14 @@ expected_range() {
   [ ! -s partial.out ]
 }
 
-@test "partial decrypt, length 0 still unwraps and fails with bad credentials" {
+@test "partial decrypt, length 0 still authorizes and fails when the KAS is not allowed" {
   partial_setup
-  run sh -c "./otdfctl decrypt --host $HOST --with-client-creds '{\"clientId\":\"nobody\",\"clientSecret\":\"wrong\"}' --offset 123 --length 0 -o partial.out partial.txt.tdf"
+  # An explicit allowlist skips the KAS registry lookup, so this can only fail
+  # at key unwrap -- proving a zero-length read is still authorized.
+  run sh -c "./otdfctl decrypt --host $HOST $WITH_CREDS --kas-allowlist http://not-a-real-kas.com/kas --offset 123 --length 0 -o partial.out partial.txt.tdf"
   assert_failure
+  assert_output --partial "KasAllowlist: kas url http://localhost:8080/kas is not allowed"
+  [ ! -e partial.out ]
 }
 
 @test "partial decrypt, offset beyond end fails without writing output" {

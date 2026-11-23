@@ -69,7 +69,8 @@ otdfctl decrypt big.tdf --offset 1048576 --length 4096
 
 Output is streamed: if decryption fails partway (for example on a tampered
 segment), stdout may already hold the verified segments before it, and the
-command exits non-zero. A file given with `-o` is only written on success.
+command exits non-zero. A regular file given with `-o` is only written on success;
+a symlink, device or fifo is opened and truncated before decryption starts.
 
 Advanced piping is supported
 

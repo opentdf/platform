@@ -213,12 +213,14 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 	if _, err := r.Seek(o.RangeOffset, io.SeekStart); err != nil {
 		return fmt.Errorf("offset %d is beyond the end of the payload: %w", o.RangeOffset, err)
 	}
+	// Authorize before anything is written: unwrap the key and verify
+	// assertions with the caller's ctx (WriteTo would otherwise unwrap with
+	// context.Background()). Every decrypt, including one that produces no
+	// bytes, therefore succeeds only when the caller may read the TDF.
+	if err := r.Init(ctx); err != nil {
+		return formatDecryptError(ctx, r.Obligations, err)
+	}
 	if o.RangeLimit == 0 {
-		// Unwrap the key and verify assertions even though no bytes are
-		// read, so a zero-length read fails and is audited like any other.
-		if err := r.Init(ctx); err != nil {
-			return formatDecryptError(ctx, r.Obligations, err)
-		}
 		return nil
 	}
 	if o.RangeLimit > 0 {

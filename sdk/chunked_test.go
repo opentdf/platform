@@ -2636,7 +2636,7 @@ func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
 // encrypting, the segment that would take it past its per-DEK AES-GCM
 // encryption cap, and that the refusal matches ErrAESGCMExhausted.
 func TestChunkedAESGCMExhausted(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	encrypts := 0
 	writer, _ := newChunkedWriterForTest(ctx, t,
 		withChunkedMaxEncryptions(2),
@@ -2668,7 +2668,7 @@ func TestChunkedAESGCMExhausted(t *testing.T) {
 // still spends from the cap. The attempt drew an IV, so a retry must
 // not get it back.
 func TestChunkedAESGCMExhaustedCountsAttempts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t,
 		withChunkedMaxEncryptions(1),
 		withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
@@ -2686,7 +2686,7 @@ func TestChunkedAESGCMExhaustedCountsAttempts(t *testing.T) {
 // payload segments per DEK, keeping the random-IV collision chance
 // under the NIST SP 800-38D 2^-32 ceiling.
 func TestChunkedDefaultMaxEncryptions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 	inner, ok := writer.(*chunkedWriter)
 	require.True(t, ok)

@@ -40,7 +40,7 @@ func New(handler http.Handler, opts ...Option) *Server {
 
 	var lis net.Listener = mlis
 
-	http2Server := &http2.Server{}
+	http2Server := &http2.Server{} //nolint:staticcheck // http2.Server is deprecated in favour of http.Server.Protocols; migration tracked separately
 
 	//nolint:staticcheck // h2c.NewHandler is deprecated in favour of http.Server.Protocols; migration tracked separately
 	handler = h2c.NewHandler(handler, http2Server)
@@ -70,6 +70,8 @@ func New(handler http.Handler, opts ...Option) *Server {
 //
 // Callers may reconfigure the returned Transport without affecting other
 // transports or clients.
+//
+//nolint:staticcheck // http2.Transport is deprecated in favour of http.Transport.Protocols; migration tracked separately
 func (s *Server) Transport() *http2.Transport {
 	transport := &http2.Transport{
 		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {

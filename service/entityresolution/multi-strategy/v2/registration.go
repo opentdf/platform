@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"strconv"
 
 	"connectrpc.com/connect/v2"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
@@ -455,18 +456,15 @@ func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, 
 }
 
 // Helper functions for v2
-func (ers *ERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
+func (ers *ERSV2) parseJWTClaims(_ context.Context, jwtString string) (types.JWTClaims, error) {
 	// For now, use a simple JWT parser (in production, this should validate signatures)
 	// This is similar to how Keycloak ERS parses JWTs
-	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+	token, err := jwt.ParseInsecure([]byte(jwtString))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JWT: %w", err)
 	}
 
-	claims, err := token.AsMap(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract claims from JWT: %w", err)
-	}
+	claims := maps.Collect(token.Claims())
 
 	return types.JWTClaims(claims), nil
 }

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 )
 
 func mustGenerateRSAKey(t *testing.T) *rsa.PrivateKey {
@@ -112,11 +112,11 @@ func Test_Token_ProcessResponse_DefaultsExpirationBuffer(t *testing.T) {
 func TestGetTokenExchangeRequest_SubjectTokenType(t *testing.T) {
 	makeKey := func(t *testing.T) jwk.Key {
 		t.Helper()
-		raw, err := jwk.FromRaw(mustGenerateRSAKey(t))
+		raw, err := jwk.Import[jwk.Key](mustGenerateRSAKey(t))
 		if err != nil {
 			t.Fatalf("jwk.FromRaw: %v", err)
 		}
-		if err := raw.Set(jwk.AlgorithmKey, jwa.RS256); err != nil {
+		if err := raw.Set(jwk.AlgorithmKey, jwa.RS256()); err != nil {
 			t.Fatalf("set algorithm: %v", err)
 		}
 		return raw

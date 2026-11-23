@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jws"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 )
 
 // DPoPTransport wraps each go standard net/http RoundTripper request with DPoP (RFC 9449)
@@ -271,11 +271,15 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenReq
 	if err := headers.Set(jws.TypeKey, "dpop+jwt"); err != nil {
 		return fmt.Errorf("failed to set typ header: %w", err)
 	}
-	if err := headers.Set(jws.AlgorithmKey, t.DPoPKey.Algorithm()); err != nil {
+	alg, ok := t.DPoPKey.Algorithm()
+	if !ok {
+		return errors.New("DPoP key has no signature algorithm")
+	}
+	if err := headers.Set(jws.AlgorithmKey, alg); err != nil {
 		return fmt.Errorf("failed to set alg header: %w", err)
 	}
 
-	signedToken, err := jwt.Sign(token, jwt.WithKey(t.DPoPKey.Algorithm(), t.DPoPKey, jws.WithProtectedHeaders(headers)))
+	signedToken, err := jwt.Sign(token, jwt.WithKey(alg, t.DPoPKey, jws.WithProtectedHeaders(headers)))
 	if err != nil {
 		return fmt.Errorf("failed to sign DPoP token: %w", err)
 	}

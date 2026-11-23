@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -50,8 +50,8 @@ type optionalErrorLogger interface {
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
 	principal := Principal{}
 	if accessToken != nil {
-		principal.Subject = accessToken.Subject()
-		principal.Issuer = accessToken.Issuer()
+		principal.Subject, _ = accessToken.Subject()
+		principal.Issuer, _ = accessToken.Issuer()
 	}
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		key:         key,

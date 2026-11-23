@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -258,7 +258,8 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 					}
 					retrievedJWT := ctxAuth.GetAccessTokenFromContext(postInterceptorCtx, testLogger)
 					require.NotNil(t, retrievedJWT)
-					assert.Equal(t, "ipc-user", retrievedJWT.Subject())
+					subject, _ := retrievedJWT.Subject()
+					assert.Equal(t, "ipc-user", subject)
 					assert.Equal(t, string(validRawToken), ctxAuth.GetRawAccessTokenFromContext(postInterceptorCtx, testLogger))
 				} else {
 					assert.Zero(t, md.Len())
@@ -317,7 +318,7 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 			}
 			retrievedJWT := ctxAuth.GetAccessTokenFromContext(ctx, testLogger)
 			require.NotNil(t, retrievedJWT)
-			receivedSubject = retrievedJWT.Subject()
+			receivedSubject, _ = retrievedJWT.Subject()
 			return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 		}
 
@@ -360,7 +361,7 @@ func TestRehydrateIPCAuthContextPreservesExistingJWK(t *testing.T) {
 	require.NoError(t, err)
 	rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
 	require.NoError(t, err)
-	mockJWK, err := jwk.FromRaw([]byte("existing-jwk"))
+	mockJWK, err := jwk.Import[jwk.Key]([]byte("existing-jwk"))
 	require.NoError(t, err)
 
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(ctxAuth.AccessTokenKey, string(rawToken)))
@@ -372,6 +373,7 @@ func TestRehydrateIPCAuthContextPreservesExistingJWK(t *testing.T) {
 
 	retrievedJWT := ctxAuth.GetAccessTokenFromContext(rehydratedCtx, testLogger)
 	require.NotNil(t, retrievedJWT)
-	assert.Equal(t, "rehydrated-user", retrievedJWT.Subject())
+	subject, _ := retrievedJWT.Subject()
+	assert.Equal(t, "rehydrated-user", subject)
 	assert.Equal(t, string(rawToken), ctxAuth.GetRawAccessTokenFromContext(rehydratedCtx, testLogger))
 }

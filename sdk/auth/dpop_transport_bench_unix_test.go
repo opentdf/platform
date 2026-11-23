@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 )
 
 // BenchmarkDPoPTransportBody measures the one-shot body path used by multipart
@@ -26,11 +26,11 @@ func BenchmarkDPoPTransportBody(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	key, err := jwk.FromRaw(rawKey)
+	key, err := jwk.Import[jwk.Key](rawKey)
 	if err != nil {
 		b.Fatal(err)
 	}
-	if err := key.Set(jwk.AlgorithmKey, jwa.ES256); err != nil {
+	if err := key.Set(jwk.AlgorithmKey, jwa.ES256()); err != nil {
 		b.Fatal(err)
 	}
 	base := roundTripFunc(func(r *http.Request) (*http.Response, error) {

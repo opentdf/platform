@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -215,7 +215,7 @@ func rsaPublicKeyAsJSON(_ context.Context, publicPEM string) (string, error) {
 		return "", err
 	}
 
-	rsaPublicKeyJwk, err := jwk.FromRaw(pubKey)
+	rsaPublicKeyJwk, err := jwk.Import[jwk.Key](pubKey)
 	if err != nil {
 		return "", fmt.Errorf("jwk.FromRaw: %w", err)
 	}

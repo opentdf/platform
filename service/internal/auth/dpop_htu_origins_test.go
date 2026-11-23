@@ -16,9 +16,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
@@ -137,9 +137,9 @@ type dpopBoundCredential struct {
 func (s *AuthSuite) newDPoPBoundCredential() dpopBoundCredential {
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import[jwk.Key](raw)
 	s.Require().NoError(err)
-	s.Require().NoError(key.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(key.Set(jwk.AlgorithmKey, jwa.RS256()))
 	thumbprint, err := key.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 
@@ -151,7 +151,7 @@ func (s *AuthSuite) newDPoPBoundCredential() dpopBoundCredential {
 	s.Require().NoError(tok.Set("cnf", map[string]string{
 		"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint),
 	}))
-	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	s.Require().NoError(err)
 	return dpopBoundCredential{key: key, accessToken: signed}
 }
@@ -164,7 +164,7 @@ func (s *AuthSuite) proof(c dpopBoundCredential, htm, htu string) string {
 		key:              pub,
 		actualSigningKey: c.key,
 		accessToken:      c.accessToken,
-		alg:              jwa.RS256,
+		alg:              jwa.RS256(),
 		typ:              dpopJWTType,
 		htm:              htm,
 		htu:              htu,

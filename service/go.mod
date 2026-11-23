@@ -26,7 +26,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/lestrrat-go/jwx/v2 v2.1.7
+	github.com/lestrrat-go/httprc/v3 v3.0.6
+	github.com/lestrrat-go/jwx/v3 v3.4.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/open-policy-agent/opa v1.5.1
@@ -63,8 +64,13 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
+	github.com/lestrrat-go/dsig v1.4.0 // indirect
+	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect
+	github.com/lestrrat-go/jwx/v2 v2.1.7 // indirect
+	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
+	github.com/valyala/fastjson v1.6.10 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 )
@@ -114,7 +120,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/goccy/go-json v0.11.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/cel-go v0.29.0 // indirect

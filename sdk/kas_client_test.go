@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -54,7 +54,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
 	}
-	err = dpopJWK.Set("alg", jwa.RS256.String())
+	err = dpopJWK.Set("alg", jwa.RS256().String())
 	if err != nil {
 		t.Fatalf("error setting DPoP key algorithm: %v", err)
 	}
@@ -107,11 +107,13 @@ func TestCreatingRequest(t *testing.T) {
 	}
 
 	pubKey, _ := tokenSource.dpopKey.PublicKey()
+	alg, ok := tokenSource.dpopKey.Algorithm()
+	require.True(t, ok, "DPoP key has no algorithm")
 
-	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
+	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(alg, pubKey))
 	require.NoError(t, err, "couldn't parse signed token")
 
-	rb, ok := tok.Get("requestBody")
+	rb, ok := jwtField(tok, "requestBody")
 	require.True(t, ok, "didn't contain a request body")
 	requestBodyJSON, _ := rb.(string)
 	var requestBody kaspb.UnsignedRewrapRequest

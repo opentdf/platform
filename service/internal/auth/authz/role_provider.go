@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/jwtclaims"
+
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/dotnotation"
@@ -40,7 +42,7 @@ func (p *JWTClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ plat
 	}
 
 	selectors := strings.Split(p.groupsClaim, ".")
-	claim, exists := token.Get(selectors[0])
+	claim, exists := jwtclaims.Field(token, selectors[0])
 	if !exists {
 		if p.logger != nil {
 			p.logger.Warn(

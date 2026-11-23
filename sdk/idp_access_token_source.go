@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
@@ -33,7 +33,7 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating JWK: %w", err)
 	}
-	err = dpopKey.Set("alg", jwa.RS256)
+	err = dpopKey.Set("alg", jwa.RS256())
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error setting the key algorithm: %w", err)
 	}

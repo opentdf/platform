@@ -14,13 +14,11 @@ func makeCompressedZeroSeed(l int) []byte {
 }
 
 func makeCompressedRandomSeed(f *testing.F, mode ECCMode) []byte {
-	curve, err := GetECCurveFromECCMode(mode)
-	require.NoError(f, err)
 	keyPair, err := NewECKeyPair(mode)
 	require.NoError(f, err)
-	pubKey := keyPair.PrivateKey.PublicKey
-
-	return elliptic.MarshalCompressed(curve, pubKey.X, pubKey.Y)
+	compressed, err := CompressedECPublicKey(mode, keyPair.PrivateKey.PublicKey)
+	require.NoError(f, err)
+	return compressed
 }
 
 func FuzzUncompressECPubKey(f *testing.F) {

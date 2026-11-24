@@ -117,7 +117,8 @@ func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o Enc
 //
 // Every field is optional; the zero value means "use the SDK default". That
 // holds for SessionKeyAlgorithm in particular: the empty string is not a valid
-// ocrypto.KeyType, so it is left unset rather than forwarded.
+// ocrypto.KeyType, so it is left unset rather than forwarded. A nil RangeLimit
+// reads to the end; a pointer to zero requests no plaintext bytes.
 type DecryptOptions struct {
 	AssertionVerificationKeysFile string
 	DisableAssertionCheck         bool
@@ -125,11 +126,11 @@ type DecryptOptions struct {
 	KASAllowList                  []string
 	IgnoreAllowlist               bool
 	FulfillableObligations        []string
-	// RangeOffset and RangeLimit select a plaintext byte range; a negative
-	// RangeLimit reads to the end. Only the segments covering the range are read
-	// and decrypted.
+	// RangeOffset and RangeLimit select a plaintext byte range. A nil or
+	// negative RangeLimit reads to the end; zero reads no plaintext. Only the
+	// segments covering the range are decrypted.
 	RangeOffset int64
-	RangeLimit  int64
+	RangeLimit  *int64
 }
 
 // errRangeComplete stops Reader.WriteTo once the requested range is written.
@@ -220,11 +221,13 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 	if err := r.Init(ctx); err != nil {
 		return formatDecryptError(ctx, r.Obligations, err)
 	}
-	if o.RangeLimit == 0 {
-		return nil
-	}
-	if o.RangeLimit > 0 {
-		out = &rangeWriter{w: out, remaining: o.RangeLimit}
+	if o.RangeLimit != nil {
+		if *o.RangeLimit == 0 {
+			return nil
+		}
+		if *o.RangeLimit > 0 {
+			out = &rangeWriter{w: out, remaining: *o.RangeLimit}
+		}
 	}
 	//nolint:errorlint // callers intended to test error equality directly
 	if _, err := io.Copy(out, r); err != nil && err != io.EOF && !errors.Is(err, errRangeComplete) {

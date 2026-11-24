@@ -101,7 +101,7 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		KASAllowList:                  kasAllowList,
 		IgnoreAllowlist:               ignoreAllowlist,
 		RangeOffset:                   decryptOffset,
-		RangeLimit:                    decryptLength,
+		RangeLimit:                    &decryptLength,
 	})
 	if err != nil {
 		fail("Failed to decrypt file", err)

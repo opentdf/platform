@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.14.0...lib/ocrypto/v0.15.0) (2026-11-24)
+
+
+### Features
+
+* **core:** require Go 1.26 and generate connect-go v2 stubs in protocol/go ([#4237](https://github.com/opentdf/platform/issues/4237)) ([c9d2f82](https://github.com/opentdf/platform/commit/c9d2f82485975c7ae259c5090fbcc6bf62bce598))
+
+
+### Bug Fixes
+
+* **core:** H3-1138 use Go 1.26.10 ([#4251](https://github.com/opentdf/platform/issues/4251)) ([ac4d65b](https://github.com/opentdf/platform/commit/ac4d65b20b176309853c6a52dc572753d043a3e6))
+* **core:** replace deprecated ECDSA coordinate access ([#4277](https://github.com/opentdf/platform/issues/4277)) ([e37a257](https://github.com/opentdf/platform/commit/e37a2574422f257fc2fa8e39362f90c1971d5f6a))
+* **deps:** Go 1.26.11 and x/net, x/crypto, klauspost/compress for govulncheck advisories ([#4359](https://github.com/opentdf/platform/issues/4359)) ([a13236d](https://github.com/opentdf/platform/commit/a13236dfcfce024c2b94329dd1f63b78d4decf37))
+
 ## [0.14.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.13.0...lib/ocrypto/v0.14.0) (2026-06-29)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.45.0](https://github.com/opentdf/platform/compare/protocol/go/v0.44.0...protocol/go/v0.45.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* **deps:** bump buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go from 1.36.11-20260709200747-435963d16310.1 to 1.36.11-20260825204119-511051f7f437.1 in /protocol/go ([#4157](https://github.com/opentdf/platform/issues/4157)) ([f353c9b](https://github.com/opentdf/platform/commit/f353c9b67a54e4770fa2ffa81e61f91dd6fd2181))
+* **deps:** Go 1.26.11 and x/net, x/crypto, klauspost/compress for govulncheck advisories ([#4359](https://github.com/opentdf/platform/issues/4359)) ([a13236d](https://github.com/opentdf/platform/commit/a13236dfcfce024c2b94329dd1f63b78d4decf37))
+
 ## [0.44.0](https://github.com/opentdf/platform/compare/protocol/go/v0.43.0...protocol/go/v0.44.0) (2026-10-28)
 
 

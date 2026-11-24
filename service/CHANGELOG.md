@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.32.0](https://github.com/opentdf/platform/compare/service/v0.31.0...service/v0.32.0) (2026-11-24)
+
+
+### Features
+
+* **core:** DSPX-4707 configure trusted DPoP htu origins ([#4326](https://github.com/opentdf/platform/issues/4326)) ([79c6dfb](https://github.com/opentdf/platform/commit/79c6dfb5593995db32f211f724bc52780cd16e19))
+
+
+### Bug Fixes
+
+* **core:** DSPX-4707 ignore Origin for DPoP htu matching ([#4325](https://github.com/opentdf/platform/issues/4325)) ([0aca793](https://github.com/opentdf/platform/commit/0aca7939527ecabc2dd41c66b4dbdec51c07764c))
+* **deps:** bump go.opentelemetry.io/otel/sdk from 1.46.0 to 1.47.0 in /service ([#4331](https://github.com/opentdf/platform/issues/4331)) ([934825c](https://github.com/opentdf/platform/commit/934825c7015286cc476c492af7a61de56e1782d1))
+* **deps:** Go 1.26.11 and x/net, x/crypto, klauspost/compress for govulncheck advisories ([#4359](https://github.com/opentdf/platform/issues/4359)) ([a13236d](https://github.com/opentdf/platform/commit/a13236dfcfce024c2b94329dd1f63b78d4decf37))
+* **kas:** DSPX-4607 use snake_case slog key in rewrap test fake ([#3970](https://github.com/opentdf/platform/issues/3970)) ([9a5dc05](https://github.com/opentdf/platform/commit/9a5dc0528c71be76b235037e408dc94ea463e0bb))
+* **policy:** avoid hydrated reads in subject mapping namespace validation ([#4335](https://github.com/opentdf/platform/issues/4335)) ([1a1d896](https://github.com/opentdf/platform/commit/1a1d896c6d29b2ff1e7ba275b1e4f8a8319cd5c6))
+* **policy:** optimize registered resource and obligation writes attribute value namespace lookups ([#4339](https://github.com/opentdf/platform/issues/4339)) ([39828c1](https://github.com/opentdf/platform/commit/39828c1af4237021ebb7bc0b04b6f5b6b75f1573))
+
 ## [0.31.0](https://github.com/opentdf/platform/compare/service/v0.30.0...service/v0.31.0) (2026-11-13)
 
 

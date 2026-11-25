@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -328,12 +329,20 @@ func (emptyRegisteredResourcesClient) ListRegisteredResources(context.Context, *
 	return &registeredresources.ListRegisteredResourcesResponse{}, nil
 }
 
+func (emptyRegisteredResourcesClient) GetRegisteredResourceValue(context.Context, *registeredresources.GetRegisteredResourceValueRequest) (*registeredresources.GetRegisteredResourceValueResponse, error) {
+	return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
+}
+
 type emptyObligationsClient struct {
 	sdkconnect.ObligationsServiceClient
 }
 
 func (emptyObligationsClient) ListObligations(context.Context, *policyobligations.ListObligationsRequest) (*policyobligations.ListObligationsResponse, error) {
 	return &policyobligations.ListObligationsResponse{}, nil
+}
+
+func (emptyObligationsClient) ListObligationTriggers(context.Context, *policyobligations.ListObligationTriggersRequest) (*policyobligations.ListObligationTriggersResponse, error) {
+	return &policyobligations.ListObligationTriggersResponse{}, nil
 }
 
 func (s *decisionPolicyStore) IsEnabled() bool              { return s.enabled }
@@ -585,7 +594,7 @@ func TestJITPDP_CacheAndEnumerationRetainFullPolicy(t *testing.T) {
 	p, err := NewJustInTimePDP(t.Context(), logger.CreateTestLogger(), sdk, store, true, true, false)
 	require.NoError(t, err)
 	require.NotNil(t, p.fullPolicyPDP)
-	inner, err := p.buildInnerPDP(t.Context(), []string{valueFQN})
+	inner, err := p.buildInnerPDP(t.Context(), []string{valueFQN}, p.registeredResources)
 	require.NoError(t, err)
 	assert.Same(t, p.fullPolicyPDP, inner)
 	assert.Equal(t, 1, store.attributeReads)
@@ -767,7 +776,7 @@ func TestJITPDP_buildInnerPDP_UsesFullPolicyPDPWhenSet(t *testing.T) {
 		fullPolicyPDP: fullPDP,
 	}
 
-	got, err := p.buildInnerPDP(t.Context(), []string{valueFQN})
+	got, err := p.buildInnerPDP(t.Context(), []string{valueFQN}, p.registeredResources)
 	require.NoError(t, err)
 	assert.Same(t, fullPDP, got)
 	assert.Empty(t, attrFake.requests)

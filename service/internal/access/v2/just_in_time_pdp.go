@@ -49,9 +49,12 @@ type JustInTimePDP struct {
 	fullPolicyPDP *PolicyDecisionPoint
 	policyStore   EntitlementPolicyStore
 
-	// Registered resources and obligations remain fully loaded at construction.
-	// Uncached definitions and their mappings are fetched per request via
-	// GetEntitleableAttributesByFqns and used to build a request-scoped inner PolicyDecisionPoint.
+	// targeted is set when no ready cache backs the PDP. Each decision then fetches only the
+	// registered resources, obligation triggers, definitions and mappings referenced by its
+	// resources, and builds request-scoped PDPs from them.
+	targeted bool
+
+	// Without targeted reads, registered resources and obligations are fully loaded at construction.
 	registeredResources           []*policy.RegisteredResource
 	registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue
 	allowDirectEntitlements       bool
@@ -59,8 +62,8 @@ type JustInTimePDP struct {
 	namespacedPolicy              bool
 }
 
-// NewJustInTimePDP loads registered resources and obligations, then uses either
-// cached policy or resource-scoped policy reads for decisions.
+// NewJustInTimePDP uses cached policy when a ready cache is provided, and otherwise
+// resource-scoped policy reads for each decision.
 func NewJustInTimePDP(
 	ctx context.Context,
 	log *logger.Logger,
@@ -99,7 +102,11 @@ func NewJustInTimePDP(
 
 	p.policyStore = store
 
-	// Registered resources and obligations are not yet covered by the targeted policy read.
+	if !cacheReady {
+		p.targeted = true
+		return p, nil
+	}
+
 	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
@@ -131,8 +138,8 @@ func NewJustInTimePDP(
 	}
 	p.obligationsPDP = obligationsPDP
 
-	if cacheReady && (allowDirectEntitlements || allowDynamicValueMappings) {
-		p.fullPolicyPDP, err = p.buildFullPolicyPDP(ctx)
+	if allowDirectEntitlements || allowDynamicValueMappings {
+		p.fullPolicyPDP, err = p.buildFullPolicyPDP(ctx, allRegisteredResources)
 		if err != nil {
 			return nil, err
 		}
@@ -175,8 +182,25 @@ func (p *JustInTimePDP) GetDecision(
 		skipEnvironmentEntities = true
 	)
 
+	// Load only the registered resources referenced by the resources and a registered resource
+	// entity, then only the obligation triggers on the attribute values being decided.
+	regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+	registeredResourceFQNs := registeredResourceFQNsOf(resources)
+	if regResValueFQN != "" {
+		registeredResourceFQNs = append(registeredResourceFQNs, regResValueFQN)
+	}
+	registeredResources, registeredResourceValuesByFQN, err := p.registeredResourcesFor(ctx, registeredResourceFQNs)
+	if err != nil {
+		return nil, err
+	}
+	valueFQNs := resourceValueFQNs(resources, registeredResourceValuesByFQN)
+	obligationsPDP, err := p.obligationsPDPFor(ctx, valueFQNs, registeredResourceValuesByFQN)
+	if err != nil {
+		return nil, err
+	}
+
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
-	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
+	obligationDecision, err := obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
 		ctx,
 		resources,
 		action,
@@ -200,9 +224,8 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, _, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
-		innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+		innerPDP, err := p.buildInnerPDP(ctx, valueFQNs, registeredResources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
 		}
@@ -248,7 +271,7 @@ func (p *JustInTimePDP) GetDecision(
 	allPermitted := true
 
 	// Build a request-scoped PDP from only the attributes needed to decide these resources.
-	innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+	innerPDP, err := p.buildInnerPDP(ctx, valueFQNs, registeredResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
 	}
@@ -326,8 +349,12 @@ func (p *JustInTimePDP) GetEntitlements(
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		registeredResources, registeredResourceValuesByFQN, err := p.registeredResourcesFor(ctx, []string{regResValueFQN})
+		if err != nil {
+			return nil, err
+		}
 		// registered resources do not have entity representations, so we can skip the remaining logic
-		innerPDP, err := p.buildEntitlementsPDP(ctx, p.registeredResourceActionAttributeValueFQNs(regResValueFQN))
+		innerPDP, err := p.buildEntitlementsPDP(ctx, actionAttributeValueFQNs(registeredResourceValuesByFQN, regResValueFQN), registeredResources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
 		}
@@ -353,8 +380,13 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, nil
 	}
 
+	// Subject entitlements don't reference registered resources, so targeted PDPs skip loading them.
+	registeredResources := p.registeredResources
+	if p.targeted {
+		registeredResources = []*policy.RegisteredResource{}
+	}
 	// Enumeration keeps the full-policy path when direct or dynamic entitlements are enabled.
-	innerPDP, err := p.buildEntitlementsPDP(ctx, valueFQNsFromSubjectMappings(matchedSubjectMappings))
+	innerPDP, err := p.buildEntitlementsPDP(ctx, valueFQNsFromSubjectMappings(matchedSubjectMappings), registeredResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
 	}
@@ -371,7 +403,7 @@ func (p *JustInTimePDP) GetEntitlements(
 
 // buildFullPolicyPDP preserves full-policy evaluation for cached decisions and entitlement
 // enumeration. Enumeration has no resource FQNs to bound its policy read.
-func (p *JustInTimePDP) buildFullPolicyPDP(ctx context.Context) (*PolicyDecisionPoint, error) {
+func (p *JustInTimePDP) buildFullPolicyPDP(ctx context.Context, registeredResources []*policy.RegisteredResource) (*PolicyDecisionPoint, error) {
 	var dynamicValueMappings []*policy.DynamicValueMapping
 	if p.allowDynamicValueMappings {
 		var err error
@@ -389,7 +421,7 @@ func (p *JustInTimePDP) buildFullPolicyPDP(ctx context.Context) (*PolicyDecision
 		return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 	}
 	pdp, err := NewPolicyDecisionPoint(ctx, p.logger, allAttributes, allSubjectMappings,
-		p.registeredResources, p.allowDirectEntitlements, p.namespacedPolicy,
+		registeredResources, p.allowDirectEntitlements, p.namespacedPolicy,
 		WithDynamicValueMappings(dynamicValueMappings, p.allowDynamicValueMappings))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create full-policy decision point: %w", err)
@@ -397,16 +429,62 @@ func (p *JustInTimePDP) buildFullPolicyPDP(ctx context.Context) (*PolicyDecision
 	return pdp, nil
 }
 
-func (p *JustInTimePDP) buildEntitlementsPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+func (p *JustInTimePDP) buildEntitlementsPDP(ctx context.Context, valueFQNs []string, registeredResources []*policy.RegisteredResource) (*PolicyDecisionPoint, error) {
 	if p.fullPolicyPDP == nil && (p.allowDirectEntitlements || p.allowDynamicValueMappings) {
-		return p.buildFullPolicyPDP(ctx)
+		return p.buildFullPolicyPDP(ctx, registeredResources)
 	}
-	return p.buildInnerPDP(ctx, valueFQNs)
+	return p.buildInnerPDP(ctx, valueFQNs, registeredResources)
+}
+
+// registeredResourcesFor returns the registered resources needed to resolve the provided registered
+// resource value FQNs, plus their values indexed by FQN. Targeted PDPs fetch only those values;
+// otherwise the fully loaded registered resources are returned.
+func (p *JustInTimePDP) registeredResourcesFor(ctx context.Context, fqns []string) ([]*policy.RegisteredResource, map[string]*policy.RegisteredResourceValue, error) {
+	if !p.targeted {
+		return p.registeredResources, p.registeredResourceValuesByFQN, nil
+	}
+	registeredResources, err := fetchRegisteredResources(ctx, p.sdk, fqns)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch registered resources: %w", err)
+	}
+	registeredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(registeredResources, p.namespacedPolicy)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to index registered resources: %w", err)
+	}
+	return registeredResources, registeredResourceValuesByFQN, nil
+}
+
+// obligationsPDPFor returns an obligations PDP that can evaluate the provided attribute value FQNs.
+// Targeted PDPs build it from only the obligation triggers on those values; otherwise the PDP built
+// from all obligations at construction is returned.
+func (p *JustInTimePDP) obligationsPDPFor(
+	ctx context.Context,
+	valueFQNs []string,
+	registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue,
+) (*obligations.ObligationsPolicyDecisionPoint, error) {
+	if !p.targeted {
+		return p.obligationsPDP, nil
+	}
+	triggeredObligations, err := fetchObligationsForValues(ctx, p.sdk, valueFQNs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch obligation triggers: %w", err)
+	}
+	obligationsPDP, err := obligations.NewObligationsPolicyDecisionPoint(
+		ctx,
+		p.logger,
+		make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
+		registeredResourceValuesByFQN,
+		triggeredObligations,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new obligations policy decision point: %w", err)
+	}
+	return obligationsPDP, nil
 }
 
 // buildInnerPDP fetches the entitleable attributes for the provided value FQNs and constructs a
-// request-scoped PolicyDecisionPoint from them plus the fully-loaded registered resources.
-func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+// request-scoped PolicyDecisionPoint from them plus the provided registered resources.
+func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string, registeredResources []*policy.RegisteredResource) (*PolicyDecisionPoint, error) {
 	// Preserve the full-policy path for ready caches.
 	if p.fullPolicyPDP != nil {
 		return p.fullPolicyPDP, nil
@@ -426,7 +504,7 @@ func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (
 		p.logger,
 		definitions,
 		subjectMappings,
-		p.registeredResources,
+		registeredResources,
 		p.allowDirectEntitlements,
 		p.namespacedPolicy,
 		WithDynamicValueMappings(dynamicValueMappings, p.allowDynamicValueMappings),
@@ -437,10 +515,22 @@ func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (
 	return pdp, nil
 }
 
+// registeredResourceFQNsOf collects the lower-cased registered resource value FQNs of the
+// registered-resource resources.
+func registeredResourceFQNsOf(resources []*authzV2.Resource) []string {
+	fqns := make([]string, 0)
+	for _, resource := range resources {
+		if fqn := resource.GetRegisteredResourceValueFqn(); fqn != "" {
+			fqns = append(fqns, strings.ToLower(fqn))
+		}
+	}
+	return fqns
+}
+
 // resourceValueFQNs collects the lower-cased attribute value FQNs needed to decide the provided
 // resources: attribute-value resources contribute their FQNs directly, and registered-resource
 // resources contribute the attribute value FQNs of their action-attribute-values.
-func (p *JustInTimePDP) resourceValueFQNs(resources []*authzV2.Resource) []string {
+func resourceValueFQNs(resources []*authzV2.Resource, registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue) []string {
 	fqns := make([]string, 0, len(resources))
 	for _, resource := range resources {
 		switch resource.GetResource().(type) {
@@ -450,16 +540,16 @@ func (p *JustInTimePDP) resourceValueFQNs(resources []*authzV2.Resource) []strin
 			}
 		case *authzV2.Resource_RegisteredResourceValueFqn:
 			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-			fqns = append(fqns, p.registeredResourceActionAttributeValueFQNs(regResValueFQN)...)
+			fqns = append(fqns, actionAttributeValueFQNs(registeredResourceValuesByFQN, regResValueFQN)...)
 		}
 	}
 	return fqns
 }
 
-// registeredResourceActionAttributeValueFQNs returns the lower-cased attribute value FQNs entitled
-// by the action-attribute-values of the given registered resource value.
-func (p *JustInTimePDP) registeredResourceActionAttributeValueFQNs(registeredResourceValueFQN string) []string {
-	rrValue, ok := p.registeredResourceValuesByFQN[registeredResourceValueFQN]
+// actionAttributeValueFQNs returns the lower-cased attribute value FQNs entitled by the
+// action-attribute-values of the given registered resource value.
+func actionAttributeValueFQNs(registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue, registeredResourceValueFQN string) []string {
+	rrValue, ok := registeredResourceValuesByFQN[registeredResourceValueFQN]
 	if !ok {
 		return nil
 	}

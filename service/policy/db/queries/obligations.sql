@@ -762,7 +762,8 @@ LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigg
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR trigger_ns.id = sqlc.narg('namespace_id')::uuid) AND
-    (sqlc.narg('namespace_fqn')::text IS NULL OR trigger_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
-ORDER BY ot.created_at DESC
+    (sqlc.narg('namespace_fqn')::text IS NULL OR trigger_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
+    (sqlc.narg('attribute_value_fqns')::text[] IS NULL OR av_fqns.fqn = ANY(sqlc.narg('attribute_value_fqns')::text[]))
+ORDER BY ot.created_at DESC, ot.id ASC
 LIMIT @limit_
 OFFSET @offset_;

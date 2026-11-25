@@ -818,11 +818,18 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 		return nil, nil, db.ErrListLimitTooLarge
 	}
 
+	// A nil slice is sent as NULL, which disables the attribute value filter.
+	var attributeValueFQNs []string
+	for _, fqn := range r.GetAttributeValueFqns() {
+		attributeValueFQNs = append(attributeValueFQNs, strings.ToLower(fqn))
+	}
+
 	rows, err := c.queries.listObligationTriggers(ctx, listObligationTriggersParams{
-		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn: pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
-		Offset:       offset,
-		Limit:        limit,
+		NamespaceID:        pgtypeUUID(r.GetNamespaceId()),
+		NamespaceFqn:       pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
+		AttributeValueFqns: attributeValueFQNs,
+		Offset:             offset,
+		Limit:              limit,
 	})
 	if err != nil {
 		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)

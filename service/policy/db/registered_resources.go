@@ -406,6 +406,11 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, err
 	}
 
+	resourceMetadata := &common.Metadata{}
+	if err = unmarshalMetadata(rv.ResourceMetadata, resourceMetadata); err != nil {
+		return nil, err
+	}
+
 	namespace, err := hydrateNamespaceFromInterface(rv.Namespace)
 	if err != nil {
 		return nil, err
@@ -425,6 +430,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 			Id:        rv.RegisteredResourceID,
 			Name:      rv.ResourceName,
 			Namespace: namespace,
+			Metadata:  resourceMetadata,
 		},
 		ActionAttributeValues: actionAttrValues,
 	}, nil

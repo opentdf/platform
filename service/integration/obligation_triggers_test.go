@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -656,6 +658,62 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_MultipleTriggersNo
 	}
 }
 
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_FilterByAttributeValueFqns_Success() {
+	createdTriggersMap := s.createMultipleUniqueTriggers(2)
+	s.appendObligationValuesToClean(createdTriggersMap)
+	differentNS := s.createDifferentNamespaceWithTrigger("different-namespace-value-filter-test")
+	defer differentNS.CleanupNamespace()
+	defer differentNS.CleanupTrigger()
+
+	suiteValueFQN := s.attributeValue.GetFqn()
+	otherValueFQN := differentNS.AttributeValue.GetFqn()
+	s.Require().NotEqual(suiteValueFQN, otherValueFQN)
+
+	for _, tc := range []struct {
+		name        string
+		req         *obligations.ListObligationTriggersRequest
+		wantTrigger []string
+	}{
+		{
+			name:        "suite value, case-insensitive",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{strings.ToUpper(suiteValueFQN)}},
+			wantTrigger: slices.Collect(maps.Keys(createdTriggersMap)),
+		},
+		{
+			name:        "other namespace value",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{otherValueFQN}},
+			wantTrigger: []string{differentNS.Trigger.GetId()},
+		},
+		{
+			name:        "both values",
+			req:         &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{suiteValueFQN, otherValueFQN}},
+			wantTrigger: append(slices.Collect(maps.Keys(createdTriggersMap)), differentNS.Trigger.GetId()),
+		},
+		{
+			name: "unknown value",
+			req:  &obligations.ListObligationTriggersRequest{AttributeValueFqns: []string{"https://unknown.example/attr/a/value/b"}},
+		},
+		{
+			name: "combined with a non-matching namespace",
+			req: &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{suiteValueFQN},
+				NamespaceId:        differentNS.Namespace.GetId(),
+			},
+		},
+	} {
+		s.Run(tc.name, func() {
+			triggers, pageResult, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, tc.req)
+			s.Require().NoError(err)
+			gotIDs := make([]string, 0, len(triggers))
+			for _, t := range triggers {
+				gotIDs = append(gotIDs, t.GetId())
+			}
+			s.ElementsMatch(tc.wantTrigger, gotIDs)
+			s.Equal(int32(len(tc.wantTrigger)), pageResult.GetTotal())
+		})
+	}
+}
+
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_MultipleTriggersWithNamespaceId_MultipleNamespaces_Success() {
 	createdTriggersMap := s.createMultipleUniqueTriggers(2)
 	s.appendObligationValuesToClean(createdTriggersMap)
@@ -862,6 +920,52 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoContext_Success(
 	listedTrigger := triggers[0]
 	s.Require().Equal(trigger.GetId(), listedTrigger.GetId())
 	s.validateTriggerWithDefaults(listedTrigger, false)
+}
+
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_FilteredPaginationWithTiedTimestamps() {
+	created := s.createMultipleUniqueTriggers(60)
+	s.appendObligationValuesToClean(created)
+	type orderedTrigger struct {
+		id    string
+		group int
+	}
+	expected := make([]orderedTrigger, 0, len(created))
+	for id := range created {
+		group := len(expected) % 4
+		_, err := s.db.Client.Pgx.Exec(s.ctx, "UPDATE "+s.db.TableName("obligation_triggers")+" SET created_at = $1 WHERE id = $2", time.Unix(int64(group), 0), id)
+		s.Require().NoError(err)
+		expected = append(expected, orderedTrigger{id: id, group: group})
+	}
+	slices.SortFunc(expected, func(a, b orderedTrigger) int {
+		if a.group != b.group {
+			return b.group - a.group
+		}
+		return strings.Compare(a.id, b.id)
+	})
+	want := make([]string, 0, len(expected))
+	for _, trigger := range expected {
+		want = append(want, trigger.id)
+	}
+	for _, limit := range []int32{1, 7, 13} {
+		var got []string
+		var offset int32
+		for page := 0; page < len(expected); page++ {
+			triggers, pagination, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+				AttributeValueFqns: []string{s.attributeValue.GetFqn()},
+				Pagination:         &policy.PageRequest{Limit: limit, Offset: offset},
+			})
+			s.Require().NoError(err)
+			s.Equal(int32(len(expected)), pagination.GetTotal())
+			for _, trigger := range triggers {
+				got = append(got, trigger.GetId())
+			}
+			offset = pagination.GetNextOffset()
+			if offset == 0 {
+				break
+			}
+		}
+		s.Equal(want, got, "limit=%d: every trigger must appear exactly once in a stable order", limit)
+	}
 }
 
 func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigger {

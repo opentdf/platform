@@ -264,6 +264,7 @@ func namespaceNameFromPolicyNamespace(ns *policy.Namespace) string {
 // NewPolicyDecisionPoint and the JustInTimePDP obligations wiring so both index identically.
 func buildRegisteredResourceValuesByFQN(allRegisteredResources []*policy.RegisteredResource, namespacedPolicy bool) (map[string]*policy.RegisteredResourceValue, error) {
 	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
+	legacyOwners := make(map[string]*policy.RegisteredResource)
 	for _, rr := range allRegisteredResources {
 		if err := validateRegisteredResource(rr); err != nil {
 			return nil, fmt.Errorf("invalid registered resource: %w", err)
@@ -282,14 +283,26 @@ func buildRegisteredResourceValuesByFQN(allRegisteredResources []*policy.Registe
 				Name:      rrName,
 				Value:     v.GetValue(),
 			}
-			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+			if namespaceName != "" || namespacedPolicy {
+				allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+			}
 
 			if !namespacedPolicy {
 				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
 					Name:  rrName,
 					Value: v.GetValue(),
 				}
-				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
+				alias := legacyQualifiedValue.FQN()
+				// Match the last winner in the default full listing (created_at DESC,
+				// id ASC) without depending on request order or sorting shared cache data.
+				if owner, exists := legacyOwners[alias]; exists {
+					cmp := rr.GetMetadata().GetCreatedAt().AsTime().Compare(owner.GetMetadata().GetCreatedAt().AsTime())
+					if cmp > 0 || (cmp == 0 && rr.GetId() < owner.GetId()) {
+						continue
+					}
+				}
+				legacyOwners[alias] = rr
+				allRegisteredResourceValuesByFQN[alias] = v
 			}
 		}
 	}

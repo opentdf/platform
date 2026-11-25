@@ -1059,7 +1059,8 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_DoesNotExist_ShouldFail() {
 
 func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 	// Create a namespace
-	n, _ := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "all-attributes-deactivated.example.com"})
+	s.Require().NoError(err)
 
 	// Create an attribute under that namespace
 	attr := &attributes.CreateAttributeRequest{
@@ -1067,13 +1068,17 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 		NamespaceId: n.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
-	_, _ = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
 
 	// Deactivate the namespace
-	_, _ = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
 
 	// Get the attributes of the namespace
-	attrs, _ := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, n.GetId())
+	attrs, err := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(attrs, 1)
 
 	// Check if all attributes are deactivated
 	for _, attr := range attrs {

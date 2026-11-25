@@ -154,6 +154,7 @@ type TDFConfig struct {
 	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	hexlessPolicyBinding       bool
 	addDefaultAssertion        bool
 	// maxSegmentEncryptions overrides maxAESGCMSegmentsPerDEK when non-zero.
 	// Only tests set it, through withMaxSegmentEncryptions.
@@ -351,6 +352,22 @@ func WithTargetMode(mode string) TDFOption {
 			c.useHex = false
 			c.excludeVersionFromManifest = false
 		}
+		return nil
+	}
+}
+
+// WithHexlessPolicyBinding writes each key access object's policy binding
+// hash as Base64(HMAC), dropping the hex layer of the legacy Base64(hex(HMAC))
+// written by default. Base64(HMAC) is the form the TDF spec defines.
+//
+// Only a KAS carrying the policy binding dual-accept fix can verify the hexless
+// form directly. This SDK's reader re-encodes it for older KAS, but other and
+// older readers forward it unchanged, so a TDF written with this option may not
+// decrypt through an older reader against an older KAS. A pre-4.3.0
+// WithTargetMode overrides this option and keeps the legacy form.
+func WithHexlessPolicyBinding() TDFOption {
+	return func(c *TDFConfig) error {
+		c.hexlessPolicyBinding = true
 		return nil
 	}
 }

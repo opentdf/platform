@@ -214,6 +214,9 @@ func TestHybridCrossSchemeDispatchRejection(t *testing.T) {
 				continue
 			}
 			t.Run(string(enc)+"_to_"+string(dec), func(t *testing.T) {
+				if enc == HybridXWingKey || dec == HybridXWingKey {
+					skipCIRCLWhenFIPS(t)
+				}
 				encKP, err := NewHybridKeyPair(enc)
 				require.NoError(t, err)
 				decKP, err := NewHybridKeyPair(dec)

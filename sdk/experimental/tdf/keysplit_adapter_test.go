@@ -3,7 +3,6 @@
 package tdf
 
 import (
-	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -89,8 +88,7 @@ func TestXORSplitterAdapterRoundTrip(t *testing.T) {
 
 		binding, ok := kao.PolicyBinding.(PolicyBinding)
 		require.True(t, ok, "policy binding should be a PolicyBinding, got %T", kao.PolicyBinding)
-		expectedHash := ocrypto.CalculateSHA256Hmac(share, policyBytes)
-		expected := string(ocrypto.Base64Encode([]byte(hex.EncodeToString(expectedHash))))
+		expected := string(ocrypto.Base64Encode(ocrypto.CalculateSHA256Hmac(share, policyBytes)))
 		require.Equal(t, expected, binding.Hash, "recovered share for KAS %s must reproduce its own policy binding", kao.KasURL)
 
 		if dek == nil {

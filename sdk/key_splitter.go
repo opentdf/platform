@@ -354,6 +354,9 @@ func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ *chunkedFinalize
 type splitterKeyAccess struct {
 	// splitter maps attributes plus the DEK onto KAS-addressed shares.
 	splitter KeySplitter
+
+	// useHex selects the pre-4.3.0 Base64(hex(HMAC)) policy binding.
+	useHex bool
 }
 
 func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error) {
@@ -410,14 +413,14 @@ func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *chunked
 	for _, v := range cfg.attributes {
 		fqns = append(fqns, v.GetFqn())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata)
+	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata, r.useHex)
 }
 
 // resolvePolicyAndKeyAccess builds the policy document the DEK is bound to and wraps
 // every share to its KAS targets, returning the two manifest fields that bind a DEK to
 // policy. Shared by SDK.CreateTDF's KAO template path and the chunked writer's
 // KeySplitter path, so both emit byte-identical policy for the same attributes.
-func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string) (string, []KeyAccess, error) {
+func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string, useHex bool) (string, []KeyAccess, error) {
 	policyObj, err := createPolicyObjectFromFQNs(fqns)
 	if err != nil {
 		return "", nil, fmt.Errorf("fail to create policy object:%w", err)
@@ -428,7 +431,7 @@ func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata stri
 	}
 	base64Policy := string(ocrypto.Base64Encode(policyObjectAsStr))
 
-	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata)
+	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata, useHex)
 	if err != nil {
 		return "", nil, err
 	}
@@ -437,7 +440,7 @@ func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata stri
 
 // buildKeyAccessObjects wraps every share to each of its KAS targets,
 // emitting the manifest's keyAccess array in share order.
-func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) ([]KeyAccess, error) {
+func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string, useHex bool) ([]KeyAccess, error) {
 	var kaos []KeyAccess
 	for _, share := range shares {
 		// A share with no KAS target contributes no key access object,
@@ -455,7 +458,7 @@ func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) (
 		// Policy binding and metadata are keyed on the split share, not
 		// on the KAS, so compute them once per share rather than once
 		// per KAS URL in an OR-group.
-		policyBinding := createPolicyBinding(share.data, base64Policy)
+		policyBinding := createPolicyBinding(share.data, base64Policy, useHex)
 
 		var encryptedMetadata string
 		if metadata != "" {

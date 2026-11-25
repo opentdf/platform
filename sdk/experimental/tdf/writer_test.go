@@ -5,7 +5,6 @@ package tdf
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -942,8 +941,7 @@ func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM string,
 	require.NoError(t, err, "hybrid Decrypt")
 	require.Len(t, dek, 32, "%s recovered DEK should be 32 bytes", ktype)
 
-	hash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(dek, []byte(manifest.Policy)))
-	expected := string(ocrypto.Base64Encode([]byte(hash)))
+	expected := string(ocrypto.Base64Encode(ocrypto.CalculateSHA256Hmac(dek, []byte(manifest.Policy))))
 
 	binding, ok := keyAccess.PolicyBinding.(PolicyBinding)
 	require.True(t, ok, "policy binding should be a PolicyBinding, got %T", keyAccess.PolicyBinding)

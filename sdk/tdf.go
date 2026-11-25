@@ -583,7 +583,7 @@ func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []b
 	for _, attribute := range tdfConfig.attributes {
 		fqns = append(fqns, attribute.String())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
+	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData, tdfConfig.useHex)
 }
 
 // templateSplitShares groups the KAO template by split ID and divides the DEK across
@@ -654,11 +654,18 @@ func manifestSegmentIntegrityAlg(alg string) SegmentIntegrityAlg {
 // createPolicyBinding binds a key split to the policy it unlocks, keyed on the split
 // itself so that a KAS can verify the policy it is asked to enforce is the one the
 // creator bound.
-func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
-	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy)))
+//
+// Spec (>= 4.3.0) requires Base64(HMAC); pre-4.3.0 TDFs used Base64(hex(HMAC)).
+// useHex tracks the same threshold as segment/root signatures via WithTargetMode,
+// so the binding stays consistent with the rest of the manifest's integrity values.
+func createPolicyBinding(symKey []byte, base64Policy string, useHex bool) PolicyBinding {
+	hash := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy))
+	if useHex {
+		hash = []byte(hex.EncodeToString(hash))
+	}
 	return PolicyBinding{
 		Alg:  hmacIntegrityAlgorithm,
-		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+		Hash: string(ocrypto.Base64Encode(hash)),
 	}
 }
 

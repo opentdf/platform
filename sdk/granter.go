@@ -333,16 +333,17 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			continue
 		}
 		kasURI := k.GetKasUri()
-		r.typ = mappedFound
-		result = r.typ
 		err := r.addMappedKey(fqn, k)
 		if err != nil {
-			r.logger.Debug("failed to add mapped key",
+			r.logger.Warn("failed to add mapped key, skipping KAS grant",
 				slog.Any("fqn", fqn),
 				slog.String("kas", kasURI),
 				slog.Any("error", err),
 			)
+			continue
 		}
+		r.typ = mappedFound
+		result = r.typ
 		if _, present := r.grantTable[fqn.key]; !present {
 			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
 		} else {

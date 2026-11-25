@@ -1,0 +1,50 @@
+{
+  "id": "pos-hybrid-x-ecdh-mlkem-768-001",
+  "description": "Hybrid X-ECDH-ML-KEM-768 with deterministic EC ephemeral and ML-KEM seed.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-030",
+    "KAO-C-160",
+    "KAO-C-161",
+    "KAO-C-163"
+  ],
+  "category": "positive",
+  "algorithm": "X-ECDH-ML-KEM-768",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "X-ECDH-ML-KEM-768",
+      "kas": "https://kas.example.com",
+      "kid": "hybrid-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL9BkRs272IxYsHeWBgClQoAK4proyTSj2ofCi8IU5pYbKyeeX98wBrR7xZo/dqTSU",
+      "ephemeralKey": "BFl9HVHL/9cQQmDRqhbIY9R15KEhO2nb4YDtKyZI5AENJ4TQqqc2jeuSVysSdyuhCdv4eLASZwJfJk5z1ZBCWrnJJ1mHzUwinKcRf8F30WEZ+jO87GLHmR3Yxba5GCypLscP7vI0sZ27KhUljlPNXMbxz5ZjWYkSCK7ztOsQMIw79PNoTAOrqX98mpNelkm2GF/f6q9jOhXyA5Mqf+cPc6wZEKsS9zhEstg4wHqQZrQXrC3zcDJ07HJEk+wXbSvHCah2UrrhAtyxESKzNEUQKCMM7TwSinr8epQDJjwGU9YFqcnII0oCxgF/a+7HwrGtElTu/ZaIEeWlW9An1mhZjuMH5t9/WYlaL2hv8fV3eQKnjAirOgOnEWlD6HKJYPR46OhwDlaRDNSwG6QTBBwJoolxFsp7yg+ocSbpjkc5FwfyTq8LnGLbW41lWdtbRHMZ9+CIQHIKV2tX1itrDjodc0NBCFO/ICmVV6LvFAPR5eRNqxVWgRSdMsEvQROVEC1piuEFn0c2cZHENr4M/fKqK93ZAgA4TB8sp2tLkPlR4ci5EgwZEjuJX7rDoh748OZPk9rIp+NHFGOaY+fCo8/UQIg9RXq9POhNECINAGwj8S3KeFmRREPMJQZSJDQW03Vpg/K474rR1ey/DmuUbQOAv7ZhMgCeeG766ADlIznH+RQ40dWwNEGtSTJ2KyjEF5fe+NB8JvAPpicpRg6anRidgt8fUjIw1ghJWzIxjqgow9gNWxQVIrxAGcj++oNX9JdmKS5Epedc/f1w7WAFPwuhO9d5CwZ4d4biBRVcE3fGek8X11FLwY3FKZaCARfGIfP1u2hYBPTHxWY6bMkecoyn4fq9ACGULlYUrqzAzxq35PSz+Y1z12emQNqgT68URxgUqfaMutI+PoRp2ZEFOO8xxkUACbFV+XvdAN41Zxj8W6GPcYmoMIIjr3rWJoTWalcTS4tMJTQxLlbwb00vy9TPLYyyM5K6BKR3o205lXAC8iA8Y3YiNhNpxTiGqpu3oh0C0nehDDcEnWFXgOHnE9lV4MhTT1oIiWFy3cSg+l+KxJZRhOmOB4BsymTAs4FR7YYBd7JHTjAW0wGVz97s1Nx+AMY9CLw6gh+X5UZvKHmxq0XobWF5a37cil8sWJhQ9D89pImW2I6nqQ9n+4ZSI79rmmbkPZ73mODxguzbCNlsFc2GJdDHO3a4k+VePaPme7xfFbjtS6B6a4GBThL994Dmc1iF002zPzZDO+xITthuMbeWADQO/LTyGzrOcafKy5GK7zxlBNhEDk7tZZ6nG/nMjC6KJFMq6zn5ZFBKPkxbNXtugu8YceZXmPUaaNY7hSEtmLXQuZCNqdy/Sm1S6bxiUuP5TYOpmKtffQPYbYU/l2Ig6/oEQiB6ZbTJkg+N50HCiu7eWPWt2rt5VetOYeA60I0jafQW6Ajt7cg0FFWs9IRucvtSC/v3845ELm3wh+bosNlTiDDFhm9GALS+g1my057oZWYQ0F0aKaZeEsrHkOmErUT52dCkKTkV2Nj934tw8g==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kasEC": "keys/ec-p256-test.priv.pem",
+      "kasMLKEM": "keys/ml-kem-768-test.json"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "X-ECDH-ML-KEM-768",
+      "kas": "https://kas.example.com",
+      "kid": "hybrid-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL9BkRs272IxYsHeWBgClQoAK4proyTSj2ofCi8IU5pYbKyeeX98wBrR7xZo/dqTSU",
+      "ephemeralKey": "BFl9HVHL/9cQQmDRqhbIY9R15KEhO2nb4YDtKyZI5AENJ4TQqqc2jeuSVysSdyuhCdv4eLASZwJfJk5z1ZBCWrnJJ1mHzUwinKcRf8F30WEZ+jO87GLHmR3Yxba5GCypLscP7vI0sZ27KhUljlPNXMbxz5ZjWYkSCK7ztOsQMIw79PNoTAOrqX98mpNelkm2GF/f6q9jOhXyA5Mqf+cPc6wZEKsS9zhEstg4wHqQZrQXrC3zcDJ07HJEk+wXbSvHCah2UrrhAtyxESKzNEUQKCMM7TwSinr8epQDJjwGU9YFqcnII0oCxgF/a+7HwrGtElTu/ZaIEeWlW9An1mhZjuMH5t9/WYlaL2hv8fV3eQKnjAirOgOnEWlD6HKJYPR46OhwDlaRDNSwG6QTBBwJoolxFsp7yg+ocSbpjkc5FwfyTq8LnGLbW41lWdtbRHMZ9+CIQHIKV2tX1itrDjodc0NBCFO/ICmVV6LvFAPR5eRNqxVWgRSdMsEvQROVEC1piuEFn0c2cZHENr4M/fKqK93ZAgA4TB8sp2tLkPlR4ci5EgwZEjuJX7rDoh748OZPk9rIp+NHFGOaY+fCo8/UQIg9RXq9POhNECINAGwj8S3KeFmRREPMJQZSJDQW03Vpg/K474rR1ey/DmuUbQOAv7ZhMgCeeG766ADlIznH+RQ40dWwNEGtSTJ2KyjEF5fe+NB8JvAPpicpRg6anRidgt8fUjIw1ghJWzIxjqgow9gNWxQVIrxAGcj++oNX9JdmKS5Epedc/f1w7WAFPwuhO9d5CwZ4d4biBRVcE3fGek8X11FLwY3FKZaCARfGIfP1u2hYBPTHxWY6bMkecoyn4fq9ACGULlYUrqzAzxq35PSz+Y1z12emQNqgT68URxgUqfaMutI+PoRp2ZEFOO8xxkUACbFV+XvdAN41Zxj8W6GPcYmoMIIjr3rWJoTWalcTS4tMJTQxLlbwb00vy9TPLYyyM5K6BKR3o205lXAC8iA8Y3YiNhNpxTiGqpu3oh0C0nehDDcEnWFXgOHnE9lV4MhTT1oIiWFy3cSg+l+KxJZRhOmOB4BsymTAs4FR7YYBd7JHTjAW0wGVz97s1Nx+AMY9CLw6gh+X5UZvKHmxq0XobWF5a37cil8sWJhQ9D89pImW2I6nqQ9n+4ZSI79rmmbkPZ73mODxguzbCNlsFc2GJdDHO3a4k+VePaPme7xfFbjtS6B6a4GBThL994Dmc1iF002zPzZDO+xITthuMbeWADQO/LTyGzrOcafKy5GK7zxlBNhEDk7tZZ6nG/nMjC6KJFMq6zn5ZFBKPkxbNXtugu8YceZXmPUaaNY7hSEtmLXQuZCNqdy/Sm1S6bxiUuP5TYOpmKtffQPYbYU/l2Ig6/oEQiB6ZbTJkg+N50HCiu7eWPWt2rt5VetOYeA60I0jafQW6Ajt7cg0FFWs9IRucvtSC/v3845ELm3wh+bosNlTiDDFhm9GALS+g1my057oZWYQ0F0aKaZeEsrHkOmErUT52dCkKTkV2Nj934tw8g==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

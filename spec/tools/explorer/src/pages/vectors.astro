@@ -1,0 +1,17 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import VectorRunner from "@/components/VectorRunner";
+import { VECTOR_INDEX } from "@/data/vectors";
+---
+
+<Layout title="KAO Test Vector Runner">
+  <h1 class="text-2xl font-bold mb-4">Test vector runner</h1>
+  <p class="text-sm text-slate-600 mb-6">
+    {VECTOR_INDEX.length} vectors loaded from{" "}
+    <code>spec/testvectors/kao/index.json</code>. Pick one to inspect its
+    inputs and run it through the browser-side validator. Crypto round-trips
+    are not run client-side here; for those, install the Python reference and
+    run <code>basetdf-kao run-vectors</code>.
+  </p>
+  <VectorRunner client:load />
+</Layout>

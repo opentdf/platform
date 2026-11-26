@@ -193,6 +193,13 @@ func TestFormatAlg(t *testing.T) {
 			expectError: false,
 		},
 		{
+			// RSA-3072 can be recorded in policy but is not a KAS key type.
+			name:        "RSA 3072 is not a KAS key type",
+			alg:         policy.Algorithm_ALGORITHM_RSA_3072,
+			expected:    "",
+			expectError: true,
+		},
+		{
 			name:        "Unspecified algorithm",
 			alg:         policy.Algorithm_ALGORITHM_UNSPECIFIED,
 			expected:    "",
@@ -405,4 +412,11 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
 	s.Require().ErrorIs(err, ErrBaseKeyInvalidFormat)
+}
+
+// RSA-3072 is refused explicitly, not by falling through to the default case.
+func TestPolicyAlgorithmToKeyType_RSA3072(t *testing.T) {
+	kt, err := PolicyAlgorithmToKeyType(policy.Algorithm_ALGORITHM_RSA_3072)
+	require.ErrorContains(t, err, "not a KAS key algorithm")
+	require.Empty(t, kt)
 }

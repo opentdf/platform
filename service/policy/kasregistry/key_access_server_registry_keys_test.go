@@ -1623,3 +1623,42 @@ func Test_ListKeyMappings(t *testing.T) {
 		})
 	}
 }
+
+// ALGORITHM_RSA_3072 can be recorded in policy, but KAS keys deliberately do not
+// accept it: create, rotate and the list filter all refuse it.
+func Test_KasKeys_RSA3072_Refused(t *testing.T) {
+	v := getValidator()
+
+	createReq := &kasregistry.CreateKeyRequest{
+		KasId:         validUUID,
+		KeyId:         validKeyID,
+		KeyAlgorithm:  policy.Algorithm_ALGORITHM_RSA_3072,
+		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx:  validPubCtx,
+		PrivateKeyCtx: validPrivCtx,
+	}
+	err := v.Validate(createReq)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageKeyAlgo)
+
+	createReq.KeyAlgorithm = policy.Algorithm_ALGORITHM_RSA_4096
+	require.NoError(t, v.Validate(createReq), "the same request with RSA 4096 must be valid")
+
+	rotateReq := &kasregistry.RotateKeyRequest{
+		ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
+		NewKey: &kasregistry.RotateKeyRequest_NewKey{
+			KeyId:         validKeyID,
+			Algorithm:     policy.Algorithm_ALGORITHM_RSA_3072,
+			KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx:  validPubCtx,
+			PrivateKeyCtx: validPrivCtx,
+		},
+	}
+	err = v.Validate(rotateReq)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageNewKeyAlgo)
+
+	err = v.Validate(&kasregistry.ListKeysRequest{KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_3072})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageKeyAlgo)
+}

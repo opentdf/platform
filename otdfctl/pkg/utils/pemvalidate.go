@@ -61,6 +61,8 @@ func ValidatePublicKeyPEM(pemBytes []byte, expected policy.Algorithm) error {
 		if enc.KeyType() != ocrypto.MLKEM1024Key {
 			return errors.New("algorithm mismatch: expected ML-KEM-1024")
 		}
+	case policy.Algorithm_ALGORITHM_RSA_3072:
+		return errors.New("unsupported algorithm: RSA 3072 is not a KAS key algorithm")
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

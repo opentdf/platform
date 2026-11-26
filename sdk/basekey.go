@@ -77,6 +77,9 @@ func PolicyAlgorithmToKeyType(alg policy.Algorithm) (ocrypto.KeyType, error) {
 		return ocrypto.MLKEM768Key, nil
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:
 		return ocrypto.MLKEM1024Key, nil
+	case policy.Algorithm_ALGORITHM_RSA_3072:
+		// Policy can record RSA-3072 (e.g. for certificates), but KAS keys do not use it.
+		return "", fmt.Errorf("unsupported algorithm: %s is not a KAS key algorithm", alg)
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

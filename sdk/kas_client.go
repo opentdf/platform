@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -316,6 +317,11 @@ func (k *KASClient) processResponse(response *kas.RewrapResponse, decryptor ocry
 	return policyResults, nil
 }
 
+// parseBaseURL returns the Connect base URL for a KAS URL; Connect appends
+// "/kas.AccessService/<Method>". A platform served under a path prefix keeps
+// it (https://host/dsp/kas -> https://host/dsp). The legacy "/kas" and
+// "/v2/rewrap" suffixes are stripped, so host-root KAS URLs are unchanged.
+// Matches the JS SDK's getPlatformUrlFromKasEndpoint.
 func parseBaseURL(rawURL string) (string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -331,7 +337,12 @@ func parseBaseURL(rawURL string) (string, error) {
 		addr = net.JoinHostPort(host, port)
 	}
 
-	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
+	path := strings.TrimRight(u.Path, "/")
+	path = strings.TrimSuffix(path, "/v2/rewrap")
+	path = strings.TrimSuffix(path, "/kas")
+
+	base := url.URL{Scheme: u.Scheme, Host: addr, Path: path}
+	return base.String(), nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {

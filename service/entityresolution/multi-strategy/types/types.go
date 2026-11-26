@@ -150,14 +150,19 @@ type InputMapping struct {
 
 // OutputMapping defines how to map provider results to claims (field-agnostic)
 type OutputMapping struct {
-	// Source field names (provider-specific)
+	// Source field names (provider-specific). Each accepts a flat key or a dotted
+	// path into nested data; an exact flat match always wins.
 	SourceColumn    string `mapstructure:"source_column"`    // SQL column name
 	SourceAttribute string `mapstructure:"source_attribute"` // LDAP attribute name
 	SourceClaim     string `mapstructure:"source_claim"`     // JWT claim name
 	SourceKey       string `mapstructure:"source_key"`       // Redis key name
 
-	// Target claim name (field-agnostic)
+	// Target claim name (field-agnostic). Dot notation nests: "attributes.nationality"
+	// produces {"attributes":{"nationality":...}}, selected by ".attributes.nationality[]".
 	ClaimName string `mapstructure:"claim_name"`
+
+	// Value emitted verbatim (never transformed) when the source is absent or empty.
+	Default interface{} `mapstructure:"default"`
 
 	// Optional transformation
 	Transformation string `mapstructure:"transformation"` // "array", "csv_to_array", "ldap_dn_to_cn_array", etc.

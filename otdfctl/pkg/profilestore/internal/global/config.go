@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
+	"github.com/opentdf/platform/otdfctl/pkg/profilestore/pkg/store"
 )
 
 // Define constants for the different storage drivers and store keys

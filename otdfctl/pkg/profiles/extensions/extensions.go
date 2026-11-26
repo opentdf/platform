@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"regexp"
 
-	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
+	osprofiles "github.com/opentdf/platform/otdfctl/pkg/profilestore"
 )
 
 var (

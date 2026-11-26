@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/opentdf/platform/otdfctl/internal/profilestore/internal/global"
-	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
+	"github.com/opentdf/platform/otdfctl/pkg/profilestore/internal/global"
+	"github.com/opentdf/platform/otdfctl/pkg/profilestore/pkg/store"
 )
 
 type ProfileStore struct {

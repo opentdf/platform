@@ -470,16 +470,24 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	return c, nil
 }
 
-// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for the TDF reader.
-// By default there is no limit: the manifest grows with the policy size and the number of
-// segments, so very large payloads legitimately carry very large manifests. A declared
-// manifest size is always bounded by the archive itself, so this option is not needed to
-// reject forged ZIP sizes; use it to cap how much memory a manifest read may allocate.
-// size must be greater than 0.
+func validateMaxManifestSize(size int64) error {
+	if size <= 0 {
+		return errors.New("max manifest size must be greater than 0")
+	}
+	return nil
+}
+
+// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for
+// LoadTDF and IsValidTdf. LoadTDF has no limit by default; IsValidTdf defaults
+// to 10 MiB. The manifest grows with policy size and the number of segments,
+// so very large payloads can legitimately carry very large manifests. A
+// declared manifest size is always bounded by the archive itself; use this
+// option to cap how much memory a manifest read may allocate. size must be
+// greater than 0.
 func WithMaxManifestSize(size int64) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		if size <= 0 {
-			return errors.New("max manifest size must be greater than 0")
+		if err := validateMaxManifestSize(size); err != nil {
+			return err
 		}
 		c.maxManifestSize = size
 		return nil

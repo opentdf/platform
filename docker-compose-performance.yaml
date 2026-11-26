@@ -1,0 +1,130 @@
+# Performance-optimized Docker Compose configuration for OpenTDF
+# This extends the base docker-compose.yaml with performance tuning
+
+networks:
+  default:
+    name: opentdf_platform
+
+services:
+  keycloak:
+    volumes:
+    - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
+    - ./keys/localhost.key:/etc/x509/tls/localhost.key
+    - ./keys/ca.jks:/truststore/truststore.jks
+    image: ghcr.io/opentdf/keycloak:sha-8a6d35a
+    restart: always
+    command:
+    - "start-dev"
+    - "--verbose"
+    - "-Djavax.net.ssl.trustStorePassword=password"
+    - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
+    - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
+    - "--spi-truststore-file-hostname-verification-policy=ANY"
+    environment:
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_DB_VENDOR: postgres
+      KC_DB_URL_HOST: keycloakdb
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: changeme
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8888"
+      KC_HTTPS_PORT: "8443"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: changeme
+      KC_HOSTNAME_URL: http://localhost:8888/auth
+      KC_FEATURES: "preview,token-exchange"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTPS_KEY_STORE_PASSWORD: "password"
+      KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"
+      KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
+      KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
+      KC_HTTPS_CLIENT_AUTH: "request"
+    ports:
+      - "8888:8888"
+      - "8443:8443"
+    healthcheck:
+      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 2m
+    depends_on:
+      keycloakdb:
+        condition: service_healthy
+
+  keycloakdb:
+    image: postgres:15-alpine
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: postgres
+      POSTGRES_DB: keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Performance: Use tmpfs for non-critical data
+    tmpfs:
+      - /var/lib/postgresql/data/pg_stat_tmp:size=256M
+
+  opentdfdb:
+    image: postgres:15-alpine
+    restart: always
+    user: postgres
+    volumes:
+      # Mount performance configuration
+      - ./postgres-performance.conf:/etc/postgresql/postgresql.conf:ro
+      # Persist data with performance-optimized settings
+      - opentdf_pgdata:/var/lib/postgresql/data
+    command: 
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: opentdf
+      # Performance environment variables
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --data-checksums"
+      POSTGRES_HOST_AUTH_METHOD: "md5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    # Resource limits for performance
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    # Performance: Use tmpfs for temporary data
+    tmpfs:
+      - /var/lib/postgresql/data/pg_stat_tmp:size=256M
+    # System tuning
+    sysctls:
+      - net.core.somaxconn=1024
+      - net.ipv4.tcp_syncookies=0
+    # Shared memory settings
+    shm_size: 1g
+
+volumes:
+  opentdf_pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      # Use a local directory with good I/O performance
+      device: ./data/postgres
